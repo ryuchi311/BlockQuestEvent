@@ -14,6 +14,8 @@ interface Attendee {
   phone: string;
   organization: string | null;
   ticket_code: string | null;
+  checked_in?: boolean;
+  checked_in_at?: string | null;
   created_at: string;
 }
 
@@ -61,8 +63,11 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // ── Attendee search ──
+  // ── Attendee search & filter ──
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "checked" | "pending">("all");
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [checkingInId, setCheckingInId] = useState<number | null>(null);
 
   // ── Quest modal ──
   const [showQuestModal, setShowQuestModal] = useState(false);
@@ -122,22 +127,85 @@ export default function AdminPage() {
     else fetchQuests();
   }, [authed, tab, fetchAttendees, fetchQuests]);
 
+  // ── Auto Refresh ──
+  useEffect(() => {
+    if (!authed || !autoRefresh || tab === "scanner") return;
+    const interval = setInterval(() => {
+      if (tab === "attendees") fetchAttendees();
+      else fetchQuests();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [authed, autoRefresh, tab, fetchAttendees, fetchQuests]);
+
   // ─── Attendee helpers ────────────────────────────────────────────────────
   const filteredAttendees = attendees.filter((a) => {
     const q = search.toLowerCase();
-    return (
+    const matchesQuery =
       !q ||
       a.full_name.toLowerCase().includes(q) ||
       a.email.toLowerCase().includes(q) ||
       (a.ticket_code ?? "").toLowerCase().includes(q) ||
-      (a.organization ?? "").toLowerCase().includes(q)
-    );
+      (a.organization ?? "").toLowerCase().includes(q);
+
+    if (!matchesQuery) return false;
+    if (statusFilter === "checked") return !!a.checked_in;
+    if (statusFilter === "pending") return !a.checked_in;
+    return true;
   });
 
   function copyTicket(attendee: Attendee) {
     navigator.clipboard.writeText(attendee.ticket_code ?? "");
     setCopiedId(attendee.id);
     setTimeout(() => setCopiedId(null), 2000);
+  }
+
+  async function handleManualCheckIn(attendee: Attendee) {
+    if (!attendee.ticket_code) return;
+    setCheckingInId(attendee.id);
+    try {
+      const res = await fetch("/api/admin/checkin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticket_code: attendee.ticket_code }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to check in attendee.");
+      setAttendees((prev) =>
+        prev.map((item) =>
+          item.id === attendee.id
+            ? { ...item, checked_in: true, checked_in_at: new Date().toISOString() }
+            : item
+        )
+      );
+    } catch (err: any) {
+      alert("Check-in Error: " + err.message);
+    } finally {
+      setCheckingInId(null);
+    }
+  }
+
+  function exportToCSV() {
+    if (filteredAttendees.length === 0) return;
+    const headers = ["ID", "Full Name", "Email", "Phone", "Organization", "Ticket Code", "Checked In", "Checked In At", "Registered At"];
+    const rows = filteredAttendees.map((a) => [
+      a.id,
+      `"${(a.full_name || "").replace(/"/g, '""')}"`,
+      `"${(a.email || "").replace(/"/g, '""')}"`,
+      `"${(a.phone || "").replace(/"/g, '""')}"`,
+      `"${(a.organization || "").replace(/"/g, '""')}"`,
+      `"${a.ticket_code || ""}"`,
+      a.checked_in ? "Yes" : "No",
+      a.checked_in_at ? `"${new Date(a.checked_in_at).toLocaleString()}"` : "",
+      `"${new Date(a.created_at).toLocaleString()}"`,
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `blockquest_attendees_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   // ─── Quest helpers ───────────────────────────────────────────────────────
@@ -358,19 +426,54 @@ export default function AdminPage() {
         {/* ─── ATTENDEES TAB ─── */}
         {tab === "attendees" && !loading && (
           <>
-            <div className="admin-toolbar">
+            <div className="admin-toolbar" style={{ flexWrap: "wrap", gap: 10 }}>
               <input
                 type="search"
                 placeholder="Search by name, email, ticket code…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="admin-search-input"
+                style={{ flex: "1 1 220px", minWidth: 200 }}
               />
-              <span className="admin-toolbar__count">
-                {filteredAttendees.length} of {attendees.length} attendees
+              
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className="admin-search-input"
+                style={{ width: "auto", padding: "8px 12px", cursor: "pointer" }}
+              >
+                <option value="all">All Statuses ({attendees.length})</option>
+                <option value="checked">Checked In ({attendees.filter((a) => a.checked_in).length})</option>
+                <option value="pending">Pending ({attendees.filter((a) => !a.checked_in).length})</option>
+              </select>
+
+              <span className="admin-toolbar__count" style={{ marginLeft: "auto" }}>
+                Showing {filteredAttendees.length} of {attendees.length}
               </span>
-              <button className="admin-refresh-btn" onClick={fetchAttendees} title="Refresh">
+
+              <button
+                className={`admin-refresh-btn ${autoRefresh ? "admin-refresh-btn--active" : ""}`}
+                onClick={() => setAutoRefresh((prev) => !prev)}
+                title="Toggle 10s auto refresh"
+                style={{
+                  borderColor: autoRefresh ? "rgba(245,166,35,0.6)" : undefined,
+                  color: autoRefresh ? "var(--gold-light)" : undefined,
+                }}
+              >
+                {autoRefresh ? "⏱️ Auto (10s On)" : "⏱️ Auto (Off)"}
+              </button>
+
+              <button className="admin-refresh-btn" onClick={fetchAttendees} title="Refresh Now">
                 ↻ Refresh
+              </button>
+
+              <button
+                className="admin-add-btn"
+                onClick={exportToCSV}
+                title="Download CSV export"
+                style={{ background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", color: "#fff" }}
+              >
+                📥 Export CSV
               </button>
             </div>
 
@@ -384,14 +487,18 @@ export default function AdminPage() {
                     <th>Phone</th>
                     <th>Organization</th>
                     <th>Ticket Code</th>
+                    <th>Check-in Status</th>
                     <th>Registered</th>
+                    <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredAttendees.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="admin-table__empty">
-                        {search ? "No matching attendees found." : "No registrations yet."}
+                      <td colSpan={9} className="admin-table__empty">
+                        {search || statusFilter !== "all"
+                          ? "No matching attendees found."
+                          : "No registrations yet."}
                       </td>
                     </tr>
                   ) : (
@@ -407,7 +514,7 @@ export default function AdminPage() {
                             <button
                               className="admin-ticket-code-btn"
                               onClick={() => copyTicket(a)}
-                              title="Click to copy"
+                              title="Click to copy ticket code"
                             >
                               {a.ticket_code}
                               <span className="admin-ticket-code-btn__copy">
@@ -418,12 +525,50 @@ export default function AdminPage() {
                             <span className="admin-table__muted">—</span>
                           )}
                         </td>
+                        <td>
+                          {a.checked_in ? (
+                            <span
+                              className="admin-status-badge admin-status-badge--live"
+                              style={{ background: "rgba(16, 185, 129, 0.15)", color: "#10b981", borderColor: "rgba(16, 185, 129, 0.3)" }}
+                              title={a.checked_in_at ? `Checked in at ${new Date(a.checked_in_at).toLocaleString()}` : "Checked in"}
+                            >
+                              ✓ Checked In
+                            </span>
+                          ) : (
+                            <span
+                              className="admin-status-badge admin-status-badge--soon"
+                              style={{ background: "rgba(245, 158, 11, 0.15)", color: "#f59e0b", borderColor: "rgba(245, 158, 11, 0.3)" }}
+                            >
+                              ⏳ Pending
+                            </span>
+                          )}
+                        </td>
                         <td className="admin-table__muted">
                           {new Date(a.created_at).toLocaleDateString("en-PH", {
                             month: "short",
                             day: "numeric",
                             year: "numeric",
                           })}
+                        </td>
+                        <td>
+                          {a.checked_in ? (
+                            <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>Done</span>
+                          ) : (
+                            <button
+                              className="admin-edit-btn"
+                              onClick={() => handleManualCheckIn(a)}
+                              disabled={checkingInId === a.id || !a.ticket_code}
+                              style={{
+                                background: "rgba(16, 185, 129, 0.2)",
+                                borderColor: "rgba(16, 185, 129, 0.4)",
+                                color: "#34d399",
+                                padding: "4px 10px",
+                                fontSize: "0.75rem",
+                              }}
+                            >
+                              {checkingInId === a.id ? "Checking..." : "Check In"}
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))

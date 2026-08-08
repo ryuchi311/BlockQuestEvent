@@ -21,7 +21,7 @@ The suite provides end-to-end event operations—from attendee registration and 
 ## 🔥 Latest Updates & Highlights
 
 - **🚀 Upgraded to Next.js 16 (Turbopack)**: Powered by Next.js 16.3, React 19, and the new `proxy.ts` request routing architecture.
-- **📊 Compact Admin Dashboard (`/admin`)**: Sleek, single-row high-density stat cards display live stats (Total Attendees, Live Quests, Total XP Pool, Total Quests, and Checked In).
+- **📊 Compact Admin Dashboard (`/admin`)**: Sleek, single-row high-density stat cards display live stats (Total Attendees, Live Quests, Total XP Pool, Total Quests, and Checked In). Includes real-time status filtering (All / Checked In / Pending), 10s auto-refresh polling, manual one-click check-in overrides, and instant CSV data export (`blockquest_attendees.csv`).
 - **✨ Dark-Mode Glassmorphism Design System**: Modern visual hierarchy with glowing hover effects, HSL color tokens, custom typography, and responsive layouts across all viewports.
 - **📷 Camera QR Scanner (`/scan`)**: Integrated `html5-qrcode` engine with live camera feed switching, audio/visual check-in feedback, and instantaneous Supabase verification.
 - **🔒 Supabase SSR & Automatic Ticket Triggers**: Secure server-side authentication (`@supabase/ssr`), environment isolation, and automated database trigger (`trigger_set_ticket_code`) for generating collision-free `BQF-******` ticket codes upon registration.

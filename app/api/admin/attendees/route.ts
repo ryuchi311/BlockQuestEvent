@@ -17,7 +17,7 @@ export async function GET() {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("registrations")
-      .select("id, full_name, email, phone, organization, ticket_code, agreed_at, created_at")
+      .select("id, full_name, email, phone, organization, ticket_code, checked_in, checked_in_at, agreed_at, created_at")
       .order("created_at", { ascending: false });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
