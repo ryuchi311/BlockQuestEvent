@@ -14,55 +14,75 @@ The suite provides end-to-end event operations—from attendee registration and 
 | **🎫 Ticket Desk** | `/register` | User registration form with instant QR entry pass (`BQF-XXXXXX`) generation and downloadable pass. |
 | **⚡ BlockQuest Game** | `/zealy` | Mobile-first gamified questing app featuring daily quests, XP levelling, rewards, and leaderboard. |
 | **📷 QR Scanner** | `/scan` | Live camera QR scanner (`html5-qrcode`) for event organizers & staff to check in attendees on-site. |
-| **⚙️ Admin Console** | `/admin` | Real-time attendee dashboard, search/filter, live check-in stats, manual check-in, and CSV export. |
+| **⚙️ Admin Console** | `/admin` | Real-time attendee dashboard, compact stat metrics, search/filter, live check-in stats, and quest management. |
 
 ---
 
 ## 🔥 Latest Updates & Highlights
 
+- **🚀 Upgraded to Next.js 16 (Turbopack)**: Powered by Next.js 16.3, React 19, and the new `proxy.ts` request routing architecture.
+- **📊 Compact Admin Dashboard (`/admin`)**: Sleek, single-row high-density stat cards display live stats (Total Attendees, Live Quests, Total XP Pool, Total Quests, and Checked In).
 - **✨ Dark-Mode Glassmorphism Design System**: Modern visual hierarchy with glowing hover effects, HSL color tokens, custom typography, and responsive layouts across all viewports.
 - **📷 Camera QR Scanner (`/scan`)**: Integrated `html5-qrcode` engine with live camera feed switching, audio/visual check-in feedback, and instantaneous Supabase verification.
-- **📊 Advanced Admin Dashboard (`/admin`)**: Interactive event stats (total registered, checked-in, pending), search by name/email/ticket code, manual ticket check-in overrides, and administrative export options.
-- **⚡ Gamified Mobile App (`/zealy`)**: Complete quest completion system, real-time leaderboard rankings, XP progression bars, and claimable reward tiers.
-- **🚀 One-Click Windows Launcher**: Added `start-project.bat` and `create-shortcut.vbs` for single-click execution that auto-launches the Next.js dev server and opens the browser.
 - **🔒 Supabase SSR & Automatic Ticket Triggers**: Secure server-side authentication (`@supabase/ssr`), environment isolation, and automated database trigger (`trigger_set_ticket_code`) for generating collision-free `BQF-******` ticket codes upon registration.
+- **🚀 One-Click Windows Launcher**: Added `start-project.bat` and `create-shortcut.vbs` for single-click execution that auto-launches the Next.js dev server and opens the browser.
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Framework**: Next.js 15 (App Router), React 19, TypeScript
+- **Framework**: Next.js 16 (App Router + Turbopack), React 19, TypeScript 5.9
+- **Request Routing**: Next.js 16 `proxy.ts` architecture
 - **Backend & Database**: Supabase (PostgreSQL, Row Level Security, `@supabase/ssr`, `@supabase/supabase-js`)
 - **QR Code Engine**: `qrcode` (Generation) & `html5-qrcode` (Live Camera Scanning)
 - **Styling**: Custom Glassmorphic Vanilla CSS Design System with dark mode primitives & micro-animations
 
 ---
 
-## 🚀 Quick Start
+## 📋 System Requirements for Smooth Execution
 
-### 1. Prerequisites
+To ensure optimal performance, build reliability, and full camera/hardware API compatibility:
 
-- **Node.js**: 18.x or higher
-- **npm**: 9.x or higher
-- **Supabase**: Active Supabase project with PostgreSQL instance
+| Requirement | Recommended Version / Specification | Notes |
+| :--- | :--- | :--- |
+| **Node.js** | `v20.x` or `v22.x` (LTS) | Next.js 16 requires Node 18.18+ (Node 20+ recommended). |
+| **npm** | `v10.x` or higher | Standard package manager shipped with Node LTS. |
+| **Browser** | Chrome, Edge, Brave, Safari, Firefox | Modern evergreen browser with WebRTC & MediaDevices support. |
+| **Camera Access** | HTTPS or `http://localhost` | Browser camera permission APIs for `/scan` require secure context. |
+| **Database** | Supabase PostgreSQL | Active project with RLS & Service Role Key configured in `.env.local`. |
 
-### 2. Installation
+---
+
+## 🚀 Installation & Setup Guide
+
+### Step 1: Verify Prerequisites
+
+Check your local Node.js and npm versions:
+```bash
+node -v   # Should output v20.x.x or v22.x.x
+npm -v    # Should output 10.x.x or higher
+```
+
+### Step 2: Clone & Install Dependencies
 
 ```bash
+# Clone the repository
 git clone <repository-url>
 cd BlockQuestEvent
+
+# Install node dependencies
 npm install
 ```
 
-### 3. Environment Setup
+### Step 3: Configure Environment Variables
 
-Copy `.env.example` to `.env.local` and set your credentials:
+Create your local environment file from the provided template:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Fill in the environment variables in `.env.local`:
+Open `.env.local` and fill in your Supabase project credentials:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
@@ -71,31 +91,36 @@ SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 ```
 
-> **⚠️ Important Security Note**: `SUPABASE_SERVICE_ROLE_KEY` bypasses RLS rules. Keep it strictly in `.env.local` on the server and **never** expose or push it to client-side bundles.
+> **⚠️ Security Warning**: `SUPABASE_SERVICE_ROLE_KEY` has administrative privileges and bypasses RLS policies. Never commit this key or expose it to client-side bundles.
 
-### 4. Database Setup
+### Step 4: Setup Database Schema
 
-Execute the included `schema.sql` script in your Supabase SQL Editor to create the `registrations` table and automated ticket code generator:
+Log in to your [Supabase Dashboard](https://database.new) and execute the SQL script in `schema.sql` inside the **SQL Editor**:
 
-```sql
--- Creates registrations table & trigger set_ticket_code() for BQF-****** codes
--- See schema.sql in project root
-```
+- Creates the `registrations` table.
+- Sets up automatic ticket code generation (`BQF-******`).
+- Installs indices for fast ticket and attendee search queries.
 
-### 5. Running the Application
+### Step 5: Run the Application
 
-#### Option A: Command Line
+#### Development Mode:
 ```bash
 npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-#### Option B: One-Click Launcher (Windows)
-Double-click `start-project.bat` in the project root. It will automatically start the server and open the app in your default browser.
+#### Production Build:
+```bash
+npm run build
+npm start
+```
+
+#### Option B: One-Click Windows Launcher
+On Windows, double-click `start-project.bat` in the root folder. It will start the server and open the web portal automatically in your default browser.
 
 ---
 
-## 📁 Project Directory Overview
+## 📁 Project Directory Structure
 
 ```
 BlockQuestEvent/
@@ -112,6 +137,7 @@ BlockQuestEvent/
 │   ├── zealy-mobile-app.tsx  # Gamified Quests & Leaderboard component
 │   └── client-body-cleanup.tsx
 ├── public/                   # Static assets & brand logos
+├── proxy.ts                  # Next.js 16 Request Proxy & Session Handler
 ├── schema.sql                # PostgreSQL database schema & trigger functions
 ├── start-project.bat         # One-click Windows startup script
 ├── create-shortcut.vbs       # Windows desktop shortcut generator script
