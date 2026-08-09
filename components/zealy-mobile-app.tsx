@@ -78,24 +78,48 @@ export default function ZealyMobileApp() {
   const [activeTab, setActiveTab] = useState<"quests" | "leaderboard" | "info" | "profile">("quests");
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
   const [leaderboard, setLeaderboard] = useState(initialLeaderboard);
-  const [userXp, setUserXp] = useState(150);
+  const [userXp, setUserXp] = useState(0);
   const [userRank, setUserRank] = useState(12);
   const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [proofImage, setProofImage] = useState<string | null>(null);
   const [proofSubmitting, setProofSubmitting] = useState(false);
+  const [visitedActions, setVisitedActions] = useState<Record<string, boolean>>({});
 
   // Load ticket if user was registered/logged in in this session
   const [ticketEmail, setTicketEmail] = useState("");
+  const [ticketCountryCode, setTicketCountryCode] = useState("+63");
+  const [ticketMobileNum, setTicketMobileNum] = useState("");
   const [ticketPassword, setTicketPassword] = useState("");
   const [authenticatedUser, setAuthenticatedUser] = useState<any>(null);
   const [qrPass, setQrPass] = useState<any>(null);
   const [ticketError, setTicketError] = useState("");
   const [ticketLoading, setTicketLoading] = useState(false);
 
+  const handleTicketMobileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/[^\d]/g, ""); // digits only
+    if (value.startsWith("0")) {
+      value = value.substring(1); // strip leading zero
+    }
+    setTicketMobileNum(value);
+  };
+
   const userLevel = Math.floor(userXp / 300) + 1;
   const xpInCurrentLevel = userXp % 300;
   const xpProgressPercentage = Math.min(100, Math.floor((xpInCurrentLevel / 300) * 100));
+
+  function handleLogout() {
+    setAuthenticatedUser(null);
+    setQrPass(null);
+    setTicketEmail("");
+    setTicketMobileNum("");
+    setTicketCountryCode("+63");
+    setTicketError("");
+    setUserXp(0);
+    setUserRank(12);
+    setQuests(initialQuests);
+    setActiveTab("quests");
+  }
 
   // Dynamically sync quests from API
   useEffect(() => {
@@ -187,8 +211,9 @@ export default function ZealyMobileApp() {
   const handleLinkTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     const ticketPassword = "blockquest2026";
-    if (!ticketEmail) {
-      setTicketError("Please enter your ticket email.");
+    const fullPhone = ticketCountryCode + ticketMobileNum;
+    if (!ticketEmail.trim() || !ticketMobileNum.trim()) {
+      setTicketError("Please enter both your email and mobile number.");
       return;
     }
     setTicketLoading(true);
@@ -197,18 +222,18 @@ export default function ZealyMobileApp() {
       const loginResponse = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: ticketEmail, password: ticketPassword }),
+        body: JSON.stringify({ email: ticketEmail.trim(), phone: fullPhone, password: ticketPassword }),
       });
       const loginResult = await loginResponse.json();
       if (!loginResponse.ok || !loginResult?.fullName || !loginResult.email) {
-        setTicketError(loginResult?.error ?? "Ticket lookup failed.");
+        setTicketError(loginResult?.error ?? "No matching ticket found with this email and phone.");
         setTicketLoading(false);
         return;
       }
       const qrResponse = await fetch("/api/qr-pass", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: ticketEmail, password: ticketPassword }),
+        body: JSON.stringify({ email: ticketEmail.trim(), password: ticketPassword }),
       });
       const qrResult = await qrResponse.json();
       if (!qrResponse.ok || !qrResult?.qrDataUrl || !qrResult.passCode) {
@@ -240,45 +265,63 @@ export default function ZealyMobileApp() {
 
   return (
     <main className="zealy-page">
-      <div className="mobile-shell">
-        <div className="mobile-screen">
-          <div className="app-header">
-            <div className="app-header__brand">
-              <img
-                src="https://block-quest.com/assets/images/block_quest_logo.png"
-                alt="BlockQuest Logo"
-                style={{ width: "32px", height: "32px", objectFit: "contain" }}
-              />
+      <div className="mobile-simulator">
+        <div className="mobile-app">
+          {/* Header */}
+          <header className="zealy-header">
+            <div className="zealy-header__brand">
+              <div className="zealy-logo-box">
+                <img
+                  src="https://block-quest.com/assets/images/block_quest_logo.png"
+                  alt="BlockQuest Logo"
+                />
+              </div>
               <div>
-                <p className="app-header__eyebrow">Fiesta Quest Game</p>
-                <h1 className="app-header__title">BlockQuest Arena</h1>
+                <p className="zealy-header__eyebrow">Fiesta Quest Game</p>
+                <h1 className="zealy-header__title">BlockQuest Arena</h1>
               </div>
             </div>
-            <div className="app-header__level">
-              Level {userLevel}
+            <div className="zealy-header__badge">
+              <span>⚡ LVL {userLevel}</span>
             </div>
-          </div>
-          <div className="xp-card">
-            <div className="xp-card__info">
-              <div>
-                <p className="xp-card__label">Total Experience</p>
-                <h2 className="xp-card__value">{userXp} XP</h2>
-              </div>
-              <div className="xp-card__badge">
-                Rank #{userRank}
-              </div>
-            </div>
-            <div className="xp-card__bar-bg">
-              <div
-                className="xp-card__bar-fill"
-                style={{ width: `${xpProgressPercentage}%` }}
-              ></div>
-            </div>
-            <p className="xp-card__hint">
-              {300 - xpInCurrentLevel} XP until Level {userLevel + 1}
-            </p>
-          </div>
+          </header>
+
           <div className="app-content-scroll">
+            <div className="xp-card">
+              {authenticatedUser && (
+                <p style={{
+                  fontSize: "0.7rem",
+                  fontWeight: 700,
+                  color: "rgba(255,255,255,0.45)",
+                  marginBottom: 6,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                }}>
+                  ⚡ {authenticatedUser.fullName || authenticatedUser.email}
+                </p>
+              )}
+              <div className="xp-card__info">
+                <div>
+                  <p className="xp-card__label">Total Experience</p>
+                  <h2 className="xp-card__value">{userXp} XP</h2>
+                </div>
+                <div className="xp-card__badge">
+                  Rank #{userRank}
+                </div>
+              </div>
+              <div className="xp-card__bar-bg">
+                <div
+                  className="xp-card__bar-fill"
+                  style={{ width: `${xpProgressPercentage}%` }}
+                ></div>
+              </div>
+              <p className="xp-card__hint">
+                {300 - xpInCurrentLevel} XP until Level {userLevel + 1}
+              </p>
+            </div>
             {activeTab === "quests" && (
               <div className="zealy-tab-content">
                 <div className="section-head">
@@ -287,39 +330,104 @@ export default function ZealyMobileApp() {
                     <h2>Fiesta Event Quests</h2>
                   </div>
                 </div>
-                <div className="quest-list">
-                  {quests.map((q) => (
-                    <div
-                      key={q.id}
-                      className={`quest-card quest-card--${q.status.toLowerCase().replace(/\s+/g, "-")}`}
-                      onClick={() => handleQuestClick(q)}
-                    >
-                      <div className="quest-card__body">
-                        <div className="quest-card__meta">
-                          <span className={`category-badge category-badge--${q.category}`}>
-                            {q.category}
-                          </span>
-                          <span className="xp-badge">+{q.xp} XP</span>
-                          {q.requiresProof && (
-                            <span style={{ fontSize: "0.7rem", padding: "2px 8px", borderRadius: "10px", background: "rgba(139, 92, 246, 0.2)", color: "#a78bfa", border: "1px solid rgba(139, 92, 246, 0.3)" }}>
-                              📷 Proof Required
+
+                {!authenticatedUser && !qrPass ? (
+                  <div className="login-card" style={{ marginTop: 8, padding: "20px 18px", textAlign: "center", border: "1px solid rgba(245, 166, 35, 0.4)", background: "linear-gradient(135deg, rgba(20, 20, 30, 0.95) 0%, rgba(35, 25, 15, 0.95) 100%)" }}>
+                    <div style={{ fontSize: "2rem", marginBottom: 6 }}>🔒</div>
+                    <h3 style={{ color: "#fbbf24", fontWeight: 800, fontSize: "1.1rem", marginBottom: 6 }}>
+                      Login Required to Play
+                    </h3>
+                    <p className="login-card__hint" style={{ fontSize: "0.82rem", color: "var(--text-secondary)", marginBottom: 16 }}>
+                      Enter your registered Email & Phone Number to log into BlockQuest Arena, link your event ticket pass, and claim <strong>+250 XP</strong>!
+                    </p>
+                    <form className="form" onSubmit={handleLinkTicket} style={{ textAlign: "left" }}>
+                      <label style={{ gap: "4px" }}>
+                        Email Address *
+                        <input
+                          type="email"
+                          value={ticketEmail}
+                          onChange={(e) => setTicketEmail(e.target.value)}
+                          placeholder="quester@domain.com"
+                          required
+                          style={{ padding: "10px 12px", fontSize: "0.85rem" }}
+                        />
+                      </label>
+                      <label style={{ gap: "4px", marginTop: "10px" }}>
+                        Phone Number *
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          <select
+                            value={ticketCountryCode}
+                            onChange={(e) => setTicketCountryCode(e.target.value)}
+                            style={{ width: "95px", padding: "10px 6px", fontSize: "0.85rem", background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff", borderRadius: "10px" }}
+                          >
+                            <option value="+63">🇵🇭 +63</option>
+                            <option value="+1">🇺🇸 +1</option>
+                            <option value="+65">🇸🇬 +65</option>
+                            <option value="+81">🇯🇵 +81</option>
+                            <option value="+44">🇬🇧 +44</option>
+                          </select>
+                          <input
+                            type="tel"
+                            value={ticketMobileNum}
+                            onChange={handleTicketMobileChange}
+                            placeholder="917 123 4567"
+                            required
+                            style={{ flex: 1, padding: "10px 12px", fontSize: "0.85rem" }}
+                          />
+                        </div>
+                      </label>
+                      {ticketError && (
+                        <p style={{ color: "#f87171", fontSize: "0.78rem", margin: "6px 0 2px" }}>
+                          {ticketError}
+                        </p>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={ticketLoading}
+                        className="arena-cta-btn"
+                      >
+                        {ticketLoading ? "Verifying Account..." : "⚡ Login & Unlock Quests (+250 XP)"}
+                      </button>
+                    </form>
+                    <p style={{ fontSize: "0.74rem", color: "rgba(255,255,255,0.4)", marginTop: 14 }}>
+                      Don't have a ticket yet? <Link href="/register" style={{ color: "#fbbf24", textDecoration: "underline" }}>Register Here</Link>
+                    </p>
+                  </div>
+                ) : (
+                  <div className="quest-list">
+                    {quests.map((q) => (
+                      <div
+                        key={q.id}
+                        className={`quest-card quest-card--${q.status.toLowerCase().replace(/\s+/g, "-")}`}
+                        onClick={() => handleQuestClick(q)}
+                      >
+                        <div className="quest-card__body">
+                          <div className="quest-card__meta">
+                            <span className={`category-badge category-badge--${q.category}`}>
+                              {q.category}
                             </span>
+                            <span className="xp-badge">+{q.xp} XP</span>
+                            {q.requiresProof && (
+                              <span style={{ fontSize: "0.7rem", padding: "2px 8px", borderRadius: "10px", background: "rgba(139, 92, 246, 0.2)", color: "#a78bfa", border: "1px solid rgba(139, 92, 246, 0.3)" }}>
+                                📷 Proof Required
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="quest-card__title">{q.title}</h3>
+                          <p className="quest-card__desc">{q.description}</p>
+                        </div>
+                        <div className="quest-card__footer">
+                          <span className={`status-badge status-badge--${q.status.toLowerCase().replace(/\s+/g, "-")}`}>
+                            {q.status}
+                          </span>
+                          {q.status !== "Soon" && q.status !== "Done" && q.status !== "Pending Verification" && (
+                            <span className="quest-card__arrow">→</span>
                           )}
                         </div>
-                        <h3 className="quest-card__title">{q.title}</h3>
-                        <p className="quest-card__desc">{q.description}</p>
                       </div>
-                      <div className="quest-card__footer">
-                        <span className={`status-badge status-badge--${q.status.toLowerCase().replace(/\s+/g, "-")}`}>
-                          {q.status}
-                        </span>
-                        {q.status !== "Soon" && q.status !== "Done" && q.status !== "Pending Verification" && (
-                          <span className="quest-card__arrow">→</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             {activeTab === "leaderboard" && (
@@ -327,9 +435,23 @@ export default function ZealyMobileApp() {
                 <div className="section-head">
                   <div>
                     <p className="section-head__eyebrow">Real-time stats</p>
-                    <h2>Leaderboard</h2>
+                    <h2>Global Leaderboard</h2>
                   </div>
                 </div>
+
+                {/* Top 3 Podium Showcase */}
+                <div className="leaderboard-podium">
+                  {leaderboard.slice(0, 3).map((item) => (
+                    <div key={item.rank} className={`podium-card podium-card--${item.rank}`}>
+                      <div className="podium-badge">
+                        {item.rank === 1 ? "🥇" : item.rank === 2 ? "🥈" : "🥉"}
+                      </div>
+                      <div className="podium-name">{item.name}</div>
+                      <div className="podium-points">{item.points} XP</div>
+                    </div>
+                  ))}
+                </div>
+
                 <div className="leaderboard-list">
                   {leaderboard.map((item) => (
                     <div
@@ -338,10 +460,13 @@ export default function ZealyMobileApp() {
                     >
                       <div className="leaderboard-item__rank">#{item.rank}</div>
                       <div className="leaderboard-item__info">
-                        <strong>{item.name}</strong>
-                        <span>{item.points} XP</span>
+                        <div className="leaderboard-item__name">{item.name}</div>
+                        <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>Rank #{item.rank}</div>
                       </div>
-                      <div className="leaderboard-item__change">{item.change}</div>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+                        <div className="leaderboard-item__xp">{item.points} XP</div>
+                        <div className="leaderboard-item__change">{item.change}</div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -413,11 +538,11 @@ export default function ZealyMobileApp() {
                       </div>
                     </div>
                     <p className="login-card__hint" style={{ fontSize: "0.78rem" }}>
-                      Enter your registration email to link your ticket pass and claim +250 XP instantly!
+                      Enter your registered email & phone number to link your ticket pass and claim +250 XP instantly!
                     </p>
                     <form className="form" onSubmit={handleLinkTicket}>
                       <label style={{ gap: "4px" }}>
-                        Email
+                        Email Address
                         <input
                           type="email"
                           value={ticketEmail}
@@ -427,17 +552,42 @@ export default function ZealyMobileApp() {
                           style={{ padding: "10px 12px", fontSize: "0.85rem" }}
                         />
                       </label>
+                      <label style={{ gap: "4px", marginTop: "8px" }}>
+                        Phone Number *
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          <select
+                            value={ticketCountryCode}
+                            onChange={(e) => setTicketCountryCode(e.target.value)}
+                            style={{ width: "95px", padding: "10px 6px", fontSize: "0.85rem", background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff", borderRadius: "10px" }}
+                          >
+                            <option value="+63">🇵🇭 +63</option>
+                            <option value="+1">🇺🇸 +1</option>
+                            <option value="+65">🇸🇬 +65</option>
+                            <option value="+81">🇯🇵 +81</option>
+                            <option value="+44">🇬🇧 +44</option>
+                          </select>
+                          <input
+                            type="tel"
+                            value={ticketMobileNum}
+                            onChange={handleTicketMobileChange}
+                            placeholder="917 123 4567"
+                            required
+                            style={{ flex: 1, padding: "10px 12px", fontSize: "0.85rem" }}
+                          />
+                        </div>
+                      </label>
                       {ticketError && (
-                        <p style={{ color: "#f87171", fontSize: "0.78rem", margin: "4px 0" }}>
+                        <p style={{ color: "#f87171", fontSize: "0.78rem", margin: "6px 0 2px" }}>
                           {ticketError}
                         </p>
                       )}
                       <button
                         type="submit"
                         disabled={ticketLoading}
-                        style={{ padding: "12px", fontSize: "0.9rem" }}
+                        className="arena-cta-btn"
+                        style={{ marginTop: "12px" }}
                       >
-                        {ticketLoading ? "Verifying..." : "Link Ticket & Claim XP"}
+                        {ticketLoading ? "Verifying Ticket..." : "⚡ Link Ticket & Claim +250 XP"}
                       </button>
                     </form>
                   </div>
@@ -449,9 +599,29 @@ export default function ZealyMobileApp() {
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Global Rank</p>
-                    <strong style={{ fontSize: "1.2rem", color: "#gold-light" }}>#{userRank}</strong>
+                    <strong style={{ fontSize: "1.2rem", color: "var(--gold-light)" }}>#{userRank}</strong>
                   </div>
                 </div>
+                {qrPass && (
+                  <button
+                    onClick={handleLogout}
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      borderRadius: 12,
+                      border: "1px solid rgba(239, 68, 68, 0.3)",
+                      background: "rgba(239, 68, 68, 0.07)",
+                      color: "#f87171",
+                      fontSize: "0.88rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      marginTop: 4,
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    🔓 Logout / Switch Account
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -460,25 +630,29 @@ export default function ZealyMobileApp() {
               onClick={() => setActiveTab("quests")}
               className={`tab-btn ${activeTab === "quests" ? "tab-btn--active" : ""}`}
             >
-              <span>🎯</span> Quests
+              <span className="tab-icon">🎯</span>
+              <span className="tab-label">Quests</span>
             </button>
             <button
               onClick={() => setActiveTab("leaderboard")}
               className={`tab-btn ${activeTab === "leaderboard" ? "tab-btn--active" : ""}`}
             >
-              <span>🏆</span> Rank
+              <span className="tab-icon">🏆</span>
+              <span className="tab-label">Rank</span>
             </button>
             <button
               onClick={() => setActiveTab("info")}
               className={`tab-btn ${activeTab === "info" ? "tab-btn--active" : ""}`}
             >
-              <span>ℹ️</span> Info
+              <span className="tab-icon">ℹ️</span>
+              <span className="tab-label">Info</span>
             </button>
             <button
               onClick={() => setActiveTab("profile")}
               className={`tab-btn ${activeTab === "profile" ? "tab-btn--active" : ""}`}
             >
-              <span>👤</span> Profile
+              <span className="tab-icon">👤</span>
+              <span className="tab-label">Profile</span>
             </button>
           </nav>
           {selectedQuest && (
@@ -527,74 +701,118 @@ export default function ZealyMobileApp() {
                   </div>
                 ) : (
                   <>
-                    {selectedQuest.actionUrl && (
-                      <Link
-                        href={selectedQuest.actionUrl}
-                        target={selectedQuest.actionUrl.startsWith("http") ? "_blank" : undefined}
-                        className="modal-action-btn"
-                        style={{ textAlign: "center", marginBottom: 12 }}
-                        onClick={() => {
-                          if (selectedQuest.id === "register") {
-                            setSelectedQuest(null);
-                            setActiveTab("profile");
-                          }
-                        }}
-                      >
-                        {selectedQuest.actionLabel ?? "Visit Link"}
-                      </Link>
-                    )}
-                    {selectedQuest.requiresProof ? (
-                      <div style={{ marginTop: 12, marginBottom: 16, background: "rgba(255,255,255,0.03)", padding: 14, borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)" }}>
-                        <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--gold-light)", display: "block", marginBottom: 8 }}>
-                          📷 Upload Proof Screenshot Required:
-                        </label>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleProofImageChange}
-                          style={{
-                            width: "100%",
-                            padding: "8px 12px",
-                            borderRadius: "8px",
-                            border: "1px solid rgba(255,255,255,0.15)",
-                            background: "rgba(0,0,0,0.4)",
-                            color: "#fff",
-                            fontSize: "0.82rem",
-                          }}
-                        />
-                        {proofImage && (
-                          <div style={{ marginTop: 12, textAlign: "center" }}>
-                            <p style={{ fontSize: "0.72rem", color: "#a1a1aa", marginBottom: 6 }}>Proof Screenshot Preview:</p>
-                            <img
-                              src={proofImage}
-                              alt="Screenshot Proof Preview"
-                              style={{ maxHeight: 150, maxWidth: "100%", borderRadius: 8, border: "1px solid rgba(245,166,35,0.4)" }}
-                            />
-                          </div>
-                        )}
-                        <button
-                          onClick={handleSubmitProof}
-                          disabled={proofSubmitting || !proofImage}
-                          className="modal-claim-btn"
-                          style={{
-                            marginTop: 14,
-                            background: proofImage ? "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)" : "rgba(255,255,255,0.1)",
-                            opacity: proofImage ? 1 : 0.6,
-                            cursor: proofImage ? "pointer" : "not-allowed",
-                          }}
-                        >
-                          {proofSubmitting ? "Submitting Proof..." : "📤 Submit Screenshot for Verification"}
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={handleClaimXp}
-                        disabled={claiming}
-                        className="modal-claim-btn"
-                      >
-                        {claiming ? "Claiming..." : "Claim XP Reward"}
-                      </button>
-                    )}
+                    {(() => {
+                      const hasAction = !!selectedQuest.actionUrl;
+                      const isActionCompleted = !hasAction || !!visitedActions[selectedQuest.id];
+                      return (
+                        <>
+                          {selectedQuest.actionUrl && (
+                            <Link
+                              href={selectedQuest.actionUrl}
+                              target={selectedQuest.actionUrl.startsWith("http") ? "_blank" : undefined}
+                              className="modal-action-btn"
+                              style={{
+                                textAlign: "center",
+                                marginBottom: 12,
+                                background: isActionCompleted
+                                  ? "rgba(16, 185, 129, 0.2)"
+                                  : "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                                borderColor: isActionCompleted ? "rgba(16, 185, 129, 0.4)" : undefined,
+                                color: isActionCompleted ? "#34d399" : "#100b02",
+                                fontWeight: 800,
+                              }}
+                              onClick={() => {
+                                setVisitedActions((prev) => ({ ...prev, [selectedQuest.id]: true }));
+                                if (selectedQuest.id === "register") {
+                                  setSelectedQuest(null);
+                                  setActiveTab("profile");
+                                }
+                              }}
+                            >
+                              {isActionCompleted
+                                ? `✓ Task Visited (${selectedQuest.actionLabel ?? "Done"})`
+                                : `⚡ ${selectedQuest.actionLabel ?? "Complete Task"} →`}
+                            </Link>
+                          )}
+
+                          {hasAction && !isActionCompleted && (
+                            <div style={{
+                              background: "rgba(245, 158, 11, 0.12)",
+                              border: "1px solid rgba(245, 158, 11, 0.3)",
+                              padding: "10px 14px",
+                              borderRadius: 12,
+                              color: "#fbbf24",
+                              fontSize: "0.8rem",
+                              marginBottom: 12,
+                              fontWeight: 700,
+                              textAlign: "center"
+                            }}>
+                              ⚠️ Complete Task: Click the action button above to perform the task before claiming.
+                            </div>
+                          )}
+
+                          {selectedQuest.requiresProof ? (
+                            <div style={{ marginTop: 8, marginBottom: 16, background: "rgba(255,255,255,0.03)", padding: 14, borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)" }}>
+                              <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--gold-light)", display: "block", marginBottom: 8 }}>
+                                📷 Upload Proof Screenshot Required:
+                              </label>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleProofImageChange}
+                                disabled={!isActionCompleted}
+                                style={{
+                                  width: "100%",
+                                  padding: "8px 12px",
+                                  borderRadius: "8px",
+                                  border: "1px solid rgba(255,255,255,0.15)",
+                                  background: "rgba(0,0,0,0.4)",
+                                  color: "#fff",
+                                  fontSize: "0.82rem",
+                                  opacity: isActionCompleted ? 1 : 0.5,
+                                }}
+                              />
+                              {proofImage && (
+                                <div style={{ marginTop: 12, textAlign: "center" }}>
+                                  <p style={{ fontSize: "0.72rem", color: "#a1a1aa", marginBottom: 6 }}>Proof Screenshot Preview:</p>
+                                  <img
+                                    src={proofImage}
+                                    alt="Screenshot Proof Preview"
+                                    style={{ maxHeight: 150, maxWidth: "100%", borderRadius: 8, border: "1px solid rgba(245,166,35,0.4)" }}
+                                  />
+                                </div>
+                              )}
+                              <button
+                                onClick={handleSubmitProof}
+                                disabled={proofSubmitting || !proofImage || !isActionCompleted}
+                                className="modal-claim-btn"
+                                style={{
+                                  marginTop: 14,
+                                  background: (proofImage && isActionCompleted) ? "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)" : "rgba(255,255,255,0.1)",
+                                  opacity: (proofImage && isActionCompleted) ? 1 : 0.5,
+                                  cursor: (proofImage && isActionCompleted) ? "pointer" : "not-allowed",
+                                }}
+                              >
+                                {proofSubmitting ? "Submitting Proof..." : "📤 Submit Screenshot for Verification"}
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={handleClaimXp}
+                              disabled={claiming || !isActionCompleted}
+                              className="modal-claim-btn"
+                              style={{
+                                opacity: isActionCompleted ? 1 : 0.5,
+                                cursor: isActionCompleted ? "pointer" : "not-allowed",
+                                background: isActionCompleted ? "linear-gradient(135deg, #ffd166 0%, #f5a623 100%)" : "rgba(255,255,255,0.1)"
+                              }}
+                            >
+                              {claiming ? "Claiming..." : isActionCompleted ? "Claim XP Reward" : "🔒 Complete Task First"}
+                            </button>
+                          )}
+                        </>
+                      );
+                    })()}
                   </>
                 )}
               </div>

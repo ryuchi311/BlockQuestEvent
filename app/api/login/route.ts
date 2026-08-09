@@ -53,7 +53,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message || "Unable to verify login." }, { status: 400 });
   }
 
-  if (!data || !verifyPassword(password, data.password_hash) || data.phone !== phone) {
+  const normalizePhone = (p: string) => p.replace(/[^\d]/g, "").replace(/^(63|0)/, "");
+  const normalizedInputPhone = normalizePhone(rawPhone);
+  const normalizedDbPhone = data ? normalizePhone(data.phone || "") : "";
+
+  if (!data || !verifyPassword(password, data.password_hash) || normalizedDbPhone !== normalizedInputPhone) {
     return NextResponse.json({ error: "Invalid email or phone number." }, { status: 401 });
   }
 

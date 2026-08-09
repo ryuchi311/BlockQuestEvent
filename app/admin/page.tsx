@@ -42,8 +42,17 @@ interface QuestVerification {
   xp: number;
   proof_url: string;
   status: "Pending" | "Approved" | "Rejected";
+  rejection_reason?: string | null;
   created_at: string;
 }
+
+interface AdminUser {
+  id: number;
+  email: string;
+  fullName: string;
+  role: string;
+}
+
 
 const ADMIN_TABS = ["scanner", "attendees", "quests", "verifications"] as const;
 type AdminTab = (typeof ADMIN_TABS)[number];
@@ -67,9 +76,45 @@ const EMPTY_QUEST: Omit<Quest, "created_at" | "updated_at"> = {
 // ─── Admin Dashboard ─────────────────────────────────────────────────────────
 export default function AdminPage() {
   // ── Auth gate ──
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authed, setAuthed] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+
+  // ── Session persistence & Idle Timeout ──
+  useEffect(() => {
+    const savedSession = localStorage.getItem("blockquest_admin_session");
+    if (savedSession) {
+      try {
+        const session = JSON.parse(savedSession);
+        if (session.authed && session.adminUser) {
+          setAuthed(true);
+          setAdminUser(session.adminUser);
+        }
+      } catch (e) {}
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!authed) return;
+    let timeoutId: NodeJS.Timeout;
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        alert("Your session has expired due to 5 minutes of inactivity.");
+        handleLogout();
+      }, 300000); // 5 minutes
+    };
+    resetTimer();
+    const events = ["mousemove", "keydown", "mousedown", "touchstart"];
+    events.forEach((event) => window.addEventListener(event, resetTimer));
+    return () => {
+      clearTimeout(timeoutId);
+      events.forEach((event) => window.removeEventListener(event, resetTimer));
+    };
+  }, [authed]);
 
   // ── Tabs & data ──
   const [tab, setTab] = useState<AdminTab>("attendees");
@@ -77,6 +122,43 @@ export default function AdminPage() {
   const [quests, setQuests] = useState<Quest[]>([]);
   const [verifications, setVerifications] = useState<QuestVerification[]>([]);
   const [selectedProofImage, setSelectedProofImage] = useState<string | null>(null);
+  const [zoomScale, setZoomScale] = useState(1);
+  const [zoomPos, setZoomPos] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  function resetZoom() {
+    setZoomScale(1);
+    setZoomPos({ x: 0, y: 0 });
+  }
+
+  function handleWheelZoom(e: React.WheelEvent) {
+    e.preventDefault();
+    const delta = e.deltaY < 0 ? 0.25 : -0.25;
+    setZoomScale((prev) => {
+      const next = Math.min(Math.max(prev + delta, 0.5), 4);
+      if (next === 1) setZoomPos({ x: 0, y: 0 });
+      return next;
+    });
+  }
+
+  function handleMouseDown(e: React.MouseEvent) {
+    if (zoomScale <= 1) return;
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - zoomPos.x, y: e.clientY - zoomPos.y });
+  }
+
+  function handleMouseMove(e: React.MouseEvent) {
+    if (!isDragging || zoomScale <= 1) return;
+    setZoomPos({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y,
+    });
+  }
+
+  function handleMouseUp() {
+    setIsDragging(false);
+  }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -99,14 +181,42 @@ export default function AdminPage() {
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
   // ─── Auth ────────────────────────────────────────────────────────────────
-  function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    if (password === "blockquest2026") {
+    setLoginLoading(true);
+    setAuthError("");
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Login failed");
+      setAdminUser(json.adminUser);
       setAuthed(true);
-      setAuthError("");
-    } else {
-      setAuthError("Incorrect admin password.");
+      localStorage.setItem("blockquest_admin_session", JSON.stringify({
+        authed: true,
+        adminUser: json.adminUser
+      }));
+    } catch (err: any) {
+      setAuthError(err.message);
+    } finally {
+      setLoginLoading(false);
     }
+  }
+
+  function handleLogout() {
+    setAuthed(false);
+    setAdminUser(null);
+    setPassword("");
+    setEmail("");
+    setTab("attendees");
+    setAttendees([]);
+    setQuests([]);
+    setVerifications([]);
+    setError("");
+    localStorage.removeItem("blockquest_admin_session");
   }
 
   // ─── Fetch data ──────────────────────────────────────────────────────────
@@ -155,12 +265,21 @@ export default function AdminPage() {
     }
   }, []);
 
+  // Load ALL data immediately on auth so stat cards are always accurate
+  useEffect(() => {
+    if (!authed) return;
+    fetchAttendees();
+    fetchQuests();
+    fetchVerifications();
+  }, [authed, fetchAttendees, fetchQuests, fetchVerifications]);
+
+  // Refresh current tab data when switching tabs
   useEffect(() => {
     if (!authed) return;
     if (tab === "attendees") fetchAttendees();
     else if (tab === "quests") fetchQuests();
     else if (tab === "verifications") fetchVerifications();
-  }, [authed, tab, fetchAttendees, fetchQuests, fetchVerifications]);
+  }, [tab, fetchAttendees, fetchQuests, fetchVerifications]);
 
   // ── Auto Refresh ──
   useEffect(() => {
@@ -173,17 +292,20 @@ export default function AdminPage() {
     return () => clearInterval(interval);
   }, [authed, autoRefresh, tab, fetchAttendees, fetchQuests, fetchVerifications]);
 
-  async function handleVerifyQuest(id: number, newStatus: "Approved" | "Rejected") {
+  const [rejectingItem, setRejectingItem] = useState<QuestVerification | null>(null);
+  const [rejectionReasonInput, setRejectionReasonInput] = useState("");
+
+  async function handleVerifyQuest(id: number, newStatus: "Approved" | "Rejected", reason?: string) {
     try {
       const res = await fetch("/api/admin/verifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status: newStatus }),
+        body: JSON.stringify({ id, status: newStatus, rejection_reason: reason }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to update verification.");
       setVerifications((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, status: newStatus } : item))
+        prev.map((item) => (item.id === id ? { ...item, status: newStatus, rejection_reason: reason || null } : item))
       );
     } catch (err: any) {
       alert("Verification Error: " + err.message);
@@ -470,25 +592,42 @@ export default function AdminPage() {
             />
           </div>
           <h1>Admin Portal</h1>
-          <p className="admin-login-hint">Enter your admin password to access the dashboard.</p>
+          <p className="admin-login-hint">Enter your admin credentials to access the dashboard.</p>
           <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <input
+              type="email"
+              placeholder="Admin email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="admin-login-input"
+              autoFocus
+              required
+            />
             <input
               type="password"
               placeholder="Admin password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="admin-login-input"
-              autoFocus
+              required
             />
             {authError && <p className="admin-error-msg">{authError}</p>}
-            <button type="submit" className="admin-login-btn">
-              Unlock Dashboard →
+            <button type="submit" className="admin-login-btn" disabled={loginLoading}>
+              {loginLoading ? "Authenticating..." : "Unlock Dashboard →"}
             </button>
           </form>
           <Link href="/" className="admin-back-link">← Back to Home Portal</Link>
         </div>
       </main>
     );
+  }
+
+  function handleNavigate(e: React.MouseEvent<HTMLAnchorElement>, href: string) {
+    e.preventDefault();
+    if (window.confirm("Are you sure you want to leave the Admin Dashboard? Your session will be logged out.")) {
+      handleLogout();
+      window.location.href = href;
+    }
   }
 
   // ─── Dashboard ───────────────────────────────────────────────────────────
@@ -508,9 +647,22 @@ export default function AdminPage() {
           </div>
         </div>
         <div className="admin-header__actions">
-          <Link href="/" className="admin-nav-link">Home Portal</Link>
-          <Link href="/register" className="admin-nav-link">Registration</Link>
-          <Link href="/zealy" className="admin-nav-link">Quest Game</Link>
+          {adminUser && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", marginRight: 12 }}>
+              <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#fff" }}>{adminUser.fullName}</span>
+              <span style={{ fontSize: "0.7rem", color: "var(--gold-light)", textTransform: "uppercase" }}>{adminUser.role}</span>
+            </div>
+          )}
+          <a href="/" className="admin-nav-link" onClick={(e) => handleNavigate(e, "/")}>Home Portal</a>
+          <a href="/register" className="admin-nav-link" onClick={(e) => handleNavigate(e, "/register")}>Registration</a>
+          <a href="/zealy" className="admin-nav-link" onClick={(e) => handleNavigate(e, "/zealy")}>Quest Game</a>
+          <button
+            onClick={handleLogout}
+            className="admin-nav-link"
+            style={{ border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", background: "rgba(239,68,68,0.07)", cursor: "pointer" }}
+          >
+            🔓 Logout
+          </button>
         </div>
       </header>
 
@@ -549,6 +701,18 @@ export default function AdminPage() {
           <div>
             <p className="admin-stat-card__label">Checked In</p>
             <p className="admin-stat-card__value">{attendees.filter((a: any) => a.checked_in).length}</p>
+          </div>
+        </div>
+        <div className="admin-stat-card" style={{ borderLeft: "3px solid rgba(245, 158, 11, 0.7)" }}>
+          <span className="admin-stat-card__icon">🔍</span>
+          <div>
+            <p className="admin-stat-card__label">Pending Reviews</p>
+            <p
+              className="admin-stat-card__value"
+              style={{ color: verifications.filter((v) => v.status === "Pending").length > 0 ? "#f59e0b" : undefined }}
+            >
+              {verifications.filter((v) => v.status === "Pending").length}
+            </p>
           </div>
         </div>
       </section>
@@ -624,14 +788,16 @@ export default function AdminPage() {
                 ↻ Refresh
               </button>
 
-              <button
-                className="admin-add-btn"
-                onClick={exportToCSV}
-                title="Download CSV export"
-                style={{ background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", color: "#fff" }}
-              >
-                📥 Export CSV
-              </button>
+              {adminUser?.role === 'superadmin' && (
+                <button
+                  className="admin-add-btn"
+                  onClick={exportToCSV}
+                  title="Download CSV export"
+                  style={{ background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", color: "#fff" }}
+                >
+                  📥 Export CSV
+                </button>
+              )}
             </div>
 
             <div className="admin-table-wrapper">
@@ -710,6 +876,8 @@ export default function AdminPage() {
                         <td>
                           {a.checked_in ? (
                             <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>Done</span>
+                          ) : adminUser?.role === "viewer" ? (
+                            <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>Read-only</span>
                           ) : (
                             <button
                               className="admin-edit-btn"
@@ -744,9 +912,11 @@ export default function AdminPage() {
               <button className="admin-refresh-btn" onClick={fetchQuests} title="Refresh">
                 ↻ Refresh
               </button>
-              <button className="admin-add-btn" onClick={openAddQuest}>
-                + Add Quest
-              </button>
+              {adminUser?.role !== "viewer" && (
+                <button className="admin-add-btn" onClick={openAddQuest}>
+                  + Add Quest
+                </button>
+              )}
             </div>
 
             <div className="admin-table-wrapper">
@@ -796,7 +966,7 @@ export default function AdminPage() {
                         </td>
                         <td>
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            {q.status === "Draft" && (
+                            {q.status === "Draft" && adminUser?.role === "superadmin" && (
                               <button
                                 className="admin-edit-btn"
                                 onClick={() => publishQuest(q)}
@@ -806,12 +976,16 @@ export default function AdminPage() {
                                 🚀 Publish
                               </button>
                             )}
-                            <button className="admin-edit-btn" onClick={() => openEditQuest(q)}>
-                              Edit
-                            </button>
-                            <button className="admin-delete-btn" onClick={() => deleteQuest(q.id)}>
-                              Delete
-                            </button>
+                            {adminUser?.role !== "viewer" && (
+                              <button className="admin-edit-btn" onClick={() => openEditQuest(q)}>
+                                Edit
+                              </button>
+                            )}
+                            {adminUser?.role === "superadmin" && (
+                              <button className="admin-delete-btn" onClick={() => deleteQuest(q.id)}>
+                                Delete
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -909,31 +1083,45 @@ export default function AdminPage() {
                           {v.status === "Approved" ? (
                             <span className="admin-status-badge admin-status-badge--live">✓ Approved</span>
                           ) : v.status === "Rejected" ? (
-                            <span className="admin-status-badge admin-status-badge--done" style={{ background: "rgba(239, 68, 68, 0.15)", color: "#ef4444" }}>
-                              ✕ Rejected
-                            </span>
+                            <div>
+                              <span className="admin-status-badge admin-status-badge--done" style={{ background: "rgba(239, 68, 68, 0.15)", color: "#ef4444" }}>
+                                ✕ Rejected
+                              </span>
+                              {v.rejection_reason && (
+                                <div style={{ fontSize: "0.72rem", color: "#f87171", marginTop: 4, maxWidth: 160 }}>
+                                  Reason: <em>"{v.rejection_reason}"</em>
+                                </div>
+                              )}
+                            </div>
                           ) : (
                             <span className="admin-status-badge admin-status-badge--soon">⏳ Pending</span>
                           )}
                         </td>
                         <td>
                           {v.status === "Pending" ? (
-                            <div style={{ display: "flex", gap: 8 }}>
-                              <button
-                                className="admin-edit-btn"
-                                onClick={() => handleVerifyQuest(v.id, "Approved")}
-                                style={{ background: "rgba(16, 185, 129, 0.2)", borderColor: "rgba(16, 185, 129, 0.4)", color: "#34d399" }}
-                              >
-                                ✓ Verify
-                              </button>
-                              <button
-                                className="admin-delete-btn"
-                                onClick={() => handleVerifyQuest(v.id, "Rejected")}
-                                style={{ background: "rgba(239, 68, 68, 0.2)", borderColor: "rgba(239, 68, 68, 0.4)", color: "#ef4444" }}
-                              >
-                                ✕ Reject
-                              </button>
-                            </div>
+                            adminUser?.role === "viewer" ? (
+                              <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>Read-only</span>
+                            ) : (
+                              <div style={{ display: "flex", gap: 8 }}>
+                                <button
+                                  className="admin-edit-btn"
+                                  onClick={() => handleVerifyQuest(v.id, "Approved")}
+                                  style={{ background: "rgba(16, 185, 129, 0.2)", borderColor: "rgba(16, 185, 129, 0.4)", color: "#34d399" }}
+                                >
+                                  ✓ Verify
+                                </button>
+                                <button
+                                  className="admin-delete-btn"
+                                  onClick={() => {
+                                    setRejectingItem(v);
+                                    setRejectionReasonInput("");
+                                  }}
+                                  style={{ background: "rgba(239, 68, 68, 0.2)", borderColor: "rgba(239, 68, 68, 0.4)", color: "#ef4444" }}
+                                >
+                                  ✕ Reject
+                                </button>
+                              </div>
+                            )
                           ) : (
                             <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>Reviewed</span>
                           )}
@@ -1255,35 +1443,232 @@ export default function AdminPage() {
       )}
 
 
-      {/* Proof Fullscreen Image Modal */}
+      {/* Proof Fullscreen Image Modal with Interactive Zoom & Pan */}
       {selectedProofImage && (
         <div
           className="admin-modal-overlay"
-          onClick={() => setSelectedProofImage(null)}
-          style={{ zIndex: 1000, background: "rgba(0,0,0,0.85)" }}
+          onClick={() => {
+            setSelectedProofImage(null);
+            resetZoom();
+          }}
+          style={{ zIndex: 1000, background: "rgba(0,0,0,0.9)", userSelect: "none" }}
         >
           <div
             style={{
-              maxWidth: "90vw",
-              maxHeight: "90vh",
+              maxWidth: "92vw",
+              maxHeight: "92vh",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
+              position: "relative",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <img
-              src={selectedProofImage}
-              alt="Proof Full Resolution"
-              style={{ maxWidth: "100%", maxHeight: "80vh", borderRadius: 12, border: "2px solid rgba(245,166,35,0.6)", boxShadow: "0 0 40px rgba(0,0,0,0.8)" }}
-            />
-            <button
-              className="admin-cancel-btn"
-              onClick={() => setSelectedProofImage(null)}
-              style={{ marginTop: 16, padding: "8px 24px", background: "rgba(255,255,255,0.1)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}
+            {/* Floating Zoom Toolbar */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                background: "rgba(20, 20, 30, 0.85)",
+                border: "1px solid rgba(245, 166, 35, 0.4)",
+                borderRadius: 30,
+                padding: "6px 18px",
+                marginBottom: 14,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.6)",
+                backdropFilter: "blur(8px)",
+                zIndex: 10,
+              }}
             >
-              Close Preview
-            </button>
+              <button
+                type="button"
+                onClick={() => setZoomScale((s) => Math.max(s - 0.3, 0.5))}
+                title="Zoom Out (-)"
+                style={{
+                  background: "rgba(255,255,255,0.1)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  color: "#fff",
+                  borderRadius: "50%",
+                  width: 32,
+                  height: 32,
+                  fontSize: "1.1rem",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                −
+              </button>
+
+              <span
+                style={{
+                  color: "#fbbf24",
+                  fontWeight: 700,
+                  fontSize: "0.88rem",
+                  minWidth: 50,
+                  textAlign: "center",
+                  fontFamily: "monospace",
+                }}
+              >
+                {Math.round(zoomScale * 100)}%
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setZoomScale((s) => Math.min(s + 0.3, 4))}
+                title="Zoom In (+)"
+                style={{
+                  background: "rgba(255,255,255,0.1)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  color: "#fff",
+                  borderRadius: "50%",
+                  width: 32,
+                  height: 32,
+                  fontSize: "1.1rem",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                +
+              </button>
+
+              <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.2)", margin: "0 4px" }} />
+
+              <button
+                type="button"
+                onClick={resetZoom}
+                title="Reset Zoom"
+                style={{
+                  background: "rgba(245, 166, 35, 0.15)",
+                  border: "1px solid rgba(245, 166, 35, 0.3)",
+                  color: "#fbbf24",
+                  borderRadius: 14,
+                  padding: "4px 12px",
+                  fontSize: "0.78rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Reset
+              </button>
+            </div>
+
+            {/* Image Container with Scroll Wheel Zoom & Drag Pan */}
+            <div
+              onWheel={handleWheelZoom}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              style={{
+                overflow: "hidden",
+                borderRadius: 12,
+                border: "2px solid rgba(245,166,35,0.6)",
+                boxShadow: "0 0 40px rgba(0,0,0,0.8)",
+                cursor: zoomScale > 1 ? (isDragging ? "grabbing" : "grab") : "default",
+                maxWidth: "100%",
+                maxHeight: "75vh",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "#050508",
+              }}
+            >
+              <img
+                src={selectedProofImage}
+                alt="Proof Full Resolution"
+                draggable={false}
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "75vh",
+                  transform: `translate(${zoomPos.x}px, ${zoomPos.y}px) scale(${zoomScale})`,
+                  transition: isDragging ? "none" : "transform 0.15s ease-out",
+                  transformOrigin: "center center",
+                  objectFit: "contain",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 14 }}>
+              <span style={{ fontSize: "0.76rem", color: "rgba(255,255,255,0.4)" }}>
+                💡 Scroll mouse wheel to zoom in/out • Click and drag to pan when zoomed
+              </span>
+              <button
+                className="admin-cancel-btn"
+                onClick={() => {
+                  setSelectedProofImage(null);
+                  resetZoom();
+                }}
+                style={{
+                  padding: "8px 24px",
+                  background: "rgba(255,255,255,0.1)",
+                  color: "#fff",
+                  borderColor: "rgba(255,255,255,0.2)",
+                  cursor: "pointer",
+                }}
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rejection Reason Modal */}
+      {rejectingItem && (
+        <div
+          className="admin-modal-overlay"
+          onClick={() => setRejectingItem(null)}
+          style={{ zIndex: 1000, background: "rgba(0,0,0,0.85)" }}
+        >
+          <div
+            className="admin-modal"
+            style={{ maxWidth: 440, width: "90%", padding: 24 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#ef4444", display: "flex", alignItems: "center", gap: 8 }}>
+              <span>✕</span> Reject Verification
+            </h3>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: "8px 0 16px" }}>
+              Rejecting submission from <strong>{rejectingItem.user_name}</strong> for <em>"{rejectingItem.quest_title}"</em>.
+            </p>
+
+            <label className="qf-label" style={{ display: "block", marginBottom: 8 }}>
+              Reason for Rejection (Optional)
+            </label>
+            <textarea
+              className="qf-input"
+              rows={3}
+              placeholder="e.g., Image unclear, invalid proof, duplicate screenshot..."
+              value={rejectionReasonInput}
+              onChange={(e) => setRejectionReasonInput(e.target.value)}
+              style={{ width: "100%", resize: "vertical", marginBottom: 20 }}
+            />
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                type="button"
+                className="admin-cancel-btn"
+                onClick={() => setRejectingItem(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="admin-delete-btn"
+                onClick={async () => {
+                  const target = rejectingItem;
+                  setRejectingItem(null);
+                  await handleVerifyQuest(target.id, "Rejected", rejectionReasonInput.trim());
+                }}
+                style={{ background: "#ef4444", color: "#fff", borderColor: "#dc2626" }}
+              >
+                Confirm Rejection
+              </button>
+            </div>
           </div>
         </div>
       )}

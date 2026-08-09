@@ -149,20 +149,25 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH — admin approves or rejects a submission
+// PATCH — admin approves or rejects a submission (with optional rejection reason)
 export async function PATCH(request: Request) {
   try {
-    const { id, status } = await request.json();
+    const { id, status, rejection_reason } = await request.json();
 
     if (!id || !status) {
       return NextResponse.json({ error: "id and status are required." }, { status: 400 });
+    }
+
+    const updatePayload: Record<string, any> = { status };
+    if (rejection_reason !== undefined) {
+      updatePayload.rejection_reason = rejection_reason;
     }
 
     try {
       const supabase = getSupabase();
       const { data, error } = await supabase
         .from("quest_verifications")
-        .update({ status })
+        .update(updatePayload)
         .eq("id", id)
         .select()
         .single();
@@ -175,7 +180,7 @@ export async function PATCH(request: Request) {
     }
 
     memoryVerifications = memoryVerifications.map((item) =>
-      item.id === id ? { ...item, status } : item
+      item.id === id ? { ...item, status, rejection_reason: rejection_reason || null } : item
     );
     const updatedItem = memoryVerifications.find((item) => item.id === id);
     return NextResponse.json({ verification: updatedItem });

@@ -76,6 +76,20 @@ CREATE TABLE IF NOT EXISTS public.quest_verifications (
   xp INTEGER NOT NULL DEFAULT 0,
   proof_url TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'Pending', -- 'Pending', 'Approved', 'Rejected'
+  rejection_reason TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Admin Users table for RBAC dashboard access
+CREATE TABLE IF NOT EXISTS public.admin_users (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  full_name TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'viewer', -- 'superadmin', 'editor', 'viewer'
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Grant privileges so the service_role key can read/insert admins
+GRANT ALL ON TABLE public.admin_users TO postgres, service_role;
 
