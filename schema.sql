@@ -48,3 +48,34 @@ CREATE OR REPLACE TRIGGER trigger_set_ticket_code
 BEFORE INSERT ON public.registrations
 FOR EACH ROW
 EXECUTE FUNCTION set_ticket_code();
+
+-- Fiesta Event Quests table
+CREATE TABLE IF NOT EXISTS public.fiesta_event_quests (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  xp INTEGER NOT NULL DEFAULT 100,
+  status TEXT NOT NULL DEFAULT 'Soon',
+  category TEXT NOT NULL DEFAULT 'onboarding',
+  action_label TEXT,
+  action_url TEXT,
+  requires_proof BOOLEAN NOT NULL DEFAULT FALSE,
+  sort_order INTEGER NOT NULL DEFAULT 99,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Quest Verifications table for user proof submissions & admin review
+CREATE TABLE IF NOT EXISTS public.quest_verifications (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  quest_id TEXT NOT NULL,
+  quest_title TEXT NOT NULL,
+  user_name TEXT NOT NULL,
+  user_email TEXT NOT NULL,
+  ticket_code TEXT,
+  xp INTEGER NOT NULL DEFAULT 0,
+  proof_url TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'Pending', -- 'Pending', 'Approved', 'Rejected'
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+

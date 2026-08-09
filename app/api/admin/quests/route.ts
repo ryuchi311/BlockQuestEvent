@@ -32,7 +32,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id, title, description, xp, status, category, action_label, action_url, sort_order } = body;
+    const { id, title, description, xp, status, category, action_label, action_url, requires_proof, sort_order } = body;
 
     if (!id || !title) {
       return NextResponse.json({ error: "id and title are required." }, { status: 400 });
@@ -41,7 +41,18 @@ export async function POST(request: Request) {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("fiesta_event_quests")
-      .insert({ id, title, description, xp: xp ?? 0, status: status ?? "Soon", category: category ?? "onboarding", action_label, action_url, sort_order: sort_order ?? 99 })
+      .insert({
+        id,
+        title,
+        description,
+        xp: xp ?? 0,
+        status: status ?? "Soon",
+        category: category ?? "onboarding",
+        action_label,
+        action_url,
+        requires_proof: !!requires_proof,
+        sort_order: sort_order ?? 99,
+      })
       .select()
       .single();
 

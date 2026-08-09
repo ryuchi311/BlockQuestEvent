@@ -25,6 +25,7 @@ The suite provides end-to-end event operations—from attendee registration and 
 - **✨ Dark-Mode Glassmorphism Design System**: Modern visual hierarchy with glowing hover effects, HSL color tokens, custom typography, and responsive layouts across all viewports.
 - **📷 Camera QR Scanner (`/scan`)**: Integrated `html5-qrcode` engine with live camera feed switching, audio/visual check-in feedback, and instantaneous Supabase verification.
 - **🔒 Supabase SSR & Automatic Ticket Triggers**: Secure server-side authentication (`@supabase/ssr`), environment isolation, and automated database trigger (`trigger_set_ticket_code`) for generating collision-free `BQF-******` ticket codes upon registration.
+- **📷 Quest Proof Upload & Admin Verification**: Quests can optionally require screenshot proof (`requires_proof`). Players on `/zealy` upload image proof for tasks (e.g. social follows), and admins verify/approve them via the **🔍 Quest Verifications** queue in `/admin`.
 - **🚀 One-Click Windows Launcher**: Added `start-project.bat` and `create-shortcut.vbs` for single-click execution that auto-launches the Next.js dev server and opens the browser.
 
 ---
