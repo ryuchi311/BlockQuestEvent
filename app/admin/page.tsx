@@ -87,11 +87,13 @@ export default function AdminPage() {
   const [checkingInId, setCheckingInId] = useState<number | null>(null);
 
   // ── Quest modal ──
+  const DRAFT_KEY = "blockquest_quest_draft";
   const [showQuestModal, setShowQuestModal] = useState(false);
   const [editingQuest, setEditingQuest] = useState<Quest | null>(null);
   const [questForm, setQuestForm] = useState<typeof EMPTY_QUEST>({ ...EMPTY_QUEST });
   const [questSaving, setQuestSaving] = useState(false);
   const [questError, setQuestError] = useState("");
+  const [hasSavedDraft, setHasSavedDraft] = useState(false);
 
   // ── Copy tooltip ──
   const [copiedId, setCopiedId] = useState<number | null>(null);
@@ -262,9 +264,56 @@ export default function AdminPage() {
   // ─── Quest helpers ───────────────────────────────────────────────────────
   function openAddQuest() {
     setEditingQuest(null);
-    setQuestForm({ ...EMPTY_QUEST });
     setQuestError("");
+    // Check for an existing auto-saved draft
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const draft = JSON.parse(raw);
+        // Only restore if there's meaningful content
+        if (draft.title || draft.id) {
+          setQuestForm(draft);
+          setHasSavedDraft(true);
+          setShowQuestModal(true);
+          return;
+        }
+      }
+    } catch {}
+    setHasSavedDraft(false);
+    setQuestForm({ ...EMPTY_QUEST });
     setShowQuestModal(true);
+  }
+
+  function closeModal() {
+    // If creating (not editing) and form has meaningful content, auto-save draft
+    if (!editingQuest) {
+      const hasContent = questForm.title.trim() || questForm.id.trim();
+      if (hasContent) {
+        try {
+          localStorage.setItem(DRAFT_KEY, JSON.stringify(questForm));
+        } catch {}
+      }
+    }
+    setShowQuestModal(false);
+  }
+
+  function discardDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+    setHasSavedDraft(false);
+    setQuestForm({ ...EMPTY_QUEST });
+  }
+
+  function resumeDraft() {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) setQuestForm(JSON.parse(raw));
+    } catch {}
+    setHasSavedDraft(false);
+  }
+
+  function clearDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+    setHasSavedDraft(false);
   }
 
   function openEditQuest(q: Quest) {
@@ -282,6 +331,7 @@ export default function AdminPage() {
       sort_order: q.sort_order,
     });
     setQuestError("");
+    setHasSavedDraft(false);
     setShowQuestModal(true);
   }
 
@@ -307,6 +357,7 @@ export default function AdminPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to save quest.");
+      clearDraft();
       setShowQuestModal(false);
       fetchQuests();
     } catch (err: any) {
@@ -392,6 +443,7 @@ export default function AdminPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to save draft.");
+      clearDraft();
       setShowQuestModal(false);
       fetchQuests();
     } catch (err: any) {
@@ -898,11 +950,11 @@ export default function AdminPage() {
 
       {/* ─── QUEST MODAL (Redesigned with Live Preview) ─── */}
       {showQuestModal && (
-        <div className="admin-modal-overlay" onClick={() => setShowQuestModal(false)}>
+        <div className="admin-modal-overlay" onClick={closeModal}>
           <div className="quest-modal-wide" onClick={(e) => e.stopPropagation()}>
 
             {/* Header */}
-            <div className="quest-modal-header">
+            <div className="quest-modal-header" style={{ position: "relative" }}>
               <div className="quest-modal-header__title">
                 <span className="quest-modal-header__icon">{editingQuest ? "✏️" : "⚡"}</span>
                 <div>
@@ -910,8 +962,59 @@ export default function AdminPage() {
                   <p>Fill in the form — the preview card updates in real time.</p>
                 </div>
               </div>
-              <button className="admin-modal__close" onClick={() => setShowQuestModal(false)}>✕</button>
+              <button className="admin-modal__close" onClick={closeModal}>✕</button>
             </div>
+
+            {/* Draft Restore Alert Banner */}
+            {hasSavedDraft && !editingQuest && (
+              <div style={{
+                background: "rgba(245, 166, 35, 0.15)",
+                borderBottom: "1px solid rgba(245, 166, 35, 0.3)",
+                padding: "10px 24px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+              }}>
+                <span style={{ fontSize: "0.85rem", color: "#ffd166" }}>
+                  📝 Found an unfinished quest draft. Would you like to resume?
+                </span>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={resumeDraft}
+                    style={{
+                      background: "#f5a623",
+                      color: "#120b02",
+                      border: "none",
+                      padding: "4px 12px",
+                      borderRadius: 6,
+                      fontSize: "0.78rem",
+                      fontWeight: 800,
+                      cursor: "pointer"
+                    }}
+                  >
+                    Resume
+                  </button>
+                  <button
+                    type="button"
+                    onClick={discardDraft}
+                    style={{
+                      background: "rgba(255, 255, 255, 0.1)",
+                      color: "#fff",
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      padding: "4px 12px",
+                      borderRadius: 6,
+                      fontSize: "0.78rem",
+                      fontWeight: 700,
+                      cursor: "pointer"
+                    }}
+                  >
+                    Discard
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Two-panel body */}
             <div className="quest-modal-body">
@@ -1066,7 +1169,7 @@ export default function AdminPage() {
                 {questError && <p className="admin-error-msg">{questError}</p>}
 
                 <div className="quest-modal-footer">
-                  <button type="button" className="admin-cancel-btn" onClick={() => setShowQuestModal(false)}>Cancel</button>
+                  <button type="button" className="admin-cancel-btn" onClick={closeModal}>Cancel</button>
                   {!editingQuest && (
                     <button
                       type="button"
