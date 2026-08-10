@@ -85,6 +85,7 @@ export default function ZealyMobileApp() {
   const [proofImage, setProofImage] = useState<string | null>(null);
   const [proofSubmitting, setProofSubmitting] = useState(false);
   const [visitedActions, setVisitedActions] = useState<Record<string, boolean>>({});
+  const [userVerifications, setUserVerifications] = useState<any[]>([]);
 
   // Load ticket if user was registered/logged in in this session
   const [ticketEmail, setTicketEmail] = useState("");
@@ -163,6 +164,24 @@ export default function ZealyMobileApp() {
     reader.readAsDataURL(file);
   };
 
+  const fetchUserVerifications = React.useCallback(async () => {
+    const email = ticketEmail || authenticatedUser?.email || qrPass?.email;
+    if (!email) return;
+    try {
+      const res = await fetch(`/api/admin/verifications?email=${encodeURIComponent(email)}`);
+      const json = await res.json();
+      if (res.ok && Array.isArray(json.verifications)) {
+        setUserVerifications(json.verifications);
+      }
+    } catch {
+      // ignore
+    }
+  }, [ticketEmail, authenticatedUser, qrPass]);
+
+  useEffect(() => {
+    fetchUserVerifications();
+  }, [fetchUserVerifications, activeTab]);
+
   const handleSubmitProof = async () => {
     if (!selectedQuest || !proofImage) return;
     setProofSubmitting(true);
@@ -173,8 +192,8 @@ export default function ZealyMobileApp() {
         body: JSON.stringify({
           quest_id: selectedQuest.id,
           quest_title: selectedQuest.title,
-          user_name: authenticatedUser?.full_name || qrPass?.fullName || "Registered Quester",
-          user_email: ticketEmail || "quester@blockquest.ph",
+          user_name: authenticatedUser?.fullName || qrPass?.fullName || "Registered Quester",
+          user_email: ticketEmail || authenticatedUser?.email || "quester@blockquest.ph",
           ticket_code: qrPass?.passCode || "BQF-GUEST",
           xp: selectedQuest.xp,
           proof_url: proofImage,
@@ -185,6 +204,7 @@ export default function ZealyMobileApp() {
       );
       setSelectedQuest(null);
       setProofImage(null);
+      fetchUserVerifications();
     } catch {
       alert("Submission error. Please try again.");
     } finally {
@@ -644,6 +664,116 @@ export default function ZealyMobileApp() {
                     <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Global Rank</p>
                     <strong style={{ fontSize: "1.2rem", color: "var(--gold-light)" }}>#{userRank}</strong>
                   </div>
+                </div>
+
+                {/* User Activity & Submission History */}
+                <div className="info-card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <h3 style={{ fontSize: "0.95rem", fontWeight: 800, color: "#fff", margin: 0 }}>
+                      📜 Quest Activity & Proof Log
+                    </h3>
+                    <button
+                      onClick={fetchUserVerifications}
+                      style={{ background: "none", border: "none", color: "var(--gold-light)", fontSize: "0.75rem", cursor: "pointer" }}
+                    >
+                      ↻ Refresh
+                    </button>
+                  </div>
+
+                  {userVerifications.length === 0 ? (
+                    <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: "4px 0" }}>
+                      No quest proof submissions yet. Complete proof-required quests to track verification status here!
+                    </p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {userVerifications.map((v) => (
+                        <div
+                          key={v.id}
+                          style={{
+                            background: "rgba(12, 12, 22, 0.7)",
+                            border: "1px solid rgba(255, 255, 255, 0.08)",
+                            borderRadius: 12,
+                            padding: 12,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 8,
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                            <div>
+                              <strong style={{ fontSize: "0.88rem", color: "#fff", display: "block" }}>{v.quest_title}</strong>
+                              <span style={{ fontSize: "0.72rem", color: "var(--gold-light)" }}>+{v.xp} XP Reward</span>
+                            </div>
+                            <span
+                              style={{
+                                fontSize: "0.7rem",
+                                fontWeight: 800,
+                                padding: "3px 8px",
+                                borderRadius: 10,
+                                background:
+                                  v.status === "Approved"
+                                    ? "rgba(16, 185, 129, 0.18)"
+                                    : v.status === "Rejected"
+                                    ? "rgba(239, 68, 68, 0.18)"
+                                    : "rgba(245, 158, 11, 0.18)",
+                                color:
+                                  v.status === "Approved"
+                                    ? "#34d399"
+                                    : v.status === "Rejected"
+                                    ? "#f87171"
+                                    : "#fbbf24",
+                                border:
+                                  v.status === "Approved"
+                                    ? "1px solid rgba(16, 185, 129, 0.3)"
+                                    : v.status === "Rejected"
+                                    ? "1px solid rgba(239, 68, 68, 0.3)"
+                                    : "1px solid rgba(245, 158, 11, 0.3)",
+                              }}
+                            >
+                              {v.status === "Approved" ? "✓ Approved" : v.status === "Rejected" ? "✕ Rejected" : "⏳ Pending Review"}
+                            </span>
+                          </div>
+
+                          {v.status === "Rejected" && (
+                            <div style={{ background: "rgba(239, 68, 68, 0.08)", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: 8, padding: 8 }}>
+                              <p style={{ fontSize: "0.75rem", color: "#f87171", margin: 0, fontWeight: 600 }}>
+                                🔴 <strong>Reason:</strong> {v.rejection_reason || "Proof did not satisfy requirements."}
+                              </p>
+                              <button
+                                onClick={() => {
+                                  const questToRetry = quests.find((q) => q.id === v.quest_id) || {
+                                    id: v.quest_id,
+                                    title: v.quest_title,
+                                    description: "Resubmit proof screenshot for admin verification.",
+                                    xp: v.xp,
+                                    status: "Live" as const,
+                                    category: "social" as const,
+                                    requiresProof: true,
+                                  };
+                                  setSelectedQuest(questToRetry as any);
+                                  setActiveTab("quests");
+                                }}
+                                style={{
+                                  marginTop: 8,
+                                  width: "100%",
+                                  padding: "7px 10px",
+                                  borderRadius: 8,
+                                  border: "1px solid rgba(245, 166, 35, 0.5)",
+                                  background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                                  color: "#100b02",
+                                  fontSize: "0.78rem",
+                                  fontWeight: 800,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                🔄 Try Again & Resubmit Proof
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 {qrPass && (
                   <button

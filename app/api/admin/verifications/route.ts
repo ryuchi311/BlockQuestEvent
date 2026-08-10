@@ -40,21 +40,35 @@ let memoryVerifications: any[] = [
   },
 ];
 
-// GET — fetch all verifications
-export async function GET() {
+// GET — fetch all verifications or filter by user email
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const email = searchParams.get("email")?.trim().toLowerCase();
+
     const supabase = getSupabase();
-    const { data, error } = await supabase
-      .from("quest_verifications")
-      .select("*")
-      .order("created_at", { ascending: false });
+    let query = supabase.from("quest_verifications").select("*").order("created_at", { ascending: false });
+
+    if (email) {
+      query = query.ilike("user_email", email);
+    }
+
+    const { data, error } = await query;
 
     if (error || !data) {
-      return NextResponse.json({ verifications: memoryVerifications });
+      const filtered = email
+        ? memoryVerifications.filter((v) => v.user_email?.toLowerCase() === email)
+        : memoryVerifications;
+      return NextResponse.json({ verifications: filtered });
     }
     return NextResponse.json({ verifications: data });
   } catch {
-    return NextResponse.json({ verifications: memoryVerifications });
+    const { searchParams } = new URL(request.url);
+    const email = searchParams.get("email")?.trim().toLowerCase();
+    const filtered = email
+      ? memoryVerifications.filter((v) => v.user_email?.toLowerCase() === email)
+      : memoryVerifications;
+    return NextResponse.json({ verifications: filtered });
   }
 }
 
