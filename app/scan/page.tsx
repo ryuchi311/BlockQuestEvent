@@ -389,9 +389,10 @@ export default function ScanPage() {
 
   // ── Scanner view ──────────────────────────────────────────────
   return (
-    <main className="scan-page">
-      {/* Full-screen success flash */}
-      {status === "success" && <div className="scan-flash-overlay" />}
+    <div className="scan-wrapper">
+      <main className="scan-page">
+        {/* Full-screen success flash */}
+        {status === "success" && <div className="scan-flash-overlay" />}
 
       {/* Top bar */}
       <header className="scan-topbar">
@@ -530,5 +531,6 @@ export default function ScanPage() {
         </div>
       )}
     </main>
+    </div>
   );
 }
