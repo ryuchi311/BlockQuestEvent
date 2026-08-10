@@ -86,6 +86,7 @@ export default function ZealyMobileApp() {
   const [proofSubmitting, setProofSubmitting] = useState(false);
   const [visitedActions, setVisitedActions] = useState<Record<string, boolean>>({});
   const [userVerifications, setUserVerifications] = useState<any[]>([]);
+  const [showCompletedQuests, setShowCompletedQuests] = useState(false);
 
   // Load ticket if user was registered/logged in in this session
   const [ticketEmail, setTicketEmail] = useState("");
@@ -452,42 +453,68 @@ export default function ZealyMobileApp() {
                       </div>
                     ))}
 
-                    {/* Completed Quests Section */}
+                    {/* Completed Quests Toggle Section */}
                     {quests.filter((q) => q.status === "Done" || q.status === "Pending Verification").length > 0 && (
-                      <>
-                        <div className="quest-category__title" style={{ marginTop: 20, color: "var(--text-secondary)" }}>
-                          <span>✅ Completed Quests ({quests.filter((q) => q.status === "Done" || q.status === "Pending Verification").length})</span>
-                        </div>
+                      <div style={{ marginTop: 20 }}>
+                        <button
+                          onClick={() => setShowCompletedQuests((prev) => !prev)}
+                          style={{
+                            width: "100%",
+                            padding: "12px 16px",
+                            borderRadius: 14,
+                            background: "rgba(255, 255, 255, 0.03)",
+                            border: "1px solid rgba(255, 255, 255, 0.08)",
+                            color: "var(--text-secondary)",
+                            fontSize: "0.84rem",
+                            fontWeight: 700,
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            cursor: "pointer",
+                            transition: "all 0.2s ease",
+                          }}
+                        >
+                          <span>
+                            ✅ Completed Quests ({quests.filter((q) => q.status === "Done" || q.status === "Pending Verification").length})
+                          </span>
+                          <span style={{ color: "var(--gold-light)", fontWeight: 800, fontSize: "0.85rem" }}>
+                            {showCompletedQuests ? "Hide ▴" : "Show ▾"}
+                          </span>
+                        </button>
 
-                        {quests.filter((q) => q.status === "Done" || q.status === "Pending Verification").map((q) => (
-                          <div
-                            key={q.id}
-                            className={`quest-card quest-card--${q.status.toLowerCase().replace(/\s+/g, "-")}`}
-                            onClick={() => handleQuestClick(q)}
-                            style={{ opacity: 0.82, background: "rgba(15, 15, 25, 0.55)", borderColor: "rgba(255, 255, 255, 0.05)" }}
-                          >
-                            <div className="quest-card__body">
-                              <div className="quest-card__meta">
-                                <span className={`category-badge category-badge--${q.category}`}>
-                                  {q.category}
-                                </span>
-                                <span className="xp-badge" style={{ background: "rgba(16, 185, 129, 0.2)", color: "#34d399", border: "1px solid rgba(16, 185, 129, 0.3)", boxShadow: "none" }}>
-                                  +{q.xp} XP Claimed
-                                </span>
+                        {showCompletedQuests && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+                            {quests.filter((q) => q.status === "Done" || q.status === "Pending Verification").map((q) => (
+                              <div
+                                key={q.id}
+                                className={`quest-card quest-card--${q.status.toLowerCase().replace(/\s+/g, "-")}`}
+                                onClick={() => handleQuestClick(q)}
+                                style={{ opacity: 0.82, background: "rgba(15, 15, 25, 0.55)", borderColor: "rgba(255, 255, 255, 0.05)" }}
+                              >
+                                <div className="quest-card__body">
+                                  <div className="quest-card__meta">
+                                    <span className={`category-badge category-badge--${q.category}`}>
+                                      {q.category}
+                                    </span>
+                                    <span className="xp-badge" style={{ background: "rgba(16, 185, 129, 0.2)", color: "#34d399", border: "1px solid rgba(16, 185, 129, 0.3)", boxShadow: "none" }}>
+                                      +{q.xp} XP Claimed
+                                    </span>
+                                  </div>
+                                  <h3 className="quest-card__title" style={{ textDecoration: q.status === "Done" ? "line-through" : "none", color: "var(--text-secondary)" }}>
+                                    {q.title}
+                                  </h3>
+                                  <p className="quest-card__desc">{q.description}</p>
+                                </div>
+                                <div className="quest-card__footer">
+                                  <span className={`status-badge status-badge--${q.status.toLowerCase().replace(/\s+/g, "-")}`}>
+                                    {q.status === "Done" ? "✓ Completed" : "⏳ Pending Review"}
+                                  </span>
+                                </div>
                               </div>
-                              <h3 className="quest-card__title" style={{ textDecoration: q.status === "Done" ? "line-through" : "none", color: "var(--text-secondary)" }}>
-                                {q.title}
-                              </h3>
-                              <p className="quest-card__desc">{q.description}</p>
-                            </div>
-                            <div className="quest-card__footer">
-                              <span className={`status-badge status-badge--${q.status.toLowerCase().replace(/\s+/g, "-")}`}>
-                                {q.status === "Done" ? "✓ Completed" : "⏳ Pending Review"}
-                              </span>
-                            </div>
+                            ))}
                           </div>
-                        ))}
-                      </>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
