@@ -1,7 +1,7 @@
 "use client";
 
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { useMemo, useRef, useState } from "react";
 
 type Status = {
   type: "idle" | "success" | "error";
@@ -38,6 +38,54 @@ export default function RegistrationForm() {
   
   const [countryCode, setCountryCode] = useState("+63");
   const [mobileNum, setMobileNum] = useState("");
+
+  // ── Social Follow Auto-Verification ──
+  const [showSocialModal, setShowSocialModal] = useState(false);
+  const [fbTimer, setFbTimer] = useState<number | null>(null); // null: idle, >0: countdown, 0: done
+  const [tgTimer, setTgTimer] = useState<number | null>(null);
+  const [xTimer, setXTimer] = useState<number | null>(null);
+
+  const handleFollowFb = () => {
+    window.open("https://www.facebook.com/BRGYTamago", "_blank");
+    setFbTimer(10);
+  };
+
+  const handleFollowTg = () => {
+    window.open("https://t.me/tamagowarriors", "_blank");
+    setTgTimer(10);
+  };
+
+  const handleFollowX = () => {
+    window.open("https://x.com/BRGYTamago", "_blank");
+    setXTimer(10);
+  };
+
+  // Countdown effect for Facebook
+  React.useEffect(() => {
+    if (fbTimer === null || fbTimer <= 0) return;
+    const interval = setInterval(() => {
+      setFbTimer((prev) => (prev !== null && prev > 1 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [fbTimer]);
+
+  // Countdown effect for Telegram
+  React.useEffect(() => {
+    if (tgTimer === null || tgTimer <= 0) return;
+    const interval = setInterval(() => {
+      setTgTimer((prev) => (prev !== null && prev > 1 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [tgTimer]);
+
+  // Countdown effect for Twitter / X
+  React.useEffect(() => {
+    if (xTimer === null || xTimer <= 0) return;
+    const interval = setInterval(() => {
+      setXTimer((prev) => (prev !== null && prev > 1 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [xTimer]);
 
   const handleMobileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/[^\d]/g, ""); // digits only
@@ -463,7 +511,13 @@ export default function RegistrationForm() {
           <button
             type="button"
             className="button-secondary"
-            onClick={() => void generateQrPass(authenticatedUser)}
+            onClick={() => {
+              if (fbTimer === 0 && tgTimer === 0 && xTimer === 0) {
+                void generateQrPass(authenticatedUser);
+              } else {
+                setShowSocialModal(true);
+              }
+            }}
             disabled={qrLoading}
           >
             {qrLoading ? "Generating QR Pass..." : "Generate QR Pass"}
@@ -471,6 +525,236 @@ export default function RegistrationForm() {
           <p className="qr-pass__hint">Logged in as {authenticatedUser.email}.</p>
         </div>
       ) : null}
+
+      {/* ── Social Media Follow Modal (10s Countdown Fake Auto-Verification) ── */}
+      {showSocialModal && (
+        <div
+          className="modal-overlay"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 999,
+            background: "rgba(0, 0, 0, 0.85)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "460px",
+              background: "linear-gradient(135deg, rgba(20, 24, 38, 0.98), rgba(12, 14, 22, 0.98))",
+              border: "1px solid rgba(245, 166, 35, 0.4)",
+              borderRadius: "24px",
+              padding: "28px 24px",
+              boxShadow: "0 0 40px rgba(0, 0, 0, 0.8)",
+              textAlign: "center",
+              position: "relative",
+            }}
+          >
+            <button
+              onClick={() => setShowSocialModal(false)}
+              style={{
+                position: "absolute",
+                top: "16px",
+                right: "16px",
+                background: "none",
+                border: "none",
+                color: "rgba(255,255,255,0.5)",
+                fontSize: "1.2rem",
+                cursor: "pointer",
+                padding: 4,
+              }}
+            >
+              ✕
+            </button>
+
+            <div style={{ fontSize: "2.4rem", marginBottom: "8px" }}>📣</div>
+            <h3 style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fff", marginBottom: "6px" }}>
+              Social Follow Missions
+            </h3>
+            <p style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.7)", marginBottom: "20px" }}>
+              Complete all 3 social follow missions to auto-verify & unlock your <strong>BlockQuest Event QR Pass</strong>.
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "24px" }}>
+              {/* 1. Facebook Task */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px 16px",
+                  borderRadius: "14px",
+                  background: "rgba(255,255,255,0.04)",
+                  border: fbTimer === 0 ? "1px solid rgba(16, 185, 129, 0.5)" : "1px solid rgba(255,255,255,0.1)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", textAlign: "left" }}>
+                  <span style={{ fontSize: "1.3rem" }}>🌐</span>
+                  <div>
+                    <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#fff" }}>Facebook Page</div>
+                    <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}>Follow BRGY Tamago</div>
+                  </div>
+                </div>
+                {fbTimer === 0 ? (
+                  <span style={{ color: "#34d399", fontWeight: 800, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: 4 }}>
+                    ✓ Verified
+                  </span>
+                ) : fbTimer !== null ? (
+                  <span style={{ color: "#fbbf24", fontSize: "0.82rem", fontWeight: 700, background: "rgba(245, 191, 36, 0.15)", padding: "4px 10px", borderRadius: "8px", border: "1px solid rgba(245, 191, 36, 0.3)" }}>
+                    ⏳ Verifying {fbTimer}s
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleFollowFb}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: "10px",
+                      fontSize: "0.78rem",
+                      fontWeight: 700,
+                      background: "#1877f2",
+                      color: "#fff",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Follow FB →
+                  </button>
+                )}
+              </div>
+
+              {/* 2. Telegram Task */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px 16px",
+                  borderRadius: "14px",
+                  background: "rgba(255,255,255,0.04)",
+                  border: tgTimer === 0 ? "1px solid rgba(16, 185, 129, 0.5)" : "1px solid rgba(255,255,255,0.1)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", textAlign: "left" }}>
+                  <span style={{ fontSize: "1.3rem" }}>✈️</span>
+                  <div>
+                    <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#fff" }}>Telegram Group</div>
+                    <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}>Join Tamago Warriors</div>
+                  </div>
+                </div>
+                {tgTimer === 0 ? (
+                  <span style={{ color: "#34d399", fontWeight: 800, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: 4 }}>
+                    ✓ Verified
+                  </span>
+                ) : tgTimer !== null ? (
+                  <span style={{ color: "#fbbf24", fontSize: "0.82rem", fontWeight: 700, background: "rgba(245, 191, 36, 0.15)", padding: "4px 10px", borderRadius: "8px", border: "1px solid rgba(245, 191, 36, 0.3)" }}>
+                    ⏳ Verifying {tgTimer}s
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleFollowTg}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: "10px",
+                      fontSize: "0.78rem",
+                      fontWeight: 700,
+                      background: "#24A1DE",
+                      color: "#fff",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Join TG →
+                  </button>
+                )}
+              </div>
+
+              {/* 3. Twitter / X Task */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px 16px",
+                  borderRadius: "14px",
+                  background: "rgba(255,255,255,0.04)",
+                  border: xTimer === 0 ? "1px solid rgba(16, 185, 129, 0.5)" : "1px solid rgba(255,255,255,0.1)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", textAlign: "left" }}>
+                  <span style={{ fontSize: "1.3rem" }}>🐦</span>
+                  <div>
+                    <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#fff" }}>X (Twitter)</div>
+                    <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}>Follow @BRGYTamago</div>
+                  </div>
+                </div>
+                {xTimer === 0 ? (
+                  <span style={{ color: "#34d399", fontWeight: 800, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: 4 }}>
+                    ✓ Verified
+                  </span>
+                ) : xTimer !== null ? (
+                  <span style={{ color: "#fbbf24", fontSize: "0.82rem", fontWeight: 700, background: "rgba(245, 191, 36, 0.15)", padding: "4px 10px", borderRadius: "8px", border: "1px solid rgba(245, 191, 36, 0.3)" }}>
+                    ⏳ Verifying {xTimer}s
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleFollowX}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: "10px",
+                      fontSize: "0.78rem",
+                      fontWeight: 700,
+                      background: "#000",
+                      color: "#fff",
+                      border: "1px solid rgba(255,255,255,0.3)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Follow X →
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={fbTimer !== 0 || tgTimer !== 0 || xTimer !== 0 || qrLoading}
+              onClick={async () => {
+                setShowSocialModal(false);
+                if (authenticatedUser) {
+                  await generateQrPass(authenticatedUser);
+                }
+              }}
+              style={{
+                width: "100%",
+                padding: "14px",
+                borderRadius: "14px",
+                fontSize: "0.95rem",
+                fontWeight: 800,
+                background:
+                  fbTimer === 0 && tgTimer === 0 && xTimer === 0
+                    ? "linear-gradient(135deg, #f5a623 0%, #e0850b 100%)"
+                    : "rgba(255, 255, 255, 0.1)",
+                color: fbTimer === 0 && tgTimer === 0 && xTimer === 0 ? "#120b02" : "rgba(255, 255, 255, 0.4)",
+                border: "none",
+                cursor: fbTimer === 0 && tgTimer === 0 && xTimer === 0 ? "pointer" : "not-allowed",
+                transition: "all 0.2s ease",
+              }}
+            >
+              {fbTimer !== 0 || tgTimer !== 0 || xTimer !== 0
+                ? "🔒 Follow All 3 Socials to Unlock"
+                : "⚡ Claim & Generate QR Pass →"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {qrPass ? (
         <section className="qr-pass" aria-labelledby="qr-pass-title">
