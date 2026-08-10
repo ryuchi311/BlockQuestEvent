@@ -168,6 +168,15 @@ export default function AdminPage() {
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [checkingInId, setCheckingInId] = useState<number | null>(null);
 
+  // ── Quest search & filter ──
+  const [questSearch, setQuestSearch] = useState("");
+  const [questStatusFilter, setQuestStatusFilter] = useState<"all" | Quest["status"]>("all");
+  const [questCategoryFilter, setQuestCategoryFilter] = useState<"all" | Quest["category"]>("all");
+
+  // ── Verification search & filter ──
+  const [verificationSearch, setVerificationSearch] = useState("");
+  const [verificationStatusFilter, setVerificationStatusFilter] = useState<"all" | QuestVerification["status"]>("all");
+
   // ── Quest modal ──
   const DRAFT_KEY = "blockquest_quest_draft";
   const [showQuestModal, setShowQuestModal] = useState(false);
@@ -325,6 +334,38 @@ export default function AdminPage() {
     if (!matchesQuery) return false;
     if (statusFilter === "checked") return !!a.checked_in;
     if (statusFilter === "pending") return !a.checked_in;
+    return true;
+  });
+
+  // ─── Quest helpers ───────────────────────────────────────────────────────
+  const filteredQuests = quests.filter((q) => {
+    const query = questSearch.toLowerCase();
+    const matchesQuery =
+      !query ||
+      q.title.toLowerCase().includes(query) ||
+      q.id.toLowerCase().includes(query) ||
+      (q.description ?? "").toLowerCase().includes(query) ||
+      q.category.toLowerCase().includes(query);
+
+    if (!matchesQuery) return false;
+    if (questStatusFilter !== "all" && q.status !== questStatusFilter) return false;
+    if (questCategoryFilter !== "all" && q.category !== questCategoryFilter) return false;
+    return true;
+  });
+
+  // ─── Verification helpers ────────────────────────────────────────────────
+  const filteredVerifications = verifications.filter((v) => {
+    const query = verificationSearch.toLowerCase();
+    const matchesQuery =
+      !query ||
+      v.user_name.toLowerCase().includes(query) ||
+      v.user_email.toLowerCase().includes(query) ||
+      v.quest_title.toLowerCase().includes(query) ||
+      v.quest_id.toLowerCase().includes(query) ||
+      (v.ticket_code ?? "").toLowerCase().includes(query);
+
+    if (!matchesQuery) return false;
+    if (verificationStatusFilter !== "all" && v.status !== verificationStatusFilter) return false;
     return true;
   });
 
@@ -907,8 +948,45 @@ export default function AdminPage() {
         {/* ─── QUESTS TAB ─── */}
         {tab === "quests" && !loading && (
           <>
-            <div className="admin-toolbar">
-              <span className="admin-toolbar__count">{quests.length} quests total</span>
+            <div className="admin-toolbar" style={{ flexWrap: "wrap", gap: 10 }}>
+              <input
+                type="search"
+                placeholder="Search quests by title, ID, category, description..."
+                value={questSearch}
+                onChange={(e) => setQuestSearch(e.target.value)}
+                className="admin-search-input"
+                style={{ flex: "1 1 220px", minWidth: 200 }}
+              />
+
+              <select
+                value={questStatusFilter}
+                onChange={(e) => setQuestStatusFilter(e.target.value as any)}
+                className="admin-search-input"
+                style={{ width: "auto", padding: "8px 12px", cursor: "pointer" }}
+              >
+                <option value="all">All Statuses ({quests.length})</option>
+                <option value="Live">🟢 Live ({quests.filter((q) => q.status === "Live").length})</option>
+                <option value="Soon">🔜 Soon ({quests.filter((q) => q.status === "Soon").length})</option>
+                <option value="Draft">📝 Draft ({quests.filter((q) => q.status === "Draft").length})</option>
+                <option value="Done">✅ Done ({quests.filter((q) => q.status === "Done").length})</option>
+              </select>
+
+              <select
+                value={questCategoryFilter}
+                onChange={(e) => setQuestCategoryFilter(e.target.value as any)}
+                className="admin-search-input"
+                style={{ width: "auto", padding: "8px 12px", cursor: "pointer" }}
+              >
+                <option value="all">All Categories</option>
+                <option value="onboarding">🚀 Onboarding</option>
+                <option value="social">📣 Social</option>
+                <option value="daily">📅 Daily</option>
+              </select>
+
+              <span className="admin-toolbar__count" style={{ marginLeft: "auto" }}>
+                Showing {filteredQuests.length} of {quests.length} quests
+              </span>
+
               <button className="admin-refresh-btn" onClick={fetchQuests} title="Refresh">
                 ↻ Refresh
               </button>
@@ -933,14 +1011,16 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {quests.length === 0 ? (
+                  {filteredQuests.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="admin-table__empty">
-                        No quests yet. Add one!
+                        {questSearch || questStatusFilter !== "all" || questCategoryFilter !== "all"
+                          ? "No matching quests found."
+                          : "No quests yet. Add one!"}
                       </td>
                     </tr>
                   ) : (
-                    quests.map((q) => (
+                    filteredQuests.map((q) => (
                       <tr key={q.id} className="admin-table__row">
                         <td className="admin-table__num">{q.sort_order}</td>
                         <td>
@@ -1000,10 +1080,32 @@ export default function AdminPage() {
         {/* ─── VERIFICATIONS TAB ─── */}
         {tab === "verifications" && !loading && (
           <>
-            <div className="admin-toolbar">
-              <span className="admin-toolbar__count">
-                {verifications.filter((v) => v.status === "Pending").length} pending verifications
+            <div className="admin-toolbar" style={{ flexWrap: "wrap", gap: 10 }}>
+              <input
+                type="search"
+                placeholder="Search by quester name, email, quest title, ticket code..."
+                value={verificationSearch}
+                onChange={(e) => setVerificationSearch(e.target.value)}
+                className="admin-search-input"
+                style={{ flex: "1 1 220px", minWidth: 200 }}
+              />
+
+              <select
+                value={verificationStatusFilter}
+                onChange={(e) => setVerificationStatusFilter(e.target.value as any)}
+                className="admin-search-input"
+                style={{ width: "auto", padding: "8px 12px", cursor: "pointer" }}
+              >
+                <option value="all">All Verification Statuses ({verifications.length})</option>
+                <option value="Pending">⏳ Pending ({verifications.filter((v) => v.status === "Pending").length})</option>
+                <option value="Approved">✓ Approved ({verifications.filter((v) => v.status === "Approved").length})</option>
+                <option value="Rejected">✕ Rejected ({verifications.filter((v) => v.status === "Rejected").length})</option>
+              </select>
+
+              <span className="admin-toolbar__count" style={{ marginLeft: "auto" }}>
+                Showing {filteredVerifications.length} of {verifications.length} submissions
               </span>
+
               <button className="admin-refresh-btn" onClick={fetchVerifications} title="Refresh">
                 ↻ Refresh
               </button>
@@ -1024,14 +1126,16 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {verifications.length === 0 ? (
+                  {filteredVerifications.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="admin-table__empty">
-                        No pending quest proof submissions.
+                        {verificationSearch || verificationStatusFilter !== "all"
+                          ? "No matching quest verifications found."
+                          : "No quest proof submissions yet."}
                       </td>
                     </tr>
                   ) : (
-                    verifications.map((v, i) => (
+                    filteredVerifications.map((v, i) => (
                       <tr key={v.id} className="admin-table__row">
                         <td className="admin-table__num">{i + 1}</td>
                         <td className="admin-table__name">
