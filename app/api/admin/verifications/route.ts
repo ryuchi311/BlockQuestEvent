@@ -13,32 +13,7 @@ function getSupabase() {
 }
 
 // In-memory fallback array for dev/demo when Supabase table isn't migrated yet
-let memoryVerifications: any[] = [
-  {
-    id: 1,
-    quest_id: "follow-x",
-    quest_title: "Follow @BlockQuest on X",
-    user_name: "Jasper Cruz",
-    user_email: "jasper@example.com",
-    ticket_code: "BQF-7K9A2M",
-    xp: 100,
-    proof_url: "https://images.unsplash.com/photo-1611605698335-8b1569810432?w=500&auto=format&fit=crop&q=60",
-    status: "Pending",
-    created_at: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: 2,
-    quest_id: "join-tg",
-    quest_title: "Join BlockQuest PH Telegram",
-    user_name: "Mika Santos",
-    user_email: "mika@example.com",
-    ticket_code: "BQF-4L8X9P",
-    xp: 100,
-    proof_url: "https://images.unsplash.com/photo-1611262588024-d12430b98920?w=500&auto=format&fit=crop&q=60",
-    status: "Pending",
-    created_at: new Date(Date.now() - 7200000).toISOString(),
-  },
-];
+let memoryVerifications: any[] = [];
 
 // GET — fetch all verifications or filter by user email
 export async function GET(request: Request) {

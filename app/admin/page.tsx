@@ -1359,13 +1359,48 @@ export default function AdminPage() {
                     />
                   </label>
                   <label className="qf-label" style={{ marginTop: 10 }}>
-                    Description <span style={{ fontWeight: 400, textTransform: "none", fontSize: "0.75rem", color: "#64748b" }}>(optional)</span>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span>Description <small style={{ fontWeight: 400, color: "#64748b" }}>(supports line breaks & bullet points)</small></span>
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button
+                          type="button"
+                          className="qf-pill"
+                          style={{ padding: "2px 8px", fontSize: "0.7rem" }}
+                          onClick={() => setQuestForm((f) => ({
+                            ...f,
+                            description: (f.description ? f.description + "\n" : "") + "• Step 1:\n• Step 2:\n• Step 3:"
+                          }))}
+                          title="Insert bulleted list template"
+                        >
+                          + Bullet List
+                        </button>
+                        <button
+                          type="button"
+                          className="qf-pill"
+                          style={{ padding: "2px 8px", fontSize: "0.7rem" }}
+                          onClick={() => setQuestForm((f) => ({
+                            ...f,
+                            description: (f.description ? f.description + "\n" : "") + "1. Visit the page\n2. Complete action\n3. Take a screenshot"
+                          }))}
+                          title="Insert numbered list template"
+                        >
+                          + Numbered List
+                        </button>
+                      </div>
+                    </div>
                     <textarea
                       value={questForm.description ?? ""}
                       onChange={(e) => setQuestForm((f) => ({ ...f, description: e.target.value }))}
-                      placeholder="Short instructions for players…"
-                      rows={2}
+                      placeholder={`Format example:\n1. Follow @BlockQuest on X\n2. Retweet pinned tweet\n3. Upload screenshot proof below`}
+                      rows={5}
                       className="qf-input"
+                      style={{
+                        whiteSpace: "pre-wrap",
+                        fontFamily: "inherit",
+                        lineHeight: 1.5,
+                        minHeight: 100,
+                        resize: "vertical"
+                      }}
                     />
                   </label>
                 </div>
@@ -1508,7 +1543,7 @@ export default function AdminPage() {
                   </div>
 
                   {questForm.description && (
-                    <div className="quest-preview-card__desc">{questForm.description}</div>
+                    <div className="quest-preview-card__desc" style={{ whiteSpace: "pre-wrap" }}>{questForm.description}</div>
                   )}
 
                   <div className="quest-preview-card__footer">

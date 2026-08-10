@@ -66,13 +66,7 @@ const initialQuests: Quest[] = [
   }
 ];
 
-const initialLeaderboard = [
-  { rank: 1, name: "Jasper Cruz", points: 1280, change: "+120", accent: "leaderboard-item--gold" },
-  { rank: 2, name: "Mika Santos", points: 1165, change: "+88", accent: "leaderboard-item--silver" },
-  { rank: 3, name: "Nina Reyes", points: 1090, change: "+54", accent: "leaderboard-item--bronze" },
-  { rank: 4, name: "Ari Dela Vega", points: 960, change: "+42" },
-  { rank: 5, name: "Kai Mercado", points: 910, change: "+31" },
-];
+const initialLeaderboard: { rank: number; name: string; points: number; change: string; accent?: string }[] = [];
 
 export default function ZealyMobileApp() {
   const [activeTab, setActiveTab] = useState<"quests" | "leaderboard" | "info" | "profile">("quests");
@@ -159,8 +153,40 @@ export default function ZealyMobileApp() {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
-      setProofImage(reader.result as string);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_WIDTH = 1000;
+        const MAX_HEIGHT = 1000;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width = Math.round((width * MAX_HEIGHT) / height);
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          // Compress to JPEG 75% quality for lightweight payloads under high concurrency
+          const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.75);
+          setProofImage(compressedDataUrl);
+        } else {
+          setProofImage(event.target?.result as string);
+        }
+      };
+      img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
   };
@@ -440,7 +466,7 @@ export default function ZealyMobileApp() {
                             )}
                           </div>
                           <h3 className="quest-card__title">{q.title}</h3>
-                          <p className="quest-card__desc">{q.description}</p>
+                          <p className="quest-card__desc" style={{ whiteSpace: "pre-wrap" }}>{q.description}</p>
                         </div>
                         <div className="quest-card__footer">
                           <span className={`status-badge status-badge--${q.status.toLowerCase().replace(/\s+/g, "-")}`}>
@@ -503,7 +529,7 @@ export default function ZealyMobileApp() {
                                   <h3 className="quest-card__title" style={{ textDecoration: q.status === "Done" ? "line-through" : "none", color: "var(--text-secondary)" }}>
                                     {q.title}
                                   </h3>
-                                  <p className="quest-card__desc">{q.description}</p>
+                                  <p className="quest-card__desc" style={{ whiteSpace: "pre-wrap" }}>{q.description}</p>
                                 </div>
                                 <div className="quest-card__footer">
                                   <span className={`status-badge status-badge--${q.status.toLowerCase().replace(/\s+/g, "-")}`}>
@@ -871,7 +897,7 @@ export default function ZealyMobileApp() {
                   </button>
                 </div>
                 <div className="modal-xp-reward">Reward: {selectedQuest.xp} XP</div>
-                <p className="modal-body">{selectedQuest.description}</p>
+                <p className="modal-body" style={{ whiteSpace: "pre-wrap" }}>{selectedQuest.description}</p>
                 {selectedQuest.status === "Done" ? (
                   <div
                     style={{
