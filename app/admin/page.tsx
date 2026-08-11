@@ -1106,6 +1106,18 @@ export default function AdminPage() {
                 Showing {filteredVerifications.length} of {verifications.length} submissions
               </span>
 
+              <button
+                className={`admin-refresh-btn ${autoRefresh ? "admin-refresh-btn--active" : ""}`}
+                onClick={() => setAutoRefresh((prev) => !prev)}
+                title="Toggle 10s auto refresh"
+                style={{
+                  borderColor: autoRefresh ? "rgba(245,166,35,0.6)" : undefined,
+                  color: autoRefresh ? "var(--gold-light)" : undefined,
+                }}
+              >
+                {autoRefresh ? "⏱️ Auto (10s On)" : "⏱️ Auto (Off)"}
+              </button>
+
               <button className="admin-refresh-btn" onClick={fetchVerifications} title="Refresh">
                 ↻ Refresh
               </button>
