@@ -117,32 +117,49 @@ export default function ZealyMobileApp() {
     setActiveTab("quests");
   }
 
+  const [newQuestAlert, setNewQuestAlert] = useState<{ count: number; questTitle: string } | null>(null);
+  const previousQuestsCountRef = React.useRef<number | null>(null);
+
   // Dynamically sync quests from API
-  useEffect(() => {
-    async function loadApiQuests() {
-      try {
-        const res = await fetch("/api/admin/quests");
-        const json = await res.json();
-        if (res.ok && Array.isArray(json.quests) && json.quests.length > 0) {
-          const mappedQuests: Quest[] = json.quests.map((q: any) => ({
-            id: q.id,
-            title: q.title,
-            description: q.description || "",
-            xp: q.xp || 100,
-            status: q.status || "Soon",
-            category: q.category || "onboarding",
-            actionLabel: q.action_label || undefined,
-            actionUrl: q.action_url || undefined,
-            requiresProof: !!q.requires_proof,
-          }));
-          setQuests(mappedQuests);
+  const loadApiQuests = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/quests");
+      const json = await res.json();
+      if (res.ok && Array.isArray(json.quests)) {
+        const mappedQuests: Quest[] = json.quests.map((q: any) => ({
+          id: q.id,
+          title: q.title,
+          description: q.description || "",
+          xp: q.xp || 100,
+          status: q.status || "Soon",
+          category: q.category || "onboarding",
+          actionLabel: q.action_label || undefined,
+          actionUrl: q.action_url || undefined,
+          requiresProof: !!q.requires_proof,
+        }));
+
+        // Detect if new quests were published by admin
+        if (previousQuestsCountRef.current !== null && mappedQuests.length > previousQuestsCountRef.current) {
+          const diff = mappedQuests.length - previousQuestsCountRef.current;
+          const latestQuest = mappedQuests[mappedQuests.length - 1];
+          setNewQuestAlert({ count: diff, questTitle: latestQuest.title });
         }
-      } catch {
-        // Fallback to initialQuests
+        previousQuestsCountRef.current = mappedQuests.length;
+        setQuests(mappedQuests);
       }
+    } catch {
+      // Fallback to initialQuests
     }
-    loadApiQuests();
   }, []);
+
+  // Poll for new quests in background every 12 seconds
+  useEffect(() => {
+    loadApiQuests();
+    const interval = setInterval(() => {
+      loadApiQuests();
+    }, 12000);
+    return () => clearInterval(interval);
+  }, [loadApiQuests]);
 
   const handleQuestClick = (quest: Quest) => {
     if (quest.status === "Soon") return;
@@ -332,6 +349,56 @@ export default function ZealyMobileApp() {
               <span>⚡ LVL {userLevel}</span>
             </div>
           </header>
+
+          {/* Floating New Quest Notification Banner */}
+          {newQuestAlert && (
+            <div
+              onClick={() => {
+                setActiveTab("quests");
+                setNewQuestAlert(null);
+              }}
+              style={{
+                position: "absolute",
+                top: 74,
+                left: 14,
+                right: 14,
+                zIndex: 100,
+                background: "linear-gradient(135deg, rgba(245, 166, 35, 0.98) 0%, rgba(224, 133, 11, 0.98) 100%)",
+                border: "1px solid rgba(255, 255, 255, 0.4)",
+                borderRadius: 16,
+                padding: "12px 16px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+                boxShadow: "0 8px 24px rgba(245, 166, 35, 0.4)",
+                cursor: "pointer",
+                animation: "slideInDown 0.3s ease-out",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: "1.4rem" }}>🔔</span>
+                <div style={{ textShadow: "0 1px 2px rgba(0,0,0,0.2)" }}>
+                  <div style={{ color: "#100b02", fontWeight: 900, fontSize: "0.86rem", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                    🎉 New Quest Arrived! ({newQuestAlert.count})
+                  </div>
+                  <div style={{ color: "#2d1c03", fontSize: "0.78rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 200 }}>
+                    "{newQuestAlert.questTitle}"
+                  </div>
+                </div>
+              </div>
+              <span style={{
+                background: "#100b02",
+                color: "#fbbf24",
+                padding: "4px 10px",
+                borderRadius: 10,
+                fontSize: "0.74rem",
+                fontWeight: 800
+              }}>
+                View →
+              </span>
+            </div>
+          )}
 
           <div className="app-content-scroll">
             <div className="xp-card">
@@ -853,10 +920,29 @@ export default function ZealyMobileApp() {
           </div>
           <nav className="app-tabs">
             <button
-              onClick={() => setActiveTab("quests")}
+              onClick={() => {
+                setActiveTab("quests");
+                setNewQuestAlert(null);
+              }}
               className={`tab-btn ${activeTab === "quests" ? "tab-btn--active" : ""}`}
+              style={{ position: "relative" }}
             >
-              <span className="tab-icon">🎯</span>
+              <span className="tab-icon" style={{ position: "relative" }}>
+                🎯
+                {newQuestAlert && (
+                  <span style={{
+                    position: "absolute",
+                    top: -2,
+                    right: -4,
+                    width: 10,
+                    height: 10,
+                    borderRadius: "50%",
+                    background: "#ef4444",
+                    border: "2px solid #0f0f19",
+                    boxShadow: "0 0 8px #ef4444"
+                  }} />
+                )}
+              </span>
               <span className="tab-label">Quests</span>
             </button>
             <button
