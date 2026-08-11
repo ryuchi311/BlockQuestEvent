@@ -924,23 +924,12 @@ export default function ZealyMobileApp() {
                 setActiveTab("quests");
                 setNewQuestAlert(null);
               }}
-              className={`tab-btn ${activeTab === "quests" ? "tab-btn--active" : ""}`}
-              style={{ position: "relative" }}
+              className={`tab-btn tab-btn--relative ${activeTab === "quests" ? "tab-btn--active" : ""}`}
             >
-              <span className="tab-icon" style={{ position: "relative" }}>
+              <span className="tab-icon tab-icon--relative">
                 🎯
                 {newQuestAlert && (
-                  <span style={{
-                    position: "absolute",
-                    top: -2,
-                    right: -4,
-                    width: 10,
-                    height: 10,
-                    borderRadius: "50%",
-                    background: "#ef4444",
-                    border: "2px solid #0f0f19",
-                    boxShadow: "0 0 8px #ef4444"
-                  }} />
+                  <span className="tab-unread-dot" />
                 )}
               </span>
               <span className="tab-label">Quests</span>
