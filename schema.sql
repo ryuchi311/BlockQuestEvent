@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS public.registrations (
   agreed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  ticket_code TEXT UNIQUE
+  ticket_code TEXT UNIQUE,
+  total_xp INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS registrations_created_at_idx
@@ -96,4 +97,17 @@ GRANT ALL ON TABLE public.quest_verifications TO postgres, service_role, anon, a
 
 -- Optional migration statement if table was created in an earlier version:
 ALTER TABLE public.quest_verifications ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+
+
+-- Quest Completions table to track claimed XP
+CREATE TABLE IF NOT EXISTS public.quest_completions (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  quest_id TEXT NOT NULL,
+  user_email TEXT NOT NULL,
+  xp_awarded INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(quest_id, user_email)
+);
+
+GRANT ALL ON TABLE public.quest_completions TO postgres, service_role, anon, authenticated;
 

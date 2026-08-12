@@ -8,7 +8,7 @@ interface Quest {
   title: string;
   description: string;
   xp: number;
-  status: "Live" | "Soon" | "Done" | "Pending Verification";
+  status: "Live" | "Soon" | "Done" | "Pending Verification" | "Approved" | "Rejected";
   category: "onboarding" | "social" | "daily";
   actionLabel?: string;
   actionUrl?: string;
@@ -71,15 +71,39 @@ const initialLeaderboard: { rank: number; name: string; points: number; change: 
 export default function ZealyMobileApp() {
   const [mounted, setMounted] = React.useState(false);
   const [activeTab, setActiveTab] = useState<"quests" | "leaderboard" | "info" | "profile">("quests");
-  const [quests, setQuests] = useState<Quest[]>(initialQuests);
+  const [quests, setQuests] = useState<Quest[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("bq_quests");
+      if (saved) return JSON.parse(saved);
+    }
+    return initialQuests;
+  });
   const [leaderboard, setLeaderboard] = useState(initialLeaderboard);
-  const [userXp, setUserXp] = useState(0);
-  const [userRank, setUserRank] = useState(12);
+  const [userXp, setUserXp] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("bq_xp");
+      if (saved) return Number(saved);
+    }
+    return 0;
+  });
+  const [userRank, setUserRank] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("bq_rank");
+      if (saved) return Number(saved);
+    }
+    return 12;
+  });
   const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [proofImage, setProofImage] = useState<string | null>(null);
   const [proofSubmitting, setProofSubmitting] = useState(false);
-  const [visitedActions, setVisitedActions] = useState<Record<string, boolean>>({});
+  const [visitedActions, setVisitedActions] = useState<Record<string, boolean>>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("bq_visited");
+      if (saved) return JSON.parse(saved);
+    }
+    return {};
+  });
   const [userVerifications, setUserVerifications] = useState<any[]>([]);
   const [showCompletedQuests, setShowCompletedQuests] = useState(false);
 
@@ -88,10 +112,29 @@ export default function ZealyMobileApp() {
   const [ticketCountryCode, setTicketCountryCode] = useState("+63");
   const [ticketMobileNum, setTicketMobileNum] = useState("");
   const [ticketPassword, setTicketPassword] = useState("");
-  const [authenticatedUser, setAuthenticatedUser] = useState<any>(null);
-  const [qrPass, setQrPass] = useState<any>(null);
+  const [authenticatedUser, setAuthenticatedUser] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("bq_user");
+      if (saved) return JSON.parse(saved);
+    }
+    return null;
+  });
+  const [qrPass, setQrPass] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("bq_qr");
+      if (saved) return JSON.parse(saved);
+    }
+    return null;
+  });
   const [ticketError, setTicketError] = useState("");
   const [ticketLoading, setTicketLoading] = useState(false);
+  const [claimedQuestIds, setClaimedQuestIds] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("bq_claimed");
+      if (saved) return JSON.parse(saved);
+    }
+    return [];
+  });
 
   // Inactivity tracking state
   const [inactivityWarning, setInactivityWarning] = useState(false);
@@ -119,7 +162,9 @@ export default function ZealyMobileApp() {
       localStorage.removeItem("bq_rank");
       localStorage.removeItem("bq_quests");
       localStorage.removeItem("bq_visited");
+      localStorage.removeItem("bq_claimed");
     }
+    setClaimedQuestIds([]);
   }
 
   const resetInactivityTimer = React.useCallback(() => {
@@ -138,24 +183,8 @@ export default function ZealyMobileApp() {
     }
   }, [authenticatedUser]);
 
-  // Load state from localStorage on mount
   React.useEffect(() => {
     setMounted(true);
-    if (typeof window !== "undefined") {
-      const savedUser = localStorage.getItem("bq_user");
-      const savedQr = localStorage.getItem("bq_qr");
-      const savedXp = localStorage.getItem("bq_xp");
-      const savedRank = localStorage.getItem("bq_rank");
-      const savedQuests = localStorage.getItem("bq_quests");
-      const savedVisited = localStorage.getItem("bq_visited");
-
-      if (savedUser) setAuthenticatedUser(JSON.parse(savedUser));
-      if (savedQr) setQrPass(JSON.parse(savedQr));
-      if (savedXp) setUserXp(Number(savedXp));
-      if (savedRank) setUserRank(Number(savedRank));
-      if (savedQuests) setQuests(JSON.parse(savedQuests));
-      if (savedVisited) setVisitedActions(JSON.parse(savedVisited));
-    }
   }, []);
 
   // Save states to localStorage when they change
@@ -196,6 +225,11 @@ export default function ZealyMobileApp() {
     if (!mounted) return;
     localStorage.setItem("bq_visited", JSON.stringify(visitedActions));
   }, [visitedActions, mounted]);
+
+  React.useEffect(() => {
+    if (!mounted) return;
+    localStorage.setItem("bq_claimed", JSON.stringify(claimedQuestIds));
+  }, [claimedQuestIds, mounted]);
 
   // Event listeners for user activity tracking
   React.useEffect(() => {
@@ -279,21 +313,119 @@ export default function ZealyMobileApp() {
           setNewQuestAlert({ count: diff, questTitle: latestQuest.title });
         }
         previousQuestsCountRef.current = mappedQuests.length;
-        setQuests(mappedQuests);
+
+        // Preserve local quest statuses (Done, Pending Verification, Approved) when merging API updates
+        setQuests((prevQuests) => {
+          return mappedQuests.map((newQ) => {
+            const existing = prevQuests.find((p) => p.id === newQ.id);
+            if (existing && (existing.status === "Done" || existing.status === "Pending Verification" || existing.status === "Approved")) {
+              return { ...newQ, status: existing.status };
+            }
+            return newQ;
+          });
+        });
       }
     } catch {
       // Fallback to initialQuests
     }
   }, []);
 
-  // Poll for new quests in background every 12 seconds
+  const fetchUserVerifications = React.useCallback(async () => {
+    const email = ticketEmail || authenticatedUser?.email || qrPass?.email || "quester@blockquest.ph";
+    try {
+      const res = await fetch(`/api/admin/verifications?email=${encodeURIComponent(email)}`);
+      const json = await res.json();
+      if (res.ok && Array.isArray(json.verifications)) {
+        setUserVerifications(json.verifications);
+      }
+    } catch {
+      // ignore
+    }
+  }, [ticketEmail, authenticatedUser, qrPass]);
+
+  const fetchLeaderboard = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/leaderboard");
+      const json = await res.json();
+      if (res.ok && Array.isArray(json.leaderboard)) {
+        setLeaderboard(json.leaderboard);
+        const myEmail = ticketEmail || authenticatedUser?.email || qrPass?.email;
+        if (myEmail) {
+          const myEntry = json.leaderboard.find((u: any) => u.email === myEmail);
+          if (myEntry) setUserRank(myEntry.rank);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [ticketEmail, authenticatedUser, qrPass]);
+
+  const syncUserData = React.useCallback(async () => {
+    const email = ticketEmail || authenticatedUser?.email || qrPass?.email;
+    if (!email) return;
+
+    try {
+      const res = await fetch(`/api/user/sync?email=${encodeURIComponent(email)}`);
+      const json = await res.json();
+      if (!res.ok) return;
+
+      const { totalXp, completedQuests, verifications } = json;
+
+      if (typeof totalXp === "number") {
+        setUserXp(totalXp);
+      }
+
+      const compSet = new Set<string>(completedQuests || []);
+      const verifMap = new Map<string, string>();
+      (verifications || []).forEach((v: any) => {
+        if (!verifMap.has(v.quest_id)) {
+          verifMap.set(v.quest_id, v.status);
+        }
+      });
+
+      setQuests((prevQuests) =>
+        prevQuests.map((q) => {
+          if (compSet.has(q.id)) {
+            return { ...q, status: "Done" };
+          }
+          const vStatus = verifMap.get(q.id);
+          if (vStatus === "Pending") {
+            return { ...q, status: "Pending Verification" };
+          }
+          if (vStatus === "Approved") {
+            return { ...q, status: "Approved" };
+          }
+          if (vStatus === "Rejected") {
+            return { ...q, status: "Rejected" };
+          }
+          return q;
+        })
+      );
+    } catch {
+      // ignore
+    }
+  }, [ticketEmail, authenticatedUser, qrPass]);
+
+  useEffect(() => {
+    fetchUserVerifications();
+    fetchLeaderboard();
+    syncUserData();
+  }, [fetchUserVerifications, fetchLeaderboard, syncUserData, activeTab]);
+
+  // Poll for new quests, verifications & user state sync every 8 seconds
   useEffect(() => {
     loadApiQuests();
+    fetchUserVerifications();
+    fetchLeaderboard();
+    syncUserData();
     const interval = setInterval(() => {
       loadApiQuests();
-    }, 12000);
+      fetchUserVerifications();
+      fetchLeaderboard();
+      syncUserData();
+    }, 8000);
     return () => clearInterval(interval);
-  }, [loadApiQuests]);
+  }, [loadApiQuests, fetchUserVerifications, fetchLeaderboard, syncUserData]);
 
   const handleQuestClick = (quest: Quest) => {
     if (quest.status === "Soon") return;
@@ -342,26 +474,10 @@ export default function ZealyMobileApp() {
     reader.readAsDataURL(file);
   };
 
-  const fetchUserVerifications = React.useCallback(async () => {
-    const email = ticketEmail || authenticatedUser?.email || qrPass?.email;
-    if (!email) return;
-    try {
-      const res = await fetch(`/api/admin/verifications?email=${encodeURIComponent(email)}`);
-      const json = await res.json();
-      if (res.ok && Array.isArray(json.verifications)) {
-        setUserVerifications(json.verifications);
-      }
-    } catch {
-      // ignore
-    }
-  }, [ticketEmail, authenticatedUser, qrPass]);
-
-  useEffect(() => {
-    fetchUserVerifications();
-  }, [fetchUserVerifications, activeTab]);
+  // Supabase syncUserData handles total XP and quest status sync seamlessly
 
   const handleSubmitProof = async () => {
-    if (!selectedQuest || !proofImage) return;
+    if (!selectedQuest || !proofImage || selectedQuest.status === "Done" || selectedQuest.status === "Pending Verification") return;
     setProofSubmitting(true);
     try {
       await fetch("/api/admin/verifications", {
@@ -390,10 +506,24 @@ export default function ZealyMobileApp() {
     }
   };
 
-  const handleClaimXp = () => {
-    if (!selectedQuest) return;
+  const handleClaimXp = async () => {
+    if (!selectedQuest || selectedQuest.status === "Done" || selectedQuest.status === "Pending Verification") return;
     setClaiming(true);
-    setTimeout(() => {
+    try {
+      const email = ticketEmail || authenticatedUser?.email || qrPass?.email || "quester@blockquest.ph";
+      await fetch("/api/user/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quest_id: selectedQuest.id,
+          user_email: email,
+          xp: selectedQuest.xp,
+        }),
+      });
+
+      if (selectedQuest.requiresProof) {
+        setClaimedQuestIds((prev) => [...prev, selectedQuest.id]);
+      }
       setUserXp((prev) => prev + selectedQuest.xp);
       setQuests((prevQuests) =>
         prevQuests.map((q) => (q.id === selectedQuest.id ? { ...q, status: "Done" } : q))
@@ -401,9 +531,13 @@ export default function ZealyMobileApp() {
       if (selectedQuest.id === "register" || selectedQuest.id === "checkin") {
         setUserRank(6);
       }
+    } catch {
+      alert("Claim error. Please try again.");
+    } finally {
       setClaiming(false);
       setSelectedQuest(null);
-    }, 1200);
+      fetchLeaderboard();
+    }
   };
 
   const handleLinkTicket = async (e: React.FormEvent) => {
@@ -449,15 +583,41 @@ export default function ZealyMobileApp() {
         passCode: qrResult.passCode,
         qrDataUrl: qrResult.qrDataUrl,
       });
+
+      const completedIds = loginResult.completedQuests || [];
+      const hasRegister = completedIds.includes("register");
+
+      // Restore existing completions and XP from database
       setQuests((prevQuests) =>
-        prevQuests.map((q) => (q.id === "register" ? { ...q, status: "Done" } : q))
+        prevQuests.map((q) => (completedIds.includes(q.id) ? { ...q, status: "Done" } : q))
       );
-      setUserXp((prev) => prev + 250);
-      setUserRank(6);
+      setUserXp(loginResult.totalXp || 0);
+
+      // Only reward registration XP if they haven't claimed it yet
+      if (!hasRegister) {
+        setQuests((prevQuests) =>
+          prevQuests.map((q) => (q.id === "register" ? { ...q, status: "Done" } : q))
+        );
+        setUserXp((prev) => prev + 250);
+        try {
+          await fetch("/api/user/claim", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              quest_id: "register",
+              user_email: loginResult.email,
+              xp: 250,
+            }),
+          });
+        } catch (e) {
+          console.warn("Failed to save registration quest XP", e);
+        }
+      }
     } catch (err) {
       setTicketError("Connection error. Please try again.");
     } finally {
       setTicketLoading(false);
+      fetchLeaderboard();
     }
   };
 
@@ -649,14 +809,21 @@ export default function ZealyMobileApp() {
                   <div className="quest-list">
                     {/* Active / In Progress Quests */}
                     <div className="quest-category__title">
-                      <span>⚡ Active Quests ({quests.filter((q) => q.status === "Live" || q.status === "Soon").length})</span>
+                      <span>⚡ Active Quests ({quests.filter((q) => q.status === "Live" || q.status === "Soon" || q.status === "Approved" || q.status === "Rejected").length})</span>
                     </div>
 
-                    {quests.filter((q) => q.status === "Live" || q.status === "Soon").map((q) => (
+                    {quests.filter((q) => q.status === "Live" || q.status === "Soon" || q.status === "Approved" || q.status === "Rejected").map((q) => (
                       <div
                         key={q.id}
                         className={`quest-card quest-card--${q.status.toLowerCase().replace(/\s+/g, "-")}`}
                         onClick={() => handleQuestClick(q)}
+                        style={
+                          q.status === "Approved"
+                            ? { border: "1px solid rgba(16, 185, 129, 0.5)", background: "linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(20, 20, 30, 0.9) 100%)" }
+                            : q.status === "Rejected"
+                            ? { border: "1px solid rgba(239, 68, 68, 0.5)", background: "linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(20, 20, 30, 0.9) 100%)" }
+                            : undefined
+                        }
                       >
                         <div className="quest-card__body">
                           <div className="quest-card__meta">
@@ -664,7 +831,7 @@ export default function ZealyMobileApp() {
                               {q.category}
                             </span>
                             <span className="xp-badge">+{q.xp} XP</span>
-                            {q.requiresProof && (
+                            {q.requiresProof && q.status !== "Approved" && (
                               <span style={{ fontSize: "0.7rem", padding: "2px 8px", borderRadius: "10px", background: "rgba(139, 92, 246, 0.2)", color: "#a78bfa", border: "1px solid rgba(139, 92, 246, 0.3)" }}>
                                 📷 Proof Required
                               </span>
@@ -674,10 +841,20 @@ export default function ZealyMobileApp() {
                           <p className="quest-card__desc" style={{ whiteSpace: "pre-wrap" }}>{q.description}</p>
                         </div>
                         <div className="quest-card__footer">
-                          <span className={`status-badge status-badge--${q.status.toLowerCase().replace(/\s+/g, "-")}`}>
-                            {q.status}
-                          </span>
-                          {q.status !== "Soon" && q.status !== "Done" && q.status !== "Pending Verification" && (
+                          {q.status === "Approved" ? (
+                            <span style={{ fontSize: "0.76rem", padding: "4px 10px", borderRadius: "10px", background: "rgba(16, 185, 129, 0.25)", color: "#34d399", border: "1px solid rgba(16, 185, 129, 0.4)", fontWeight: 800 }}>
+                              🎉 Ready to Claim XP →
+                            </span>
+                          ) : q.status === "Rejected" ? (
+                            <span style={{ fontSize: "0.76rem", padding: "4px 10px", borderRadius: "10px", background: "rgba(239, 68, 68, 0.25)", color: "#f87171", border: "1px solid rgba(239, 68, 68, 0.4)", fontWeight: 800 }}>
+                              ❌ Proof Rejected - Try Again →
+                            </span>
+                          ) : (
+                            <span className={`status-badge status-badge--${q.status.toLowerCase().replace(/\s+/g, "-")}`}>
+                              {q.status}
+                            </span>
+                          )}
+                          {q.status !== "Soon" && q.status !== "Done" && q.status !== "Pending Verification" && q.status !== "Approved" && q.status !== "Rejected" && (
                             <span className="quest-card__arrow">→</span>
                           )}
                         </div>
@@ -774,22 +951,50 @@ export default function ZealyMobileApp() {
                 </div>
 
                 <div className="leaderboard-list">
-                  {leaderboard.map((item) => (
-                    <div
-                      key={item.rank}
-                      className={`leaderboard-item ${item.accent ?? ""}`}
-                    >
-                      <div className="leaderboard-item__rank">#{item.rank}</div>
-                      <div className="leaderboard-item__info">
-                        <div className="leaderboard-item__name">{item.name}</div>
-                        <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>Rank #{item.rank}</div>
+                  {leaderboard.map((item: any) => {
+                    const myEmail = ticketEmail || authenticatedUser?.email || qrPass?.email;
+                    const isCurrentUser = myEmail && item.email && item.email.toLowerCase() === myEmail.toLowerCase();
+
+                    return (
+                      <div
+                        key={item.rank}
+                        className={`leaderboard-item ${item.accent ?? ""}`}
+                        style={
+                          isCurrentUser
+                            ? {
+                                border: "1.5px solid var(--gold-light)",
+                                background: "linear-gradient(135deg, rgba(245, 166, 35, 0.25) 0%, rgba(20, 20, 30, 0.95) 100%)",
+                                boxShadow: "0 0 15px rgba(245, 166, 35, 0.35)",
+                                transform: "scale(1.01)",
+                              }
+                            : undefined
+                        }
+                      >
+                        <div className="leaderboard-item__rank" style={isCurrentUser ? { color: "var(--gold-light)", fontWeight: 900 } : undefined}>
+                          #{item.rank}
+                        </div>
+                        <div className="leaderboard-item__info">
+                          <div className="leaderboard-item__name" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span>{item.name}</span>
+                            {isCurrentUser && (
+                              <span style={{ fontSize: "0.65rem", padding: "1px 6px", borderRadius: 8, background: "var(--gold-light)", color: "#000", fontWeight: 900, textTransform: "uppercase" }}>
+                                YOU
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: "0.78rem", color: isCurrentUser ? "var(--gold-light)" : "var(--text-secondary)" }}>
+                            {isCurrentUser ? "🌟 Your Current Rank" : `Rank #${item.rank}`}
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+                          <div className="leaderboard-item__xp" style={isCurrentUser ? { color: "#fff", fontWeight: 900, fontSize: "1rem" } : undefined}>
+                            {item.points} XP
+                          </div>
+                          <div className="leaderboard-item__change">{item.change}</div>
+                        </div>
                       </div>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-                        <div className="leaderboard-item__xp">{item.points} XP</div>
-                        <div className="leaderboard-item__change">{item.change}</div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1117,7 +1322,7 @@ export default function ZealyMobileApp() {
             >
               <span className="tab-icon tab-icon--relative">
                 🎯
-                {newQuestAlert && (
+                {(newQuestAlert || quests.some((q) => q.status === "Approved" || q.status === "Rejected")) && (
                   <span className="tab-unread-dot" />
                 )}
               </span>
@@ -1241,7 +1446,24 @@ export default function ZealyMobileApp() {
                             </div>
                           )}
 
-                          {selectedQuest.requiresProof ? (
+                          {selectedQuest.status === "Approved" && (
+                            <div
+                              style={{
+                                textAlign: "center",
+                                padding: "12px",
+                                background: "rgba(16, 185, 129, 0.15)",
+                                color: "#34d399",
+                                borderRadius: "12px",
+                                fontWeight: 800,
+                                marginBottom: "14px",
+                                border: "1px solid rgba(16, 185, 129, 0.3)",
+                              }}
+                            >
+                              🎉 Proof Approved by Admin!
+                            </div>
+                          )}
+
+                          {selectedQuest.requiresProof && selectedQuest.status !== "Approved" ? (
                             <div style={{ marginTop: 8, marginBottom: 16, background: "rgba(255,255,255,0.03)", padding: 14, borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)" }}>
                               <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--gold-light)", display: "block", marginBottom: 8 }}>
                                 📷 Upload Proof Screenshot Required:

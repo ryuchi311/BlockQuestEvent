@@ -15,6 +15,14 @@ function getSupabase() {
 // In-memory fallback array for dev/demo when Supabase table isn't migrated yet
 let memoryVerifications: any[] = [];
 
+const QUEST_TITLES: Record<string, string> = {
+  "register": "Register for BlockQuest Fiesta PH",
+  "checkin": "Complete physical check-in",
+  "follow-x": "Follow @BlockQuest on X",
+  "join-tg": "Join BlockQuest PH Telegram",
+  "daily-claim": "Daily Check-in"
+};
+
 // GET — fetch all verifications or filter by user email
 export async function GET(request: Request) {
   try {
@@ -22,19 +30,57 @@ export async function GET(request: Request) {
     const email = searchParams.get("email")?.trim().toLowerCase();
 
     const supabase = getSupabase();
-    let query = supabase.from("quest_verifications").select("*").order("created_at", { ascending: false });
 
     if (email) {
-      query = query.ilike("user_email", email);
+      // Fetch screenshot verifications from Supabase
+      const { data: verifs } = await supabase
+        .from("quest_verifications")
+        .select("*")
+        .ilike("user_email", email);
+
+      // Fetch user ID to get instant completions
+      const { data: user } = await supabase
+        .from("registrations")
+        .select("id")
+        .ilike("email", email)
+        .maybeSingle();
+
+      let completions: any[] = [];
+      if (user) {
+        const { data: compData } = await supabase
+          .from("quest_completions")
+          .select("*")
+          .eq("registration_id", user.id);
+        completions = compData || [];
+      }
+
+      // Map instant claims into activity log entries
+      const formattedCompletions = completions.map((c: any) => ({
+        id: `comp_${c.id}`,
+        quest_id: c.quest_id,
+        quest_title: QUEST_TITLES[c.quest_id] || c.quest_id,
+        user_email: email,
+        xp: c.xp_awarded,
+        status: "Approved",
+        created_at: c.created_at,
+        is_instant: true,
+      }));
+
+      const combined = [...(verifs || []), ...formattedCompletions].sort(
+        (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      return NextResponse.json({ verifications: combined });
     }
 
-    const { data, error } = await query;
+    // Admin view: fetch all proof verifications
+    const { data, error } = await supabase
+      .from("quest_verifications")
+      .select("*")
+      .order("created_at", { ascending: false });
 
     if (error || !data) {
-      const filtered = email
-        ? memoryVerifications.filter((v) => v.user_email?.toLowerCase() === email)
-        : memoryVerifications;
-      return NextResponse.json({ verifications: filtered });
+      return NextResponse.json({ verifications: memoryVerifications });
     }
     return NextResponse.json({ verifications: data });
   } catch {
@@ -124,11 +170,13 @@ export async function POST(request: Request) {
         .select()
         .single();
 
-      if (!error && data) {
+      if (error) {
+        console.warn("quest_verifications insert error:", error);
+      } else if (data) {
         return NextResponse.json({ verification: data }, { status: 201 });
       }
-    } catch {
-      // Fallback to memory
+    } catch (err: any) {
+      console.warn("Falling back to in-memory verifications. DB Error:", err.message);
     }
 
     memoryVerifications.unshift(newRecord);
@@ -154,6 +202,15 @@ export async function PATCH(request: Request) {
 
     try {
       const supabase = getSupabase();
+      
+      // 1. Fetch current verification to know the XP and User
+      const { data: currentVerif } = await supabase
+        .from("quest_verifications")
+        .select("user_email, xp, status, quest_id")
+        .eq("id", id)
+        .single();
+        
+      // 2. Update the verification status
       const { data, error } = await supabase
         .from("quest_verifications")
         .update(updatePayload)
@@ -162,6 +219,30 @@ export async function PATCH(request: Request) {
         .single();
 
       if (!error && data) {
+        // 3. If just approved, award the XP to the user in registrations
+        if (status === "Approved" && currentVerif && currentVerif.status !== "Approved") {
+          const { data: user } = await supabase
+            .from("registrations")
+            .select("id, total_xp")
+            .eq("email", currentVerif.user_email)
+            .single();
+            
+          if (user) {
+            await supabase
+              .from("registrations")
+              .update({ total_xp: (user.total_xp || 0) + (currentVerif.xp || 0) })
+              .eq("id", user.id);
+              
+            // Also insert into quest_completions to mark it done
+            await supabase
+              .from("quest_completions")
+              .insert({
+                quest_id: currentVerif.quest_id,
+                registration_id: user.id,
+                xp_awarded: currentVerif.xp
+              });
+          }
+        }
         return NextResponse.json({ verification: data });
       }
     } catch {

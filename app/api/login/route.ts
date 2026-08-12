@@ -45,7 +45,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabase
     .from("registrations")
-    .select("id, full_name, email, phone, password_hash")
+    .select("id, full_name, email, phone, password_hash, total_xp")
     .eq("email", email)
     .maybeSingle();
 
@@ -61,9 +61,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid email or phone number." }, { status: 401 });
   }
 
+  // Fetch completed quests to restore UI state
+  const { data: completions } = await supabase
+    .from("quest_completions")
+    .select("quest_id, xp_awarded")
+    .eq("registration_id", data.id);
+
+  const { data: verifications } = await supabase
+    .from("quest_verifications")
+    .select("xp")
+    .eq("user_email", email)
+    .eq("status", "Approved");
+
+  const compXp = (completions || []).reduce((sum, c: any) => sum + (c.xp_awarded || 0), 0);
+  const verifXp = (verifications || []).reduce((sum, v: any) => sum + (v.xp || 0), 0);
+  const exactTotalXp = compXp + verifXp;
+
+  // Sync registrations table total_xp
+  if (data.total_xp !== exactTotalXp) {
+    await supabase
+      .from("registrations")
+      .update({ total_xp: exactTotalXp })
+      .eq("id", data.id);
+  }
+
   return NextResponse.json({
     message: "Login successful.",
     fullName: data.full_name,
     email: data.email,
+    totalXp: exactTotalXp,
+    completedQuests: (completions || []).map((c: any) => c.quest_id),
   });
 }
