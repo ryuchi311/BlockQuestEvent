@@ -69,6 +69,11 @@ const initialQuests: Quest[] = [
 const initialLeaderboard: { rank: number; name: string; points: number; change: string; accent?: string }[] = [];
 
 export default function ZealyMobileApp() {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const [activeTab, setActiveTab] = useState<"quests" | "leaderboard" | "info" | "profile">("quests");
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
   const [leaderboard, setLeaderboard] = useState(initialLeaderboard);
@@ -327,6 +332,8 @@ export default function ZealyMobileApp() {
     }
   };
 
+  if (!mounted) return null;
+
   return (
     <main className="zealy-page">
       <div className="mobile-simulator">
@@ -401,41 +408,43 @@ export default function ZealyMobileApp() {
           )}
 
           <div className="app-content-scroll">
-            <div className="xp-card">
-              {authenticatedUser && (
-                <p style={{
-                  fontSize: "0.7rem",
-                  fontWeight: 700,
-                  color: "rgba(255,255,255,0.45)",
-                  marginBottom: 6,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                }}>
-                  ⚡ {authenticatedUser.fullName || authenticatedUser.email}
+            {activeTab !== "profile" && activeTab !== "info" && (
+              <div className="xp-card">
+                {authenticatedUser && (
+                  <p style={{
+                    fontSize: "0.7rem",
+                    fontWeight: 700,
+                    color: "rgba(255,255,255,0.45)",
+                    marginBottom: 6,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                  }}>
+                    ⚡ {authenticatedUser.fullName || authenticatedUser.email}
+                  </p>
+                )}
+                <div className="xp-card__info">
+                  <div>
+                    <p className="xp-card__label">Total Experience</p>
+                    <h2 className="xp-card__value">{userXp} XP</h2>
+                  </div>
+                  <div className="xp-card__badge">
+                    Rank #{userRank}
+                  </div>
+                </div>
+                <div className="xp-card__bar-bg">
+                  <div
+                    className="xp-card__bar-fill"
+                    style={{ width: `${xpProgressPercentage}%` }}
+                  ></div>
+                </div>
+                <p className="xp-card__hint">
+                  {300 - xpInCurrentLevel} XP until Level {userLevel + 1}
                 </p>
-              )}
-              <div className="xp-card__info">
-                <div>
-                  <p className="xp-card__label">Total Experience</p>
-                  <h2 className="xp-card__value">{userXp} XP</h2>
-                </div>
-                <div className="xp-card__badge">
-                  Rank #{userRank}
-                </div>
               </div>
-              <div className="xp-card__bar-bg">
-                <div
-                  className="xp-card__bar-fill"
-                  style={{ width: `${xpProgressPercentage}%` }}
-                ></div>
-              </div>
-              <p className="xp-card__hint">
-                {300 - xpInCurrentLevel} XP until Level {userLevel + 1}
-              </p>
-            </div>
+            )}
             {activeTab === "quests" && (
               <div className="zealy-tab-content">
                 <div className="section-head">
@@ -665,17 +674,68 @@ export default function ZealyMobileApp() {
                 </div>
                 <article className="info-card">
                   <h3>📍 Event Location</h3>
-                  <p>Grand Ballroom, Okada Manila, Pasay City, Philippines</p>
+                  <p>CABS Cabuyao City, Laguna, Philippines</p>
+                  <a
+                    href="https://maps.app.goo.gl/b4viLwYhJUQpGYiT9"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: "var(--gold-light)", fontSize: "0.8rem", textDecoration: "underline", display: "inline-block", marginTop: "4px" }}
+                  >
+                    View on Google Maps →
+                  </a>
                 </article>
                 <article className="info-card">
                   <h3>🗓️ Date & Time</h3>
-                  <p>Saturday, October 17, 2026 • 9:00 AM – 6:00 PM PHT</p>
+                  <p>Saturday, October 17, 2026 • 8:00 AM – 7:30 PM PHT</p>
                 </article>
                 <article className="info-card">
                   <h3>⚡ Event Highlights</h3>
-                  <p style={{ marginBottom: "6px" }}>• <strong>Keynotes:</strong> Global Web3 builders & founders.</p>
-                  <p style={{ marginBottom: "6px" }}>• <strong>Web3 Gaming Arena:</strong> Live tournaments and presentations.</p>
-                  <p>• <strong>Hacker Hub:</strong> Code and pitch panels.</p>
+                  <p style={{ marginBottom: "6px" }}>• <strong>Interactive Quests:</strong> Sponsor booth activations & ticket farming.</p>
+                  <p style={{ marginBottom: "6px" }}>• <strong>Esports & Gaming:</strong> Tournaments and presentations.</p>
+                  <p style={{ marginBottom: "6px" }}>• <strong>Talks & Panels:</strong> Web3, Crypto, and Forex discussions.</p>
+                  <p>• <strong>Food Fair & Live Shows:</strong> Fiesta performances, food stalls, and prizes.</p>
+                </article>
+                <article className="info-card">
+                  <h3>📅 Program Schedule</h3>
+                  <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "10px" }}>
+                    <li style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "6px" }}>
+                      <span style={{ color: "var(--text-secondary)" }}>8:00 AM - 2:00 PM</span>
+                      <strong style={{ color: "#fff" }}>Registration</strong>
+                    </li>
+                    <li style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "6px" }}>
+                      <span style={{ color: "var(--text-secondary)" }}>8:00 AM - 5:00 PM</span>
+                      <strong style={{ color: "var(--gold-light)" }}>🎯 Questing Time</strong>
+                    </li>
+                    <li style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "6px" }}>
+                      <span style={{ color: "var(--text-secondary)" }}>10:00 AM - 11:00 AM</span>
+                      <strong style={{ color: "#fff" }}>Opening Ceremony</strong>
+                    </li>
+                    <li style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "6px" }}>
+                      <span style={{ color: "var(--text-secondary)" }}>11:00 AM - 12:00 PM</span>
+                      <strong style={{ color: "#fff" }}>Panel Talks with Sponsors</strong>
+                    </li>
+                    <li style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "6px" }}>
+                      <span style={{ color: "var(--text-secondary)" }}>12:00 PM - 6:30 PM</span>
+                      <strong style={{ color: "#fff" }}>Interactive Activities</strong>
+                    </li>
+                    <li style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
+                      <span style={{ color: "var(--text-secondary)" }}>6:30 PM - 7:30 PM</span>
+                      <strong style={{ color: "#fff" }}>Awardings & Closing</strong>
+                    </li>
+                  </ul>
+                </article>
+                <article className="info-card" style={{ textAlign: "center", background: "linear-gradient(135deg, rgba(245, 166, 35, 0.1) 0%, rgba(217, 119, 6, 0.1) 100%)", border: "1px solid rgba(245, 166, 35, 0.3)" }}>
+                  <h3>🌐 Official Website</h3>
+                  <p style={{ fontSize: "0.85rem", marginBottom: "10px" }}>Visit the official site for registrations, schedules, and more details.</p>
+                  <a
+                    href="https://block-quest.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="arena-cta-btn"
+                    style={{ display: "inline-block", textDecoration: "none", width: "auto", padding: "8px 16px", fontSize: "0.85rem" }}
+                  >
+                    Visit block-quest.com
+                  </a>
                 </article>
               </div>
             )}
