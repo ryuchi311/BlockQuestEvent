@@ -39,7 +39,8 @@ export default function RegistrationForm() {
   const [countryCode, setCountryCode] = useState("+63");
   const [mobileNum, setMobileNum] = useState("");
 
-  // ── Social Follow Auto-Verification ──
+  // ── Modals State ──
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showSocialModal, setShowSocialModal] = useState(false);
   const [fbTimer, setFbTimer] = useState<number | null>(null); // null: idle, >0: countdown, 0: done
   const [tgTimer, setTgTimer] = useState<number | null>(null);
@@ -368,9 +369,21 @@ export default function RegistrationForm() {
 
 
 
-        <label className="form__checkbox">
-          <input name="terms" type="checkbox" required />
-          <span>I agree to the use of my personal information.</span>
+        <label className="form__checkbox form__checkbox--privacy" suppressHydrationWarning>
+          <input name="terms" type="checkbox" required className="form__checkbox-input" />
+          <span className="form__checkbox-text" suppressHydrationWarning>
+            I agree to the collection & processing of my personal data in accordance with the <strong>Data Privacy Act of 2012 (RA 10173)</strong> and the{" "}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                setShowPrivacyModal(true);
+              }}
+              className="privacy-modal-btn"
+            >
+              Data Privacy Policy
+            </button>.
+          </span>
         </label>
 
         <button type="submit" disabled={submitting}>
@@ -799,6 +812,127 @@ export default function RegistrationForm() {
           </div>
         </section>
       ) : null}
+
+      {/* ── Data Privacy Policy Modal (RA 10173 Compliant) ── */}
+      {showPrivacyModal && (
+        <div
+          className="modal-overlay"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 999,
+            background: "rgba(0, 0, 0, 0.85)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+          onClick={() => setShowPrivacyModal(false)}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "520px",
+              maxHeight: "85vh",
+              overflowY: "auto",
+              background: "linear-gradient(135deg, rgba(20, 24, 38, 0.98), rgba(12, 14, 22, 0.98))",
+              border: "1px solid rgba(245, 166, 35, 0.4)",
+              borderRadius: "24px",
+              padding: "28px 24px",
+              boxShadow: "0 0 40px rgba(0, 0, 0, 0.8)",
+              textAlign: "left",
+              position: "relative",
+              color: "#fff",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowPrivacyModal(false)}
+              style={{
+                position: "absolute",
+                top: "16px",
+                right: "16px",
+                background: "none",
+                border: "none",
+                color: "rgba(255,255,255,0.5)",
+                fontSize: "1.2rem",
+                cursor: "pointer",
+                padding: 4,
+              }}
+            >
+              ✕
+            </button>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <span style={{ fontSize: "1.8rem" }}>🔒</span>
+              <h3 style={{ fontSize: "1.25rem", fontWeight: 800, color: "#fff", margin: 0 }}>
+                Data Privacy Notice
+              </h3>
+            </div>
+
+            <p style={{ fontSize: "0.78rem", color: "var(--gold-light)", fontWeight: 700, marginBottom: 16 }}>
+              In Compliance with Republic Act No. 10173 (Data Privacy Act of 2012)
+            </p>
+
+            <div style={{ fontSize: "0.84rem", color: "rgba(255,255,255,0.8)", lineHeight: 1.6, display: "flex", flexDirection: "column", gap: 12 }}>
+              <p>
+                <strong>BlockQuest Fiesta PH</strong> respects your privacy and is committed to protecting your personal data in accordance with the Data Privacy Act of 2012 (RA 10173) of the Philippines.
+              </p>
+
+              <div>
+                <strong style={{ color: "#fff" }}>1. Information We Collect:</strong>
+                <ul style={{ paddingLeft: 20, marginTop: 4 }}>
+                  <li>Full Name</li>
+                  <li>Email Address</li>
+                  <li>Contact / Phone Number</li>
+                  <li>Organization or School (Optional)</li>
+                </ul>
+              </div>
+
+              <div>
+                <strong style={{ color: "#fff" }}>2. Purpose of Collection:</strong>
+                <p style={{ marginTop: 4 }}>
+                  Your data is strictly collected to generate your official Event Ticket Pass & QR Code, verify gate check-in at the venue, process quest leaderboard progress, and send vital event updates.
+                </p>
+              </div>
+
+              <div>
+                <strong style={{ color: "#fff" }}>3. Data Protection & Sharing:</strong>
+                <p style={{ marginTop: 4 }}>
+                  We do not sell, rent, or trade your personal information to third parties. All data is securely stored and processed solely for event administration.
+                </p>
+              </div>
+
+              <div>
+                <strong style={{ color: "#fff" }}>4. Your Data Rights:</strong>
+                <p style={{ marginTop: 4 }}>
+                  You have the right to request access to, update, or delete your registration data by contacting our Data Protection Officer at <em>marketing@block-quest.com</em>.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowPrivacyModal(false)}
+              style={{
+                width: "100%",
+                marginTop: 20,
+                padding: "12px",
+                borderRadius: "14px",
+                fontSize: "0.9rem",
+                fontWeight: 800,
+                background: "linear-gradient(135deg, #f5a623 0%, #e0850b 100%)",
+                color: "#120b02",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              I Understand & Accept
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

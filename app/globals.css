@@ -1376,7 +1376,7 @@ a {
   flex-shrink: 0;
 }
 
-.form button,
+.form button:not(.privacy-modal-btn),
 .form-submit-btn {
   width: 100%;
   border: 0;
@@ -1392,14 +1392,14 @@ a {
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.form button:hover,
+.form button:not(.privacy-modal-btn):hover,
 .form-submit-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 15px 30px rgba(245, 166, 35, 0.3);
   filter: saturate(1.15);
 }
 
-.form button:disabled {
+.form button:not(.privacy-modal-btn):disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none !important;
@@ -3979,4 +3979,44 @@ a {
   .qr-scanner-panel {
     grid-template-columns: 1fr;
   }
+}
+
+/* ── Data Privacy Form Styling ── */
+.form__checkbox--privacy {
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.form__checkbox-input {
+  margin-top: 3px;
+}
+
+.form__checkbox-text {
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.privacy-modal-btn {
+  display: inline !important;
+  width: auto !important;
+  background: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  color: var(--gold-light) !important;
+  text-decoration: underline !important;
+  cursor: pointer !important;
+  font: inherit !important;
+  font-size: inherit !important;
+  font-weight: 800 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.privacy-modal-btn:hover {
+  color: #fff !important;
+  filter: none !important;
+  transform: none !important;
 }
