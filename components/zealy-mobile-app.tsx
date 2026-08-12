@@ -70,10 +70,6 @@ const initialLeaderboard: { rank: number; name: string; points: number; change: 
 
 export default function ZealyMobileApp() {
   const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
-
   const [activeTab, setActiveTab] = useState<"quests" | "leaderboard" | "info" | "profile">("quests");
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
   const [leaderboard, setLeaderboard] = useState(initialLeaderboard);
@@ -97,18 +93,13 @@ export default function ZealyMobileApp() {
   const [ticketError, setTicketError] = useState("");
   const [ticketLoading, setTicketLoading] = useState(false);
 
-  const handleTicketMobileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/[^\d]/g, ""); // digits only
-    if (value.startsWith("0")) {
-      value = value.substring(1); // strip leading zero
-    }
-    setTicketMobileNum(value);
-  };
+  // Inactivity tracking state
+  const [inactivityWarning, setInactivityWarning] = useState(false);
+  const [inactivityCountdown, setInactivityCountdown] = useState(30);
+  const inactivityTimerRef = React.useRef<any>(null);
+  const warningCountdownRef = React.useRef<any>(null);
 
-  const userLevel = Math.floor(userXp / 300) + 1;
-  const xpInCurrentLevel = userXp % 300;
-  const xpProgressPercentage = Math.min(100, Math.floor((xpInCurrentLevel / 300) * 100));
-
+  // Handle logout and clear persistent states
   function handleLogout() {
     setAuthenticatedUser(null);
     setQrPass(null);
@@ -120,7 +111,145 @@ export default function ZealyMobileApp() {
     setUserRank(12);
     setQuests(initialQuests);
     setActiveTab("quests");
+
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("bq_user");
+      localStorage.removeItem("bq_qr");
+      localStorage.removeItem("bq_xp");
+      localStorage.removeItem("bq_rank");
+      localStorage.removeItem("bq_quests");
+      localStorage.removeItem("bq_visited");
+    }
   }
+
+  const resetInactivityTimer = React.useCallback(() => {
+    setInactivityWarning(false);
+    setInactivityCountdown(30);
+
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    if (warningCountdownRef.current) clearInterval(warningCountdownRef.current);
+
+    // If authenticated user exists, set inactivity timer to 4.5 minutes (270 seconds)
+    // After 4.5 minutes, show warning popup/countdown for 30 seconds (total 5 minutes)
+    if (authenticatedUser) {
+      inactivityTimerRef.current = setTimeout(() => {
+        setInactivityWarning(true);
+      }, 270000);
+    }
+  }, [authenticatedUser]);
+
+  // Load state from localStorage on mount
+  React.useEffect(() => {
+    setMounted(true);
+    if (typeof window !== "undefined") {
+      const savedUser = localStorage.getItem("bq_user");
+      const savedQr = localStorage.getItem("bq_qr");
+      const savedXp = localStorage.getItem("bq_xp");
+      const savedRank = localStorage.getItem("bq_rank");
+      const savedQuests = localStorage.getItem("bq_quests");
+      const savedVisited = localStorage.getItem("bq_visited");
+
+      if (savedUser) setAuthenticatedUser(JSON.parse(savedUser));
+      if (savedQr) setQrPass(JSON.parse(savedQr));
+      if (savedXp) setUserXp(Number(savedXp));
+      if (savedRank) setUserRank(Number(savedRank));
+      if (savedQuests) setQuests(JSON.parse(savedQuests));
+      if (savedVisited) setVisitedActions(JSON.parse(savedVisited));
+    }
+  }, []);
+
+  // Save states to localStorage when they change
+  React.useEffect(() => {
+    if (!mounted) return;
+    if (authenticatedUser) {
+      localStorage.setItem("bq_user", JSON.stringify(authenticatedUser));
+    } else {
+      localStorage.removeItem("bq_user");
+    }
+  }, [authenticatedUser, mounted]);
+
+  React.useEffect(() => {
+    if (!mounted) return;
+    if (qrPass) {
+      localStorage.setItem("bq_qr", JSON.stringify(qrPass));
+    } else {
+      localStorage.removeItem("bq_qr");
+    }
+  }, [qrPass, mounted]);
+
+  React.useEffect(() => {
+    if (!mounted) return;
+    localStorage.setItem("bq_xp", userXp.toString());
+  }, [userXp, mounted]);
+
+  React.useEffect(() => {
+    if (!mounted) return;
+    localStorage.setItem("bq_rank", userRank.toString());
+  }, [userRank, mounted]);
+
+  React.useEffect(() => {
+    if (!mounted) return;
+    localStorage.setItem("bq_quests", JSON.stringify(quests));
+  }, [quests, mounted]);
+
+  React.useEffect(() => {
+    if (!mounted) return;
+    localStorage.setItem("bq_visited", JSON.stringify(visitedActions));
+  }, [visitedActions, mounted]);
+
+  // Event listeners for user activity tracking
+  React.useEffect(() => {
+    if (!mounted || !authenticatedUser) return;
+
+    resetInactivityTimer();
+
+    const activityEvents = ["mousedown", "keydown", "touchstart", "mousemove", "scroll"];
+    const handleActivity = () => resetInactivityTimer();
+
+    activityEvents.forEach((event) => {
+      window.addEventListener(event, handleActivity);
+    });
+
+    return () => {
+      activityEvents.forEach((event) => {
+        window.removeEventListener(event, handleActivity);
+      });
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      if (warningCountdownRef.current) clearInterval(warningCountdownRef.current);
+    };
+  }, [mounted, authenticatedUser, resetInactivityTimer]);
+
+  // Countdown effect when warning is shown
+  React.useEffect(() => {
+    if (inactivityWarning) {
+      warningCountdownRef.current = setInterval(() => {
+        setInactivityCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(warningCountdownRef.current);
+            handleLogout();
+            setInactivityWarning(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (warningCountdownRef.current) clearInterval(warningCountdownRef.current);
+    };
+  }, [inactivityWarning]);
+
+  const handleTicketMobileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/[^\d]/g, ""); // digits only
+    if (value.startsWith("0")) {
+      value = value.substring(1); // strip leading zero
+    }
+    setTicketMobileNum(value);
+  };
+
+  const userLevel = Math.floor(userXp / 300) + 1;
+  const xpInCurrentLevel = userXp % 300;
+  const xpProgressPercentage = Math.min(100, Math.floor((xpInCurrentLevel / 300) * 100));
 
   const [newQuestAlert, setNewQuestAlert] = useState<{ count: number; questTitle: string } | null>(null);
   const previousQuestsCountRef = React.useRef<number | null>(null);
@@ -1176,6 +1305,24 @@ export default function ZealyMobileApp() {
                     })()}
                   </>
                 )}
+              </div>
+            </div>
+          )}
+          {inactivityWarning && (
+            <div className="modal-overlay">
+              <div className="modal-content" style={{ textAlign: "center", padding: "24px", maxWidth: "320px", display: "flex", flexDirection: "column", gap: "10px", alignItems: "center" }}>
+                <div style={{ fontSize: "3rem", marginBottom: "4px" }}>⏳</div>
+                <h2 style={{ color: "#fbbf24", marginBottom: "2px", fontSize: "1.2rem", fontWeight: 800 }}>Are you still there?</h2>
+                <p style={{ fontSize: "0.82rem", color: "var(--text-secondary)", marginBottom: "12px", lineHeight: 1.4 }}>
+                  You have been inactive. You will be logged out automatically in <strong style={{ color: "#f87171" }}>{inactivityCountdown} seconds</strong>.
+                </p>
+                <button
+                  onClick={resetInactivityTimer}
+                  className="arena-cta-btn"
+                  style={{ width: "100%", padding: "12px", marginTop: 0, fontSize: "0.88rem" }}
+                >
+                  ⚡ Stay Logged In
+                </button>
               </div>
             </div>
           )}
