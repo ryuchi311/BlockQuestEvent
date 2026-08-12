@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     // 1. Fetch user from registrations
     const { data: user } = await supabase
       .from("registrations")
-      .select("id, total_xp")
+      .select("id, total_xp, checked_in, checked_in_at")
       .ilike("email", email)
       .maybeSingle();
 
@@ -35,7 +35,10 @@ export async function GET(request: Request) {
     let compXp = 0;
     let verifXp = 0;
 
+    let isCheckedIn = false;
+
     if (user) {
+      isCheckedIn = user.checked_in || !!user.checked_in_at;
       // 2. Fetch completed instant quests
       const { data: compData } = await supabase
         .from("quest_completions")
@@ -76,6 +79,7 @@ export async function GET(request: Request) {
       totalXp: exactTotalXp,
       completedQuests: completions,
       verifications: verifications,
+      isCheckedIn: isCheckedIn,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

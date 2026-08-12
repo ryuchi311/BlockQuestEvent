@@ -85,7 +85,7 @@ export async function POST(request: Request) {
       valid: true,
       already_checked_in: false,
       attendee: { ...attendee, checked_in: true, checked_in_at: new Date().toISOString() },
-      message: "Check-in successful! Welcome to BlockQuest Fiesta PH! 🎉",
+      message: "Check-in successful! Attendee verified at entrance gate. Quest unlocked for manual claim! 🎉",
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

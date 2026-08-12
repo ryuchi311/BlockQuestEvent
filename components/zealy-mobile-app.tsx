@@ -68,6 +68,27 @@ const initialQuests: Quest[] = [
 
 const initialLeaderboard: { rank: number; name: string; points: number; change: string; accent?: string }[] = [];
 
+function QuestCardDescription({ description }: { description: string }) {
+  if (!description) return null;
+
+  return (
+    <p
+      className="quest-card__desc"
+      style={{
+        display: "-webkit-box",
+        WebkitLineClamp: 2,
+        WebkitBoxOrient: "vertical",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        lineHeight: "1.4",
+        margin: "4px 0 8px",
+      }}
+    >
+      {description}
+    </p>
+  );
+}
+
 export default function ZealyMobileApp() {
   const [mounted, setMounted] = React.useState(false);
   const [activeTab, setActiveTab] = useState<"quests" | "leaderboard" | "info" | "profile">("quests");
@@ -369,7 +390,7 @@ export default function ZealyMobileApp() {
       const json = await res.json();
       if (!res.ok) return;
 
-      const { totalXp, completedQuests, verifications } = json;
+      const { totalXp, completedQuests, verifications, isCheckedIn } = json;
 
       if (typeof totalXp === "number") {
         setUserXp(totalXp);
@@ -387,6 +408,9 @@ export default function ZealyMobileApp() {
         prevQuests.map((q) => {
           if (compSet.has(q.id)) {
             return { ...q, status: "Done" };
+          }
+          if (q.id === "checkin") {
+            return { ...q, status: isCheckedIn ? "Live" : "Soon" };
           }
           const vStatus = verifMap.get(q.id);
           if (vStatus === "Pending") {
@@ -838,7 +862,7 @@ export default function ZealyMobileApp() {
                             )}
                           </div>
                           <h3 className="quest-card__title">{q.title}</h3>
-                          <p className="quest-card__desc" style={{ whiteSpace: "pre-wrap" }}>{q.description}</p>
+                          <QuestCardDescription description={q.description} />
                         </div>
                         <div className="quest-card__footer">
                           {q.status === "Approved" ? (
@@ -911,7 +935,7 @@ export default function ZealyMobileApp() {
                                   <h3 className="quest-card__title" style={{ textDecoration: q.status === "Done" ? "line-through" : "none", color: "var(--text-secondary)" }}>
                                     {q.title}
                                   </h3>
-                                  <p className="quest-card__desc" style={{ whiteSpace: "pre-wrap" }}>{q.description}</p>
+                                  <QuestCardDescription description={q.description} />
                                 </div>
                                 <div className="quest-card__footer">
                                   <span className={`status-badge status-badge--${q.status.toLowerCase().replace(/\s+/g, "-")}`}>

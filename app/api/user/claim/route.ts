@@ -28,16 +28,27 @@ export async function POST(request: Request) {
     try {
       const supabase = getSupabase();
       
-      // 1. Fetch current user to get ID and increment XP
+      // 1. Fetch current user to get ID and physical check-in status
       const { data: user, error: userError } = await supabase
         .from("registrations")
-        .select("id, total_xp")
+        .select("id, total_xp, checked_in, checked_in_at")
         .eq("email", user_email)
         .single();
         
       if (userError || !user) {
         console.warn("Could not find user:", userError);
         throw new Error("User not found");
+      }
+
+      // If claiming physical check-in quest, verify gate check-in status
+      if (quest_id === "checkin") {
+        const isCheckedIn = user.checked_in || !!user.checked_in_at;
+        if (!isCheckedIn) {
+          return NextResponse.json(
+            { error: "Physical check-in required at entrance gate before claiming this XP reward." },
+            { status: 400 }
+          );
+        }
       }
 
       // 2. Insert into quest_completions
