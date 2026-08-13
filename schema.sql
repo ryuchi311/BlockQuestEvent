@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS public.admin_users (
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   full_name TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'viewer', -- 'superadmin', 'editor', 'viewer'
+  role TEXT NOT NULL DEFAULT 'viewer', -- 'superadmin', 'admin', 'verifier', 'manage_quester', 'viewer'
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
