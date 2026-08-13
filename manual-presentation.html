@@ -638,6 +638,7 @@
       <li><a href="#admin-tabs" class="nav-link">Admin Modules</a></li>
       <li><a href="#rbac" class="nav-link">RBAC Matrix</a></li>
       <li><a href="#architecture" class="nav-link">Architecture</a></li>
+      <li><a href="#security" class="nav-link" style="color: #f87171; font-weight: 700;">🔒 Security</a></li>
       <li><a href="#faq" class="nav-link" style="color: var(--emerald); font-weight: 700;">❓ Master FAQ</a></li>
     </ul>
   </nav>
@@ -1228,6 +1229,83 @@
           <h3 style="font-size: 1.2rem; color: var(--emerald); margin-bottom: 8px;">🧾 quest_completions.xp_awarded</h3>
           <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 12px;"><strong>The Immutable Audit Receipt</strong></p>
           <p style="font-size: 0.92rem; color: #fff;">Stores exact XP awarded at the moment of approval. If an admin edits a quest XP value or deletes the quest, the user keeps their earned balance safely intact.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION: SECURITY & PRIVACY ARCHITECTURE -->
+    <section id="security" style="background: rgba(239, 68, 68, 0.02); border-top: 1px solid rgba(239, 68, 68, 0.25); border-bottom: 1px solid rgba(239, 68, 68, 0.25);">
+      <div class="section-header">
+        <span class="section-tag" style="color: #f87171;">ENTERPRISE GRADE PROTECTION</span>
+        <h2 class="section-title">🔒 System Security & Data Privacy Architecture</h2>
+        <p class="section-desc">Comprehensive safeguards defending attendee data, credentials, administrative routes, and financial point economies.</p>
+      </div>
+
+      <div class="quest-builder-grid">
+        <div class="qb-step-card" style="border-color: rgba(239, 68, 68, 0.3);">
+          <div class="qb-step-header">
+            <div class="qb-num" style="background: rgba(239, 68, 68, 0.15); border-color: var(--red); color: var(--red);">1</div>
+            <h4 class="qb-title">scryptSync Password Hashing</h4>
+          </div>
+          <p class="qb-desc">
+            • <strong>Salted Cryptography:</strong> Passwords are never stored in plaintext. Hashed using Node.js's native <code>node:crypto scryptSync</code> with a unique 16-byte random salt and 64-byte key.<br>
+            • <strong>Hardware Resistant:</strong> Memory-hard algorithm that defends against GPU/ASIC brute-force and rainbow table attacks.
+          </p>
+        </div>
+
+        <div class="qb-step-card" style="border-color: rgba(36, 161, 222, 0.3);">
+          <div class="qb-step-header">
+            <div class="qb-num" style="background: rgba(36, 161, 222, 0.15); border-color: var(--blue); color: var(--blue);">2</div>
+            <h4 class="qb-title">Strict Unique Constraints</h4>
+          </div>
+          <p class="qb-desc">
+            • <strong>Duplicate Prevention:</strong> PostgreSQL <code>UNIQUE(email)</code> and <code>UNIQUE(ticket_code)</code> constraints stop account spoofing and double-claiming at the database engine level.<br>
+            • <strong>Normalized Email Inputs:</strong> All emails are trimmed and converted to lowercase on entry to eliminate casing bypasses.
+          </p>
+        </div>
+
+        <div class="qb-step-card" style="border-color: rgba(168, 85, 247, 0.3);">
+          <div class="qb-step-header">
+            <div class="qb-num" style="background: rgba(168, 85, 247, 0.15); border-color: var(--purple); color: var(--purple);">3</div>
+            <h4 class="qb-title">Role-Based Access Control</h4>
+          </div>
+          <p class="qb-desc">
+            • <strong>Enforced API Authorization:</strong> Admin endpoints verify role tiers (<code>superadmin</code>, <code>admin</code>, <code>manage_quester</code>, <code>verifier</code>, <code>viewer</code>).<br>
+            • <strong>Least-Privilege Isolation:</strong> Verifiers only access image review queues; gate staff only access ticket scanners.
+          </p>
+        </div>
+
+        <div class="qb-step-card" style="border-color: rgba(16, 185, 129, 0.3);">
+          <div class="qb-step-header">
+            <div class="qb-num" style="background: rgba(16, 185, 129, 0.15); border-color: var(--emerald); color: var(--emerald);">4</div>
+            <h4 class="qb-title">Service Role Key Isolation</h4>
+          </div>
+          <p class="qb-desc">
+            • <strong>Zero Browser Leakage:</strong> Sensitive <code>SUPABASE_SERVICE_ROLE_KEY</code> is strictly bound to server-side Node.js runtimes.<br>
+            • <strong>Public Protection:</strong> Client browsers only interact with safe, restricted public routes with no direct database write access.
+          </p>
+        </div>
+
+        <div class="qb-step-card" style="border-color: rgba(245, 166, 35, 0.3);">
+          <div class="qb-step-header">
+            <div class="qb-num" style="background: rgba(245, 166, 35, 0.15); border-color: var(--gold); color: var(--gold);">5</div>
+            <h4 class="qb-title">Double-Check In Safeguards</h4>
+          </div>
+          <p class="qb-desc">
+            • <strong>Safety Confirmation Modal:</strong> Prevents accidental finger taps at the gate entrance by requiring human verification of attendee profile details.<br>
+            • <strong>Atomic DB Transactions:</strong> Multi-gate live concurrency ensures a ticket scanned at Gate 1 cannot be reused at Gate 2.
+          </p>
+        </div>
+
+        <div class="qb-step-card" style="border-color: rgba(255, 255, 255, 0.3);">
+          <div class="qb-step-header">
+            <div class="qb-num" style="background: rgba(255, 255, 255, 0.1); border-color: #fff; color: #fff;">6</div>
+            <h4 class="qb-title">Data Privacy Compliance</h4>
+          </div>
+          <p class="qb-desc">
+            • <strong>RA 10173 (Data Privacy Act):</strong> Embedded modal privacy policy detailing attendee consent, data storage life cycle, and rights.<br>
+            • <strong>Signed Proof Uploads:</strong> Screenshots are stored in dedicated S3 storage with sanitized filenames and secure URL paths.
+          </p>
         </div>
       </div>
     </section>
