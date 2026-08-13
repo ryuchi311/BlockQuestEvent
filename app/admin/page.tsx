@@ -192,6 +192,7 @@ export default function AdminPage() {
   const [adminUsersList, setAdminUsersList] = useState<any[]>([]);
   const [newAdminForm, setNewAdminForm] = useState({ email: "", password: "", full_name: "", role: "verifier" });
   const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
+  const [checkInConfirmAttendee, setCheckInConfirmAttendee] = useState<Attendee | null>(null);
 
   // ── Copy tooltip ──
   const [copiedId, setCopiedId] = useState<number | null>(null);
@@ -425,6 +426,7 @@ export default function AdminPage() {
       alert("Check-in Error: " + err.message);
     } finally {
       setCheckingInId(null);
+      setCheckInConfirmAttendee(null);
     }
   }
 
@@ -1003,7 +1005,7 @@ export default function AdminPage() {
                           ) : (
                             <button
                               className="admin-edit-btn"
-                              onClick={() => handleManualCheckIn(a)}
+                              onClick={() => setCheckInConfirmAttendee(a)}
                               disabled={checkingInId === a.id || !a.ticket_code}
                               style={{
                                 background: "rgba(16, 185, 129, 0.2)",
@@ -1023,6 +1025,37 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Check-in Confirmation Modal */}
+            {checkInConfirmAttendee && (
+              <div className="admin-modal-overlay" onClick={() => setCheckInConfirmAttendee(null)}>
+                <div className="quest-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400, padding: 24, textAlign: "center" }}>
+                  <div className="quest-modal-header" style={{ justifyContent: "center" }}>
+                    <h2>Confirm Check-in</h2>
+                  </div>
+                  <p style={{ color: "var(--text-secondary)", marginBottom: 24, fontSize: "0.95rem" }}>
+                    Are you sure you want to manually check in <strong>{checkInConfirmAttendee.full_name}</strong>?
+                  </p>
+                  <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+                    <button
+                      className="admin-delete-btn"
+                      onClick={() => setCheckInConfirmAttendee(null)}
+                      style={{ padding: "8px 16px", background: "rgba(255,255,255,0.1)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="admin-edit-btn"
+                      onClick={() => handleManualCheckIn(checkInConfirmAttendee)}
+                      disabled={checkingInId === checkInConfirmAttendee.id}
+                      style={{ padding: "8px 16px", background: "#10b981", color: "#fff", borderColor: "#059669", fontWeight: "bold" }}
+                    >
+                      {checkingInId === checkInConfirmAttendee.id ? "Checking in..." : "Yes, Check In"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
 
