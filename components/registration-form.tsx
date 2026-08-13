@@ -44,70 +44,46 @@ export default function RegistrationForm() {
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showSocialModal, setShowSocialModal] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [socialMissions, setSocialMissions] = useState<any[]>([]);
+  const [missionTimers, setMissionTimers] = useState<Record<number, number | null>>({});
 
   useEffect(() => {
     setMounted(true);
+    fetch("/api/social-missions")
+      .then(res => res.json())
+      .then(data => {
+        if (data.missions) setSocialMissions(data.missions);
+      })
+      .catch(console.error);
   }, []);
-  const [fbTimer, setFbTimer] = useState<number | null>(null); // null: idle, >0: countdown, 0: done
-  const [tgChannelTimer, setTgChannelTimer] = useState<number | null>(null);
-  const [tgGroupTimer, setTgGroupTimer] = useState<number | null>(null);
-  const [xTimer, setXTimer] = useState<number | null>(null);
 
-  const handleFollowFb = () => {
-    window.open("https://www.facebook.com/BRGYTamago", "_blank");
-    setFbTimer(10);
-  };
+  // Generic timer countdown
+  useEffect(() => {
+    const hasActive = Object.values(missionTimers).some(val => val !== null && val > 0);
+    if (!hasActive) return;
 
-  const handleFollowTgChannel = () => {
-    window.open("https://t.me/block_quest", "_blank");
-    setTgChannelTimer(10);
-  };
-
-  const handleFollowTgGroup = () => {
-    window.open("https://t.me/+YG918_es6Es0Mjc1", "_blank");
-    setTgGroupTimer(10);
-  };
-
-  const handleFollowX = () => {
-    window.open("https://x.com/BRGYTamago", "_blank");
-    setXTimer(10);
-  };
-
-  // Countdown effect for Facebook
-  React.useEffect(() => {
-    if (fbTimer === null || fbTimer <= 0) return;
     const interval = setInterval(() => {
-      setFbTimer((prev) => (prev !== null && prev > 1 ? prev - 1 : 0));
+      setMissionTimers(prev => {
+        const next = { ...prev };
+        let changed = false;
+        for (const key in next) {
+          if (next[key] !== null && next[key]! > 0) {
+            next[key] = next[key]! - 1;
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
     }, 1000);
     return () => clearInterval(interval);
-  }, [fbTimer]);
+  }, [missionTimers]);
 
-  // Countdown effect for Telegram Channel
-  React.useEffect(() => {
-    if (tgChannelTimer === null || tgChannelTimer <= 0) return;
-    const interval = setInterval(() => {
-      setTgChannelTimer((prev) => (prev !== null && prev > 1 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [tgChannelTimer]);
+  const handleFollowMission = (missionId: number, url: string) => {
+    window.open(url, "_blank");
+    setMissionTimers(prev => ({ ...prev, [missionId]: 10 }));
+  };
 
-  // Countdown effect for Telegram Group
-  React.useEffect(() => {
-    if (tgGroupTimer === null || tgGroupTimer <= 0) return;
-    const interval = setInterval(() => {
-      setTgGroupTimer((prev) => (prev !== null && prev > 1 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [tgGroupTimer]);
-
-  // Countdown effect for Twitter / X
-  React.useEffect(() => {
-    if (xTimer === null || xTimer <= 0) return;
-    const interval = setInterval(() => {
-      setXTimer((prev) => (prev !== null && prev > 1 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [xTimer]);
+  const allMissionsCompleted = socialMissions.length > 0 && socialMissions.every(m => missionTimers[m.id] === 0);
 
   const handleMobileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/[^\d]/g, ""); // digits only
@@ -539,7 +515,7 @@ export default function RegistrationForm() {
             type="button"
             className="button-secondary"
             onClick={() => {
-              if (fbTimer === 0 && tgChannelTimer === 0 && tgGroupTimer === 0 && xTimer === 0) {
+              if (allMissionsCompleted || socialMissions.length === 0) {
                 void generateQrPass(authenticatedUser);
               } else {
                 setShowSocialModal(true);
@@ -606,206 +582,74 @@ export default function RegistrationForm() {
               Social Follow Missions
             </h3>
             <p style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.7)", marginBottom: "20px" }}>
-              Complete all 4 social follow missions to auto-verify & unlock your <strong>BlockQuest Event QR Pass</strong>.
+              Complete all {socialMissions.length} social follow missions to auto-verify & unlock your <strong>BlockQuest Event QR Pass</strong>.
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "24px" }}>
-              {/* 1. Facebook Task */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "12px 16px",
-                  borderRadius: "14px",
-                  background: "rgba(255,255,255,0.04)",
-                  border: fbTimer === 0 ? "1px solid rgba(16, 185, 129, 0.5)" : "1px solid rgba(255,255,255,0.1)",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", textAlign: "left" }}>
-                  <span style={{ fontSize: "1.3rem" }}>🌐</span>
-                  <div>
-                    <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#fff" }}>Facebook Page</div>
-                    <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}>Follow BRGY Tamago</div>
-                  </div>
-                </div>
-                {fbTimer === 0 ? (
-                  <span style={{ color: "#34d399", fontWeight: 800, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: 4 }}>
-                    ✓ Verified
-                  </span>
-                ) : fbTimer !== null ? (
-                  <span style={{ color: "#fbbf24", fontSize: "0.82rem", fontWeight: 700, background: "rgba(245, 191, 36, 0.15)", padding: "4px 10px", borderRadius: "8px", border: "1px solid rgba(245, 191, 36, 0.3)" }}>
-                    ⏳ Verifying {fbTimer}s
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleFollowFb}
+              {socialMissions.map((mission) => {
+                const timer = missionTimers[mission.id];
+                return (
+                  <div
+                    key={mission.id}
                     style={{
-                      padding: "6px 14px",
-                      borderRadius: "10px",
-                      fontSize: "0.78rem",
-                      fontWeight: 700,
-                      background: "#1877f2",
-                      color: "#fff",
-                      border: "none",
-                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "12px 16px",
+                      borderRadius: "14px",
+                      background: "rgba(255,255,255,0.04)",
+                      border: timer === 0 ? "1px solid rgba(16, 185, 129, 0.5)" : "1px solid rgba(255,255,255,0.1)",
                     }}
                   >
-                    Follow FB →
-                  </button>
-                )}
-              </div>
-
-              {/* 2. Telegram Channel Task */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "12px 16px",
-                  borderRadius: "14px",
-                  background: "rgba(255,255,255,0.04)",
-                  border: tgChannelTimer === 0 ? "1px solid rgba(16, 185, 129, 0.5)" : "1px solid rgba(255,255,255,0.1)",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", textAlign: "left" }}>
-                  <span style={{ fontSize: "1.3rem" }}>✈️</span>
-                  <div>
-                    <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#fff" }}>Telegram Channel</div>
-                    <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}>Follow BlockQuest</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", textAlign: "left" }}>
+                      <span style={{ fontSize: "1.3rem" }}>
+                        {mission.platform === 'facebook' ? '🌐' : mission.platform === 'telegram' ? '✈️' : mission.platform === 'twitter' ? '🐦' : '🔗'}
+                      </span>
+                      <div>
+                        <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#fff" }}>{mission.title}</div>
+                        <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}>{mission.description}</div>
+                      </div>
+                    </div>
+                    {timer === 0 ? (
+                      <span style={{ color: "#34d399", fontWeight: 800, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: 4 }}>
+                        ✓ Verified
+                      </span>
+                    ) : timer !== null && timer !== undefined ? (
+                      <span style={{ color: "#fbbf24", fontSize: "0.82rem", fontWeight: 700, background: "rgba(245, 191, 36, 0.15)", padding: "4px 10px", borderRadius: "8px", border: "1px solid rgba(245, 191, 36, 0.3)" }}>
+                        ⏳ Verifying {timer}s
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleFollowMission(mission.id, mission.url)}
+                        style={{
+                          padding: "6px 14px",
+                          borderRadius: "10px",
+                          fontSize: "0.78rem",
+                          fontWeight: 700,
+                          background: mission.button_color || "#1877f2",
+                          color: "#fff",
+                          border: "none",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {mission.button_text}
+                      </button>
+                    )}
                   </div>
-                </div>
-                {tgChannelTimer === 0 ? (
-                  <span style={{ color: "#34d399", fontWeight: 800, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: 4 }}>
-                    ✓ Verified
-                  </span>
-                ) : tgChannelTimer !== null ? (
-                  <span style={{ color: "#fbbf24", fontSize: "0.82rem", fontWeight: 700, background: "rgba(245, 191, 36, 0.15)", padding: "4px 10px", borderRadius: "8px", border: "1px solid rgba(245, 191, 36, 0.3)" }}>
-                    ⏳ Verifying {tgChannelTimer}s
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleFollowTgChannel}
-                    style={{
-                      padding: "6px 14px",
-                      borderRadius: "10px",
-                      fontSize: "0.78rem",
-                      fontWeight: 700,
-                      background: "#24A1DE",
-                      color: "#fff",
-                      border: "none",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Join TG →
-                  </button>
-                )}
-              </div>
-
-              {/* 3. Telegram Group Task */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "12px 16px",
-                  borderRadius: "14px",
-                  background: "rgba(255,255,255,0.04)",
-                  border: tgGroupTimer === 0 ? "1px solid rgba(16, 185, 129, 0.5)" : "1px solid rgba(255,255,255,0.1)",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", textAlign: "left" }}>
-                  <span style={{ fontSize: "1.3rem" }}>✈️</span>
-                  <div>
-                    <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#fff" }}>Telegram Group</div>
-                    <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}>Join BlockQuest Group</div>
-                  </div>
-                </div>
-                {tgGroupTimer === 0 ? (
-                  <span style={{ color: "#34d399", fontWeight: 800, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: 4 }}>
-                    ✓ Verified
-                  </span>
-                ) : tgGroupTimer !== null ? (
-                  <span style={{ color: "#fbbf24", fontSize: "0.82rem", fontWeight: 700, background: "rgba(245, 191, 36, 0.15)", padding: "4px 10px", borderRadius: "8px", border: "1px solid rgba(245, 191, 36, 0.3)" }}>
-                    ⏳ Verifying {tgGroupTimer}s
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleFollowTgGroup}
-                    style={{
-                      padding: "6px 14px",
-                      borderRadius: "10px",
-                      fontSize: "0.78rem",
-                      fontWeight: 700,
-                      background: "#24A1DE",
-                      color: "#fff",
-                      border: "none",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Join TG →
-                  </button>
-                )}
-              </div>
-
-              {/* 4. Twitter / X Task */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "12px 16px",
-                  borderRadius: "14px",
-                  background: "rgba(255,255,255,0.04)",
-                  border: xTimer === 0 ? "1px solid rgba(16, 185, 129, 0.5)" : "1px solid rgba(255,255,255,0.1)",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", textAlign: "left" }}>
-                  <span style={{ fontSize: "1.3rem" }}>🐦</span>
-                  <div>
-                    <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#fff" }}>X (Twitter)</div>
-                    <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}>Follow @BRGYTamago</div>
-                  </div>
-                </div>
-                {xTimer === 0 ? (
-                  <span style={{ color: "#34d399", fontWeight: 800, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: 4 }}>
-                    ✓ Verified
-                  </span>
-                ) : xTimer !== null ? (
-                  <span style={{ color: "#fbbf24", fontSize: "0.82rem", fontWeight: 700, background: "rgba(245, 191, 36, 0.15)", padding: "4px 10px", borderRadius: "8px", border: "1px solid rgba(245, 191, 36, 0.3)" }}>
-                    ⏳ Verifying {xTimer}s
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleFollowX}
-                    style={{
-                      padding: "6px 14px",
-                      borderRadius: "10px",
-                      fontSize: "0.78rem",
-                      fontWeight: 700,
-                      background: "#000",
-                      color: "#fff",
-                      border: "1px solid rgba(255, 255, 255, 0.3)",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Follow X →
-                  </button>
-                )}
-              </div>
+                );
+              })}
             </div>
 
             <button
               type="button"
-              disabled={fbTimer !== 0 || tgChannelTimer !== 0 || tgGroupTimer !== 0 || xTimer !== 0 || qrLoading}
+              disabled={!allMissionsCompleted || qrLoading}
               onClick={async () => {
-                setShowSocialModal(false);
-                if (authenticatedUser) {
-                  await generateQrPass(authenticatedUser);
+                if (allMissionsCompleted) {
+                  setShowSocialModal(false);
+                  if (authenticatedUser) {
+                    await generateQrPass(authenticatedUser);
+                  }
                 }
               }}
               style={{
@@ -815,17 +659,17 @@ export default function RegistrationForm() {
                 fontSize: "0.95rem",
                 fontWeight: 800,
                 background:
-                  fbTimer === 0 && tgChannelTimer === 0 && tgGroupTimer === 0 && xTimer === 0
+                  allMissionsCompleted
                     ? "linear-gradient(135deg, #f5a623 0%, #e0850b 100%)"
                     : "rgba(255, 255, 255, 0.1)",
-                color: fbTimer === 0 && tgChannelTimer === 0 && tgGroupTimer === 0 && xTimer === 0 ? "#120b02" : "rgba(255, 255, 255, 0.4)",
+                color: allMissionsCompleted ? "#120b02" : "rgba(255, 255, 255, 0.4)",
                 border: "none",
-                cursor: fbTimer === 0 && tgChannelTimer === 0 && tgGroupTimer === 0 && xTimer === 0 ? "pointer" : "not-allowed",
+                cursor: allMissionsCompleted ? "pointer" : "not-allowed",
                 transition: "all 0.2s ease",
               }}
             >
-              {fbTimer !== 0 || tgChannelTimer !== 0 || tgGroupTimer !== 0 || xTimer !== 0
-                ? "🔒 Follow All 4 Socials to Unlock"
+              {!allMissionsCompleted
+                ? `🔒 Follow All ${socialMissions.length} Socials to Unlock`
                 : "⚡ Claim & Generate QR Pass →"}
             </button>
           </div>

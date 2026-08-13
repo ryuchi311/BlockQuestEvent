@@ -1,0 +1,57 @@
+import { createClient } from "@supabase/supabase-js";
+import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
+
+function getSupabase() {
+  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error("Missing Supabase env vars");
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+}
+
+// POST - Create a new social mission
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { platform, title, description, url, button_text, button_color, sort_order } = body;
+
+    if (!platform || !title || !url || !button_text || !button_color) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from("social_missions")
+      .insert([
+        { platform, title, description, url, button_text, button_color, sort_order: sort_order || 0 },
+      ])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return NextResponse.json({ mission: data });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+// DELETE - Remove a social mission
+export async function DELETE(request: Request) {
+  try {
+    const body = await request.json();
+    if (!body.id) {
+      return NextResponse.json({ error: "Mission ID is required" }, { status: 400 });
+    }
+
+    const supabase = getSupabase();
+    const { error } = await supabase.from("social_missions").delete().eq("id", body.id);
+
+    if (error) throw error;
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}

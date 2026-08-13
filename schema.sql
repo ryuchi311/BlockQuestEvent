@@ -111,3 +111,17 @@ CREATE TABLE IF NOT EXISTS public.quest_completions (
 
 GRANT ALL ON TABLE public.quest_completions TO postgres, service_role, anon, authenticated;
 
+-- Social Missions table for Registration form
+CREATE TABLE IF NOT EXISTS public.social_missions (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  platform TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  url TEXT NOT NULL,
+  button_text TEXT NOT NULL,
+  button_color TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+GRANT ALL ON TABLE public.social_missions TO postgres, service_role, anon, authenticated;

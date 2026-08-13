@@ -54,7 +54,7 @@ interface AdminUser {
 }
 
 
-const ADMIN_TABS = ["scanner", "attendees", "quests", "verifications", "staff"] as const;
+const ADMIN_TABS = ["scanner", "attendees", "quests", "verifications", "socials", "staff"] as const;
 type AdminTab = (typeof ADMIN_TABS)[number];
 
 const STATUS_OPTIONS: Quest["status"][] = ["Live", "Soon", "Done", "Draft"];
@@ -194,6 +194,12 @@ export default function AdminPage() {
   const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
   const [checkInConfirmAttendee, setCheckInConfirmAttendee] = useState<Attendee | null>(null);
 
+  // ── Social Missions (Superadmin only) ──
+  const [socialMissions, setSocialMissions] = useState<any[]>([]);
+  const [newSocialMissionForm, setNewSocialMissionForm] = useState({ platform: "facebook", title: "", description: "", url: "", button_text: "", button_color: "#1877f2", sort_order: 0 });
+  const [isCreatingMission, setIsCreatingMission] = useState(false);
+  const [showAddMissionModal, setShowAddMissionModal] = useState(false);
+
   // ── Copy tooltip ──
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
@@ -298,6 +304,22 @@ export default function AdminPage() {
     }
   }, [adminUser]);
 
+  const fetchSocialMissions = useCallback(async () => {
+    if (adminUser?.role !== "superadmin") return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/social-missions");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to load social missions.");
+      setSocialMissions(json.missions ?? []);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [adminUser]);
+
   // Load ALL data immediately on auth so stat cards are always accurate
   useEffect(() => {
     if (!authed) return;
@@ -313,7 +335,8 @@ export default function AdminPage() {
     else if (tab === "quests") fetchQuests();
     else if (tab === "verifications") fetchVerifications();
     else if (tab === "staff") fetchAdminUsers();
-  }, [tab, fetchAttendees, fetchQuests, fetchVerifications, fetchAdminUsers]);
+    else if (tab === "socials") fetchSocialMissions();
+  }, [tab, fetchAttendees, fetchQuests, fetchVerifications, fetchAdminUsers, fetchSocialMissions]);
 
   // ── Auto Refresh ──
   useEffect(() => {
@@ -697,6 +720,46 @@ export default function AdminPage() {
     }
   }
 
+  async function handleCreateSocialMission(e: React.FormEvent) {
+    e.preventDefault();
+    setIsCreatingMission(true);
+    try {
+      const res = await fetch("/api/admin/social-missions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newSocialMissionForm),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to create social mission");
+      
+      setSocialMissions(prev => [...prev, json.mission]);
+      setNewSocialMissionForm({ platform: "facebook", title: "", description: "", url: "", button_text: "", button_color: "#1877f2", sort_order: 0 });
+      setShowAddMissionModal(false);
+      alert("Social mission created successfully!");
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setIsCreatingMission(false);
+    }
+  }
+
+  async function handleDeleteSocialMission(id: number) {
+    if (!window.confirm(`Are you sure you want to delete this social mission?`)) return;
+    try {
+      const res = await fetch("/api/admin/social-missions", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to delete mission");
+      
+      setSocialMissions(prev => prev.filter(m => m.id !== id));
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    }
+  }
+
   // ─── Stats ───────────────────────────────────────────────────────────────
   const totalXpPool = quests.reduce((sum, q) => sum + (q.xp ?? 0), 0);
   const liveQuestCount = quests.filter((q) => q.status === "Live").length;
@@ -841,7 +904,7 @@ export default function AdminPage() {
 
       {/* Tabs */}
       <div className="admin-tabs">
-        {ADMIN_TABS.filter((t) => t !== "staff" || adminUser?.role === "superadmin").map((t) => (
+        {ADMIN_TABS.filter((t) => (t !== "staff" && t !== "socials") || adminUser?.role === "superadmin").map((t) => (
           <button
             key={t}
             className={`admin-tab-btn${tab === t ? " admin-tab-btn--active" : ""}`}
@@ -855,6 +918,8 @@ export default function AdminPage() {
               ? "⚡ Fiesta Event Quests"
               : t === "staff"
               ? "🛡️ Staff / Admins"
+              : t === "socials"
+              ? "📣 Social Missions"
               : `🔍 Quest Verifications (${verifications.filter((v) => v.status === "Pending").length})`}
           </button>
         ))}
@@ -1515,6 +1580,183 @@ export default function AdminPage() {
                 </button>
               </form>
             </div>
+          </div>
+        )}
+
+        {/* ─── SOCIAL MISSIONS TAB ─── */}
+        {tab === "socials" && adminUser?.role === "superadmin" && !loading && (
+          <div style={{ display: "flex", gap: 24, flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start" }}>
+            
+            {/* Missions List */}
+            <div className="admin-table-wrapper" style={{ flex: "2 1 500px" }}>
+              <div className="admin-toolbar" style={{ marginBottom: 0, paddingBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+                <h2 style={{ fontSize: "1.2rem", margin: 0, color: "var(--gold-light)" }}>Social Missions ({socialMissions.length})</h2>
+                <div style={{ marginLeft: "auto", display: "flex", gap: "12px" }}>
+                  <button className="admin-add-btn" onClick={() => setShowAddMissionModal(true)}>
+                    + Add Mission
+                  </button>
+                  <button className="admin-refresh-btn" onClick={fetchSocialMissions} title="Refresh Missions">
+                    ↻ Refresh
+                  </button>
+                </div>
+              </div>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Icon</th>
+                    <th>Details</th>
+                    <th>Link</th>
+                    <th>Sort</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {socialMissions.length === 0 ? (
+                    <tr><td colSpan={5} className="admin-table__empty">No social missions found.</td></tr>
+                  ) : (
+                    socialMissions.map(mission => (
+                      <tr key={mission.id} className="admin-table__row">
+                        <td style={{ fontSize: "1.5rem" }}>
+                          {mission.platform === 'facebook' ? '🌐' : mission.platform === 'telegram' ? '✈️' : mission.platform === 'twitter' ? '🐦' : '🔗'}
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: "bold" }}>{mission.title}</div>
+                          <div style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.6)" }}>{mission.description}</div>
+                        </td>
+                        <td>
+                          <a href={mission.url} target="_blank" rel="noreferrer" style={{ color: "var(--gold-light)", textDecoration: "underline" }}>View Link</a>
+                        </td>
+                        <td>{mission.sort_order}</td>
+                        <td>
+                          <button 
+                            className="admin-delete-btn" 
+                            onClick={() => handleDeleteSocialMission(mission.id)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Add Mission Form (Modal) */}
+            {showAddMissionModal && (
+              <div className="admin-modal-overlay" onClick={() => setShowAddMissionModal(false)}>
+                <div className="admin-modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
+                  <div className="admin-modal-header">
+                    <h2>Add Social Mission</h2>
+                    <button className="admin-modal-close" onClick={() => setShowAddMissionModal(false)}>✕</button>
+                  </div>
+                  
+                  <div className="admin-modal-body">
+                    <form onSubmit={handleCreateSocialMission} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      <label className="qf-label">
+                        Platform Type
+                        <select 
+                          className="admin-login-input" 
+                          value={newSocialMissionForm.platform}
+                          onChange={(e) => setNewSocialMissionForm(f => ({ ...f, platform: e.target.value }))}
+                          style={{ padding: "12px", cursor: "pointer" }}
+                        >
+                          <option value="facebook">Facebook</option>
+                          <option value="telegram">Telegram</option>
+                          <option value="twitter">Twitter / X</option>
+                          <option value="discord">Discord</option>
+                          <option value="globe">Website / Other</option>
+                        </select>
+                      </label>
+                      <label className="qf-label">
+                        Title
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Facebook Page"
+                          className="admin-login-input"
+                          value={newSocialMissionForm.title}
+                          onChange={(e) => setNewSocialMissionForm(f => ({ ...f, title: e.target.value }))}
+                        />
+                      </label>
+                      <label className="qf-label">
+                        Description
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Follow BRGY Tamago"
+                          className="admin-login-input"
+                          value={newSocialMissionForm.description}
+                          onChange={(e) => setNewSocialMissionForm(f => ({ ...f, description: e.target.value }))}
+                        />
+                      </label>
+                      <label className="qf-label">
+                        Target URL
+                        <input
+                          type="url"
+                          required
+                          placeholder="https://..."
+                          className="admin-login-input"
+                          value={newSocialMissionForm.url}
+                          onChange={(e) => setNewSocialMissionForm(f => ({ ...f, url: e.target.value }))}
+                        />
+                      </label>
+                      <label className="qf-label">
+                        Button Text
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Follow FB →"
+                          className="admin-login-input"
+                          value={newSocialMissionForm.button_text}
+                          onChange={(e) => setNewSocialMissionForm(f => ({ ...f, button_text: e.target.value }))}
+                        />
+                      </label>
+                      <label className="qf-label">
+                        Button Color (Hex)
+                        <input
+                          type="text"
+                          required
+                          placeholder="#1877f2"
+                          className="admin-login-input"
+                          value={newSocialMissionForm.button_color}
+                          onChange={(e) => setNewSocialMissionForm(f => ({ ...f, button_color: e.target.value }))}
+                        />
+                      </label>
+                      <label className="qf-label">
+                        Sort Order
+                        <input
+                          type="number"
+                          required
+                          className="admin-login-input"
+                          value={newSocialMissionForm.sort_order}
+                          onChange={(e) => setNewSocialMissionForm(f => ({ ...f, sort_order: parseInt(e.target.value) || 0 }))}
+                        />
+                      </label>
+                    </form>
+                  </div>
+                  
+                  <div className="admin-modal-footer">
+                    <button className="admin-modal-cancel" onClick={() => setShowAddMissionModal(false)}>
+                      Cancel
+                    </button>
+                    <button className="admin-modal-save" onClick={(e) => {
+                      // Trigger form submission
+                      const form = e.currentTarget.parentElement?.previousElementSibling?.querySelector('form');
+                      if (form) {
+                        if (form.checkValidity()) {
+                          form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                        } else {
+                          form.reportValidity();
+                        }
+                      }
+                    }} disabled={isCreatingMission}>
+                      {isCreatingMission ? "Creating..." : "Save Mission"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>
