@@ -185,6 +185,8 @@ export default function AdminPage() {
   const [questSaving, setQuestSaving] = useState(false);
   const [questError, setQuestError] = useState("");
   const [hasSavedDraft, setHasSavedDraft] = useState(false);
+  const [statusModalQuest, setStatusModalQuest] = useState<Quest | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   // ── Copy tooltip ──
   const [copiedId, setCopiedId] = useState<number | null>(null);
@@ -303,6 +305,10 @@ export default function AdminPage() {
 
   const [rejectingItem, setRejectingItem] = useState<QuestVerification | null>(null);
   const [rejectionReasonInput, setRejectionReasonInput] = useState("");
+
+  const [deletingQuestId, setDeletingQuestId] = useState<string | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   async function handleVerifyQuest(id: number, newStatus: "Approved" | "Rejected", reason?: string) {
     try {
@@ -530,42 +536,53 @@ export default function AdminPage() {
     }
   }
 
-  async function deleteQuest(id: string) {
-    if (!confirm(`Delete quest "${id}"? This cannot be undone.`)) return;
+  function confirmDeleteQuest(id: string) {
+    setDeletingQuestId(id);
+    setDeleteConfirmation("");
+  }
+
+  async function executeDeleteQuest() {
+    if (!deletingQuestId) return;
+    if (deleteConfirmation !== deletingQuestId) {
+      alert("ID does not match.");
+      return;
+    }
+    setIsDeleting(true);
     try {
       const res = await fetch("/api/admin/quests", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id: deletingQuestId }),
       });
       if (!res.ok) {
         const j = await res.json();
         throw new Error(j.error);
       }
-      setQuests((prev) => prev.filter((q) => q.id !== id));
+      setQuests((prev) => prev.filter((q) => q.id !== deletingQuestId));
+      setDeletingQuestId(null);
     } catch (err: any) {
       alert("Error: " + err.message);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
-  async function toggleStatus(quest: Quest) {
-    const cycle: Record<Quest["status"], Quest["status"]> = {
-      Draft: "Soon",
-      Soon: "Live",
-      Live: "Done",
-      Done: "Draft",
-    };
-    const newStatus = cycle[quest.status];
+  async function updateQuestStatus(newStatus: Quest["status"]) {
+    if (!statusModalQuest) return;
+    setIsUpdatingStatus(true);
     try {
       const res = await fetch("/api/admin/quests", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: quest.id, status: newStatus }),
+        body: JSON.stringify({ id: statusModalQuest.id, status: newStatus }),
       });
       if (!res.ok) throw new Error("Failed to update status.");
-      setQuests((prev) => prev.map((q) => (q.id === quest.id ? { ...q, status: newStatus } : q)));
+      setQuests((prev) => prev.map((q) => (q.id === statusModalQuest.id ? { ...q, status: newStatus } : q)));
+      setStatusModalQuest(null);
     } catch (err: any) {
       alert("Error: " + err.message);
+    } finally {
+      setIsUpdatingStatus(false);
     }
   }
 
@@ -1038,8 +1055,8 @@ export default function AdminPage() {
                         <td>
                           <button
                             className={`admin-status-badge admin-status-badge--${q.status.toLowerCase()}`}
-                            onClick={() => toggleStatus(q)}
-                            title="Click to cycle status"
+                            onClick={() => setStatusModalQuest(q)}
+                            title="Click to change status"
                           >
                             {q.status}
                           </button>
@@ -1062,7 +1079,7 @@ export default function AdminPage() {
                               </button>
                             )}
                             {adminUser?.role === "superadmin" && (
-                              <button className="admin-delete-btn" onClick={() => deleteQuest(q.id)}>
+                              <button className="admin-delete-btn" onClick={() => confirmDeleteQuest(q.id)}>
                                 Delete
                               </button>
                             )}
@@ -1074,6 +1091,42 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Status Change Modal */}
+            {statusModalQuest && (
+              <div className="admin-modal-overlay" onClick={() => setStatusModalQuest(null)}>
+                <div className="quest-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400, padding: 24 }}>
+                  <div className="quest-modal-header">
+                    <h2>Change Status</h2>
+                    <button className="admin-modal__close" onClick={() => setStatusModalQuest(null)}>✕</button>
+                  </div>
+                  <p style={{ color: "var(--text-secondary)", marginBottom: 20, fontSize: "0.9rem" }}>
+                    Select a new status for <strong>{statusModalQuest.title}</strong>
+                  </p>
+                  
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {STATUS_OPTIONS.map((s) => (
+                      <button
+                        key={s}
+                        className={`admin-status-badge admin-status-badge--${s.toLowerCase()}`}
+                        style={{ 
+                          width: "100%", 
+                          padding: "12px",
+                          justifyContent: "center",
+                          opacity: statusModalQuest.status === s ? 0.5 : 1,
+                          cursor: statusModalQuest.status === s ? "not-allowed" : "pointer"
+                        }}
+                        disabled={statusModalQuest.status === s || isUpdatingStatus}
+                        onClick={() => updateQuestStatus(s)}
+                      >
+                        {isUpdatingStatus && statusModalQuest.status !== s ? "Updating..." : s}
+                        {statusModalQuest.status === s && " (Current)"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
 
@@ -1818,6 +1871,61 @@ export default function AdminPage() {
                 style={{ background: "#ef4444", color: "#fff", borderColor: "#dc2626" }}
               >
                 Confirm Rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Quest Modal ── */}
+      {deletingQuestId && (
+        <div className="admin-modal-overlay" onClick={() => setDeletingQuestId(null)}>
+          <div
+            className="admin-modal"
+            style={{ maxWidth: 400, width: "90%", padding: 24 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#ef4444", display: "flex", alignItems: "center", gap: 8 }}>
+              <span>⚠️</span> Delete Quest Warning
+            </h3>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: "8px 0 16px" }}>
+              Are you sure you want to permanently delete this quest? This action cannot be undone.
+              <br/><br/>
+              To proceed, please type the Quest ID: <strong>{deletingQuestId}</strong>
+            </p>
+
+            <input
+              type="text"
+              className="qf-input"
+              value={deleteConfirmation}
+              onChange={(e) => setDeleteConfirmation(e.target.value)}
+              placeholder="Enter Quest ID here"
+              style={{ width: "100%", marginBottom: 20 }}
+            />
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                type="button"
+                className="admin-cancel-btn"
+                onClick={() => setDeletingQuestId(null)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="admin-delete-btn"
+                onClick={executeDeleteQuest}
+                disabled={deleteConfirmation !== deletingQuestId || isDeleting}
+                style={{ 
+                  background: deleteConfirmation === deletingQuestId ? "#ef4444" : "var(--border)", 
+                  color: "#fff", 
+                  borderColor: deleteConfirmation === deletingQuestId ? "#dc2626" : "var(--border)", 
+                  opacity: deleteConfirmation === deletingQuestId ? 1 : 0.5, 
+                  cursor: deleteConfirmation === deletingQuestId ? "pointer" : "not-allowed" 
+                }}
+              >
+                {isDeleting ? "Deleting..." : "Proceed"}
               </button>
             </div>
           </div>
