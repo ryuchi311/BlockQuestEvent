@@ -26,7 +26,7 @@ export default function RegisterPage() {
               <span className="spec-icon">📍</span>
               <div className="spec-info">
                 <h3>Venue</h3>
-                <p>Manila, Philippines</p>
+                <p>CABS Cabuyao City, Laguna, Philippines</p>
               </div>
             </div>
             <div className="spec-item">

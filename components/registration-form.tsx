@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { createPortal } from "react-dom";
 
 type Status = {
   type: "idle" | "success" | "error";
@@ -42,8 +43,14 @@ export default function RegistrationForm() {
   // ── Modals State ──
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showSocialModal, setShowSocialModal] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [fbTimer, setFbTimer] = useState<number | null>(null); // null: idle, >0: countdown, 0: done
-  const [tgTimer, setTgTimer] = useState<number | null>(null);
+  const [tgChannelTimer, setTgChannelTimer] = useState<number | null>(null);
+  const [tgGroupTimer, setTgGroupTimer] = useState<number | null>(null);
   const [xTimer, setXTimer] = useState<number | null>(null);
 
   const handleFollowFb = () => {
@@ -51,9 +58,14 @@ export default function RegistrationForm() {
     setFbTimer(10);
   };
 
-  const handleFollowTg = () => {
-    window.open("https://t.me/tamagowarriors", "_blank");
-    setTgTimer(10);
+  const handleFollowTgChannel = () => {
+    window.open("https://t.me/block_quest", "_blank");
+    setTgChannelTimer(10);
+  };
+
+  const handleFollowTgGroup = () => {
+    window.open("https://t.me/+YG918_es6Es0Mjc1", "_blank");
+    setTgGroupTimer(10);
   };
 
   const handleFollowX = () => {
@@ -70,14 +82,23 @@ export default function RegistrationForm() {
     return () => clearInterval(interval);
   }, [fbTimer]);
 
-  // Countdown effect for Telegram
+  // Countdown effect for Telegram Channel
   React.useEffect(() => {
-    if (tgTimer === null || tgTimer <= 0) return;
+    if (tgChannelTimer === null || tgChannelTimer <= 0) return;
     const interval = setInterval(() => {
-      setTgTimer((prev) => (prev !== null && prev > 1 ? prev - 1 : 0));
+      setTgChannelTimer((prev) => (prev !== null && prev > 1 ? prev - 1 : 0));
     }, 1000);
     return () => clearInterval(interval);
-  }, [tgTimer]);
+  }, [tgChannelTimer]);
+
+  // Countdown effect for Telegram Group
+  React.useEffect(() => {
+    if (tgGroupTimer === null || tgGroupTimer <= 0) return;
+    const interval = setInterval(() => {
+      setTgGroupTimer((prev) => (prev !== null && prev > 1 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [tgGroupTimer]);
 
   // Countdown effect for Twitter / X
   React.useEffect(() => {
@@ -525,7 +546,7 @@ export default function RegistrationForm() {
             type="button"
             className="button-secondary"
             onClick={() => {
-              if (fbTimer === 0 && tgTimer === 0 && xTimer === 0) {
+              if (fbTimer === 0 && tgChannelTimer === 0 && tgGroupTimer === 0 && xTimer === 0) {
                 void generateQrPass(authenticatedUser);
               } else {
                 setShowSocialModal(true);
@@ -540,13 +561,13 @@ export default function RegistrationForm() {
       ) : null}
 
       {/* ── Social Media Follow Modal (10s Countdown Fake Auto-Verification) ── */}
-      {showSocialModal && (
+      {showSocialModal && mounted && createPortal(
         <div
           className="modal-overlay"
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 999,
+            zIndex: 9999,
             background: "rgba(0, 0, 0, 0.85)",
             backdropFilter: "blur(8px)",
             display: "flex",
@@ -559,6 +580,8 @@ export default function RegistrationForm() {
             style={{
               width: "100%",
               maxWidth: "460px",
+              maxHeight: "calc(100vh - 40px)",
+              overflowY: "auto",
               background: "linear-gradient(135deg, rgba(20, 24, 38, 0.98), rgba(12, 14, 22, 0.98))",
               border: "1px solid rgba(245, 166, 35, 0.4)",
               borderRadius: "24px",
@@ -590,7 +613,7 @@ export default function RegistrationForm() {
               Social Follow Missions
             </h3>
             <p style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.7)", marginBottom: "20px" }}>
-              Complete all 3 social follow missions to auto-verify & unlock your <strong>BlockQuest Event QR Pass</strong>.
+              Complete all 4 social follow missions to auto-verify & unlock your <strong>BlockQuest Event QR Pass</strong>.
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "24px" }}>
@@ -641,7 +664,7 @@ export default function RegistrationForm() {
                 )}
               </div>
 
-              {/* 2. Telegram Task */}
+              {/* 2. Telegram Channel Task */}
               <div
                 style={{
                   display: "flex",
@@ -650,28 +673,28 @@ export default function RegistrationForm() {
                   padding: "12px 16px",
                   borderRadius: "14px",
                   background: "rgba(255,255,255,0.04)",
-                  border: tgTimer === 0 ? "1px solid rgba(16, 185, 129, 0.5)" : "1px solid rgba(255,255,255,0.1)",
+                  border: tgChannelTimer === 0 ? "1px solid rgba(16, 185, 129, 0.5)" : "1px solid rgba(255,255,255,0.1)",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", textAlign: "left" }}>
                   <span style={{ fontSize: "1.3rem" }}>✈️</span>
                   <div>
-                    <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#fff" }}>Telegram Group</div>
-                    <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}>Join Tamago Warriors</div>
+                    <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#fff" }}>Telegram Channel</div>
+                    <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}>Follow BlockQuest</div>
                   </div>
                 </div>
-                {tgTimer === 0 ? (
+                {tgChannelTimer === 0 ? (
                   <span style={{ color: "#34d399", fontWeight: 800, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: 4 }}>
                     ✓ Verified
                   </span>
-                ) : tgTimer !== null ? (
+                ) : tgChannelTimer !== null ? (
                   <span style={{ color: "#fbbf24", fontSize: "0.82rem", fontWeight: 700, background: "rgba(245, 191, 36, 0.15)", padding: "4px 10px", borderRadius: "8px", border: "1px solid rgba(245, 191, 36, 0.3)" }}>
-                    ⏳ Verifying {tgTimer}s
+                    ⏳ Verifying {tgChannelTimer}s
                   </span>
                 ) : (
                   <button
                     type="button"
-                    onClick={handleFollowTg}
+                    onClick={handleFollowTgChannel}
                     style={{
                       padding: "6px 14px",
                       borderRadius: "10px",
@@ -688,7 +711,54 @@ export default function RegistrationForm() {
                 )}
               </div>
 
-              {/* 3. Twitter / X Task */}
+              {/* 3. Telegram Group Task */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px 16px",
+                  borderRadius: "14px",
+                  background: "rgba(255,255,255,0.04)",
+                  border: tgGroupTimer === 0 ? "1px solid rgba(16, 185, 129, 0.5)" : "1px solid rgba(255,255,255,0.1)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", textAlign: "left" }}>
+                  <span style={{ fontSize: "1.3rem" }}>✈️</span>
+                  <div>
+                    <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#fff" }}>Telegram Group</div>
+                    <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}>Join BlockQuest Group</div>
+                  </div>
+                </div>
+                {tgGroupTimer === 0 ? (
+                  <span style={{ color: "#34d399", fontWeight: 800, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: 4 }}>
+                    ✓ Verified
+                  </span>
+                ) : tgGroupTimer !== null ? (
+                  <span style={{ color: "#fbbf24", fontSize: "0.82rem", fontWeight: 700, background: "rgba(245, 191, 36, 0.15)", padding: "4px 10px", borderRadius: "8px", border: "1px solid rgba(245, 191, 36, 0.3)" }}>
+                    ⏳ Verifying {tgGroupTimer}s
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleFollowTgGroup}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: "10px",
+                      fontSize: "0.78rem",
+                      fontWeight: 700,
+                      background: "#24A1DE",
+                      color: "#fff",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Join TG →
+                  </button>
+                )}
+              </div>
+
+              {/* 4. Twitter / X Task */}
               <div
                 style={{
                   display: "flex",
@@ -726,7 +796,7 @@ export default function RegistrationForm() {
                       fontWeight: 700,
                       background: "#000",
                       color: "#fff",
-                      border: "1px solid rgba(255,255,255,0.3)",
+                      border: "1px solid rgba(255, 255, 255, 0.3)",
                       cursor: "pointer",
                     }}
                   >
@@ -738,7 +808,7 @@ export default function RegistrationForm() {
 
             <button
               type="button"
-              disabled={fbTimer !== 0 || tgTimer !== 0 || xTimer !== 0 || qrLoading}
+              disabled={fbTimer !== 0 || tgChannelTimer !== 0 || tgGroupTimer !== 0 || xTimer !== 0 || qrLoading}
               onClick={async () => {
                 setShowSocialModal(false);
                 if (authenticatedUser) {
@@ -752,21 +822,22 @@ export default function RegistrationForm() {
                 fontSize: "0.95rem",
                 fontWeight: 800,
                 background:
-                  fbTimer === 0 && tgTimer === 0 && xTimer === 0
+                  fbTimer === 0 && tgChannelTimer === 0 && tgGroupTimer === 0 && xTimer === 0
                     ? "linear-gradient(135deg, #f5a623 0%, #e0850b 100%)"
                     : "rgba(255, 255, 255, 0.1)",
-                color: fbTimer === 0 && tgTimer === 0 && xTimer === 0 ? "#120b02" : "rgba(255, 255, 255, 0.4)",
+                color: fbTimer === 0 && tgChannelTimer === 0 && tgGroupTimer === 0 && xTimer === 0 ? "#120b02" : "rgba(255, 255, 255, 0.4)",
                 border: "none",
-                cursor: fbTimer === 0 && tgTimer === 0 && xTimer === 0 ? "pointer" : "not-allowed",
+                cursor: fbTimer === 0 && tgChannelTimer === 0 && tgGroupTimer === 0 && xTimer === 0 ? "pointer" : "not-allowed",
                 transition: "all 0.2s ease",
               }}
             >
-              {fbTimer !== 0 || tgTimer !== 0 || xTimer !== 0
-                ? "🔒 Follow All 3 Socials to Unlock"
+              {fbTimer !== 0 || tgChannelTimer !== 0 || tgGroupTimer !== 0 || xTimer !== 0
+                ? "🔒 Follow All 4 Socials to Unlock"
                 : "⚡ Claim & Generate QR Pass →"}
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {qrPass ? (
@@ -814,13 +885,13 @@ export default function RegistrationForm() {
       ) : null}
 
       {/* ── Data Privacy Policy Modal (RA 10173 Compliant) ── */}
-      {showPrivacyModal && (
+      {showPrivacyModal && mounted && createPortal(
         <div
           className="modal-overlay"
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 999,
+            zIndex: 9999,
             background: "rgba(0, 0, 0, 0.85)",
             backdropFilter: "blur(8px)",
             display: "flex",
@@ -864,36 +935,26 @@ export default function RegistrationForm() {
               ✕
             </button>
 
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-              <span style={{ fontSize: "1.8rem" }}>🔒</span>
-              <h3 style={{ fontSize: "1.25rem", fontWeight: 800, color: "#fff", margin: 0 }}>
-                Data Privacy Notice
-              </h3>
-            </div>
+            <h3 style={{ fontSize: "1.3rem", fontWeight: 800, marginBottom: "20px", color: "var(--gold-light)" }}>
+              Data Privacy Policy
+            </h3>
 
-            <p style={{ fontSize: "0.78rem", color: "var(--gold-light)", fontWeight: 700, marginBottom: 16 }}>
-              In Compliance with Republic Act No. 10173 (Data Privacy Act of 2012)
-            </p>
-
-            <div style={{ fontSize: "0.84rem", color: "rgba(255,255,255,0.8)", lineHeight: 1.6, display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px", fontSize: "0.88rem", lineHeight: 1.6, color: "rgba(255,255,255,0.8)" }}>
               <p>
-                <strong>BlockQuest Fiesta PH</strong> respects your privacy and is committed to protecting your personal data in accordance with the Data Privacy Act of 2012 (RA 10173) of the Philippines.
+                In compliance with the <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong>, BlockQuest Fiesta PH is committed to protecting your personal information.
               </p>
 
               <div>
-                <strong style={{ color: "#fff" }}>1. Information We Collect:</strong>
-                <ul style={{ paddingLeft: 20, marginTop: 4 }}>
-                  <li>Full Name</li>
-                  <li>Email Address</li>
-                  <li>Contact / Phone Number</li>
-                  <li>Organization or School (Optional)</li>
-                </ul>
+                <strong style={{ color: "#fff" }}>1. Information Collected:</strong>
+                <p style={{ marginTop: 4 }}>
+                  We collect your Full Name, Email Address, Mobile Phone Number, and Organization name for the purpose of event registration, ticket verification, and quest leaderboard tracking.
+                </p>
               </div>
 
               <div>
                 <strong style={{ color: "#fff" }}>2. Purpose of Collection:</strong>
                 <p style={{ marginTop: 4 }}>
-                  Your data is strictly collected to generate your official Event Ticket Pass & QR Code, verify gate check-in at the venue, process quest leaderboard progress, and send vital event updates.
+                  Your data is used to generate your secure entrance QR Pass, verify your social media follows (for gated pass unlock), track your points/XP in quests, and send official event updates.
                 </p>
               </div>
 
@@ -931,7 +992,8 @@ export default function RegistrationForm() {
               I Understand & Accept
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -27,7 +27,7 @@ Welcome to **BlockQuest Fiesta PH**, a full-stack Next.js event platform built f
 
 BlockQuest Fiesta PH is designed to handle **600+ concurrent attendees** during live event day operations at CABS Cabuyao City. It includes:
 - **Registration Hub**: Quick guest registration with instant account login and phone number formatting (`+63`).
-- **Social Media Mission Gating**: 10-second auto-verification countdowns requiring attendees to follow official channels (Facebook, Telegram, X) before claiming their QR pass.
+- **Social Media Mission Gating**: 10-second auto-verification countdowns requiring attendees to follow official channels (Facebook, Telegram, X) before claiming their QR pass. (4 social missions in total).
 - **Mobile QR Pass Scanner**: Fullscreen mobile-optimized scanner with audio feedback (victory jingles), haptic vibration, auto-check-in, and duplicate ticket detection.
 - **Quest Arena**: Quests with instant XP claims or screenshot proof submissions.
 - **Admin Dashboard**: Multi-role admin management with CSV export, search/filtering, quest draft/live toggling, screenshot proof image zoom/pan, and rejection reason logging.
@@ -202,11 +202,12 @@ node seed_admin.mjs
 ### 1. Attendee Registration & Social Gated QR Pass
 - Attendees register with Name, Email, Phone Number, and optional Organization.
 - Returning attendees can click **"Already registered? Unlock QR Pass"** to log in using their Email & Phone.
-- **Social Media Mission Gate**: Before generating the QR pass, attendees are prompted to complete 3 social follow missions:
+- **Social Media Mission Gate**: Before generating the QR pass, attendees are prompted to complete 4 social follow missions:
   - 🌐 **Facebook**: [https://www.facebook.com/BRGYTamago](https://www.facebook.com/BRGYTamago)
-  - ✈️ **Telegram**: [https://t.me/tamagowarriors](https://t.me/tamagowarriors)
+  - ✈️ **Telegram Channel**: [https://t.me/block_quest](https://t.me/block_quest)
+  - ✈️ **Telegram Group**: [https://t.me/+YG918_es6Es0Mjc1](https://t.me/+YG918_es6Es0Mjc1)
   - 🐦 **Twitter / X**: [https://x.com/BRGYTamago](https://x.com/BRGYTamago)
-- Each button triggers a **10-second countdown fake auto-verification timer** (`⏳ Verifying 10s...`) before marking the task `✓ Verified`. Once all 3 are completed, the QR pass unlocks.
+- Each button triggers a **10-second countdown fake auto-verification timer** (`⏳ Verifying 10s...`) before marking the task `✓ Verified`. Once all 4 are completed, the QR pass unlocks.
 
 ### 2. On-Site Mobile QR Check-In Scanner (`/scan`)
 - Framed in a **Mobile Shell** on desktop screens and full-screen camera on actual mobile devices.

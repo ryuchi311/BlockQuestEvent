@@ -1135,6 +1135,7 @@ a {
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
   margin-top: 20px;
+  align-items: stretch;
 }
 
 .spec-item {
@@ -1145,6 +1146,7 @@ a {
   display: flex;
   gap: 14px;
   align-items: flex-start;
+  height: 100%;
 }
 
 .spec-icon {
