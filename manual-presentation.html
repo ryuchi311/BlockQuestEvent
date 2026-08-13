@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BlockQuest Event Platform • Comprehensive Manual & Deep-Dive Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #07090e;
+      --bg-surface: #0e131f;
+      --bg-card: rgba(17, 24, 39, 0.75);
+      --bg-card-hover: rgba(28, 38, 62, 0.95);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-gold: rgba(245, 166, 35, 0.35);
+      --gold: #f5a623;
+      --gold-light: #ffd074;
+      --gold-glow: rgba(245, 166, 35, 0.18);
+      --emerald: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.18);
+      --blue: #24a1de;
+      --blue-glow: rgba(36, 161, 222, 0.18);
+      --purple: #a855f7;
+      --purple-glow: rgba(168, 85, 247, 0.18);
+      --red: #ef4444;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 22px;
+      --radius-full: 9999px;
+      --transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: 'Outfit', sans-serif;
+      overflow-x: hidden;
+      line-height: 1.6;
+      background-image: 
+        radial-gradient(circle at 10% 10%, rgba(245, 166, 35, 0.09) 0%, transparent 45%),
+        radial-gradient(circle at 90% 80%, rgba(36, 161, 222, 0.09) 0%, transparent 45%),
+        radial-gradient(circle at 50% 45%, rgba(168, 85, 247, 0.05) 0%, transparent 55%),
+        radial-gradient(circle at 50% 90%, rgba(16, 185, 129, 0.05) 0%, transparent 60%);
+      background-attachment: fixed;
+    }
+
+    /* Floating Top Nav */
+    .nav-bar {
+      position: sticky;
+      top: 16px;
+      z-index: 1000;
+      max-width: 1240px;
+      margin: 0 auto 30px auto;
+      padding: 10px 20px;
+      background: rgba(11, 15, 25, 0.88);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-full);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 900;
+      font-size: 1.15rem;
+      color: var(--gold-light);
+      text-decoration: none;
+      letter-spacing: 0.5px;
+    }
+
+    .brand-badge {
+      font-size: 0.65rem;
+      background: linear-gradient(135deg, var(--gold), #d97706);
+      color: #000;
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 6px;
+      list-style: none;
+      flex-wrap: wrap;
+    }
+
+    .nav-link {
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: var(--transition);
+    }
+
+    .nav-link:hover, .nav-link.active {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .container {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 50px 0 70px 0;
+      position: relative;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: rgba(245, 166, 35, 0.1);
+      border: 1px solid var(--border-gold);
+      border-radius: var(--radius-full);
+      color: var(--gold);
+      font-size: 0.8rem;
+      font-weight: 800;
+      margin-bottom: 20px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .hero-title {
+      font-size: clamp(2.3rem, 4.5vw, 3.8rem);
+      font-weight: 900;
+      line-height: 1.15;
+      margin-bottom: 18px;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 45%, var(--gold-light) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      max-width: 780px;
+      margin: 0 auto 36px auto;
+    }
+
+    /* Key Metric Bar */
+    .hero-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-top: 30px;
+    }
+
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      padding: 22px;
+      border-radius: var(--radius-md);
+      backdrop-filter: blur(12px);
+      text-align: left;
+      transition: var(--transition);
+    }
+
+    .metric-card:hover {
+      border-color: var(--border-gold);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .metric-icon {
+      font-size: 1.8rem;
+      margin-bottom: 10px;
+    }
+
+    .metric-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .metric-desc {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    /* Sections */
+    section {
+      padding: 70px 0;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .section-header {
+      margin-bottom: 40px;
+    }
+
+    .section-tag {
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .tag-gold { color: var(--gold); }
+    .tag-blue { color: var(--blue); }
+    .tag-emerald { color: var(--emerald); }
+    .tag-purple { color: var(--purple); }
+
+    .section-title {
+      font-size: 2.1rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+
+    .section-desc {
+      color: var(--text-muted);
+      font-size: 1rem;
+      max-width: 720px;
+    }
+
+    /* Deep Dive Cards & Interactive Showcases */
+    .grid-2col {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 32px;
+      align-items: center;
+      margin: 32px 0;
+    }
+
+    @media (max-width: 920px) {
+      .grid-2col {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      backdrop-filter: blur(14px);
+    }
+
+    /* QR Pass Visual Simulation */
+    .qr-pass-mockup {
+      background: linear-gradient(145deg, #182030, #0c101a);
+      border: 2px solid var(--border-gold);
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 30px var(--gold-glow);
+      text-align: center;
+      position: relative;
+    }
+
+    .qr-pass-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+    }
+
+    .qr-code-box {
+      background: #ffffff;
+      padding: 16px;
+      border-radius: 16px;
+      display: inline-block;
+      margin: 10px auto 20px auto;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+      position: relative;
+    }
+
+    .qr-center-logo {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 42px;
+      height: 42px;
+      background: #000;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gold);
+      font-weight: 900;
+      font-size: 1.2rem;
+      border: 2px solid var(--gold);
+    }
+
+    .qr-pill-code {
+      background: rgba(245, 166, 35, 0.15);
+      color: var(--gold-light);
+      border: 1px solid var(--border-gold);
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 800;
+      font-size: 0.95rem;
+    }
+
+    /* Tab Visual Mockup & Cards */
+    .tab-showcase {
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      margin-top: 30px;
+    }
+
+    .tab-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      backdrop-filter: blur(16px);
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tab-card:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .tab-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .tab-title-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .tab-icon-box {
+      width: 46px;
+      height: 46px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .tab-name {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .tab-badge {
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tab-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 28px;
+    }
+
+    @media (max-width: 900px) {
+      .tab-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .feature-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .feature-item {
+      display: flex;
+      gap: 12px;
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .feature-item strong {
+      color: #fff;
+    }
+
+    .feature-bullet {
+      color: var(--gold);
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    .mockup-preview {
+      background: #090c13;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+    }
+
+    .mockup-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--gold-light);
+      font-weight: 700;
+    }
+
+    /* Quest Builder Grid */
+    .quest-builder-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin: 32px 0;
+    }
+
+    .qb-step-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      backdrop-filter: blur(12px);
+      transition: var(--transition);
+    }
+
+    .qb-step-card:hover {
+      border-color: var(--border-gold);
+      transform: translateY(-3px);
+    }
+
+    .qb-step-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .qb-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--gold-glow);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-weight: 800;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .qb-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .qb-desc {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* RBAC Matrix Table */
+    .rbac-table-wrap {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin: 32px 0;
+      backdrop-filter: blur(12px);
+    }
+
+    .rbac-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .rbac-table th, .rbac-table td {
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .rbac-table th {
+      background: rgba(255, 255, 255, 0.03);
+      font-weight: 700;
+      color: var(--gold-light);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .role-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .badge-superadmin { background: rgba(245, 166, 35, 0.15); color: var(--gold); border: 1px solid var(--gold); }
+    .badge-admin { background: rgba(36, 161, 222, 0.15); color: var(--blue); border: 1px solid var(--blue); }
+    .badge-quester { background: rgba(168, 85, 247, 0.15); color: var(--purple); border: 1px solid var(--purple); }
+    .badge-verifier { background: rgba(16, 185, 129, 0.15); color: var(--emerald); border: 1px solid var(--emerald); }
+    .badge-viewer { background: rgba(148, 163, 184, 0.15); color: var(--text-muted); border: 1px solid var(--text-muted); }
+
+    /* FAQ Filter & Categories */
+    .faq-categories {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .faq-filter-btn {
+      padding: 8px 18px;
+      border-radius: var(--radius-full);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .faq-filter-btn:hover, .faq-filter-btn.active {
+      background: rgba(245, 166, 35, 0.15);
+      color: var(--gold-light);
+      border-color: var(--border-gold);
+    }
+
+    .faq-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      margin-bottom: 16px;
+      overflow: hidden;
+      transition: var(--transition);
+    }
+
+    .faq-item:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .faq-question {
+      padding: 20px 24px;
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .faq-tag {
+      font-size: 0.72rem;
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .faq-answer {
+      padding: 0 24px 22px 24px;
+      color: var(--text-muted);
+      font-size: 0.94rem;
+      line-height: 1.7;
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      padding-top: 14px;
+    }
+
+    .faq-answer strong {
+      color: #fff;
+    }
+
+    footer {
+      border-top: 1px solid var(--border-subtle);
+      padding: 50px 0 30px 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Floating Navigation -->
+  <nav class="nav-bar">
+    <a href="#" class="brand">
+      <span>⚡ BLOCKQUEST</span>
+      <span class="brand-badge">DEEP DIVE MANUAL</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#registration-deepdive" class="nav-link" style="color: var(--blue); font-weight: 700;">📝 Registration & QR Pass</a></li>
+      <li><a href="#add-quest-deepdive" class="nav-link" style="color: var(--gold-light); font-weight: 700;">⚡ Add Quest</a></li>
+      <li><a href="#admin-tabs" class="nav-link">Admin Modules</a></li>
+      <li><a href="#rbac" class="nav-link">RBAC Matrix</a></li>
+      <li><a href="#architecture" class="nav-link">Architecture</a></li>
+      <li><a href="#faq" class="nav-link" style="color: var(--emerald); font-weight: 700;">❓ Master FAQ</a></li>
+    </ul>
+  </nav>
+
+  <div class="container">
+
+    <!-- HERO HEADER -->
+    <header class="hero">
+      <div class="hero-badge">⚡ End-to-End System Manual & Dashboard Guide</div>
+      <h1 class="hero-title">BlockQuest Event Platform</h1>
+      <p class="hero-subtitle">
+        A comprehensive guide explaining the strategic purpose, quester onboarding, gate operations, and an in-depth breakdown of all 6 Admin Dashboard Modules.
+      </p>
+
+      <div class="hero-metrics">
+        <div class="metric-card">
+          <div class="metric-icon">🎫</div>
+          <div class="metric-title">Automated Ticketing</div>
+          <div class="metric-desc">Dynamic QR pass generation with unique codes (`BQF-XXXXXX`).</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-icon">📣</div>
+          <div class="metric-title">Dynamic Socials</div>
+          <div class="metric-desc">Configurable 10s auto-verification countdown tasks.</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-icon">⚡</div>
+          <div class="metric-title">Live Quest Builder</div>
+          <div class="metric-desc">Real-time side-by-side preview with auto-slugged IDs & draft autosave.</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-icon">🛡️</div>
+          <div class="metric-title">5-Tier RBAC Engine</div>
+          <div class="metric-desc">Superadmin, Manager, Quester Staff, Verifier, and Viewer.</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- SECTION: REGISTRATION & QR PASS DEEP DIVE -->
+    <section id="registration-deepdive" style="border-top: none;">
+      <div class="section-header">
+        <span class="section-tag tag-blue">DEEP DIVE MODULE</span>
+        <h2 class="section-title">📝 Registration Engine & Dynamic QR Pass Lifecycle</h2>
+        <p class="section-desc">An exhaustive breakdown of how attendees establish their identity, pass through automated social gates, and receive their cryptographic offline event pass.</p>
+      </div>
+
+      <div class="grid-2col">
+        <!-- Left: Technical Breakdown -->
+        <div class="card-box">
+          <h3 style="font-size: 1.35rem; color: #fff; margin-bottom: 16px;">1. The Registration Flow & Security</h3>
+          <ul class="feature-list">
+            <li class="feature-item">
+              <span class="feature-bullet" style="color: var(--blue);">✦</span>
+              <div>
+                <strong>Single Full-Name Input:</strong> Merged first and last name into a single responsive field to reduce mobile onboarding friction.
+              </div>
+            </li>
+            <li class="feature-item">
+              <span class="feature-bullet" style="color: var(--blue);">✦</span>
+              <div>
+                <strong>International Dial Selector:</strong> Includes custom country code selector (default +63 Philippines) with automatic digit sanitization.
+              </div>
+            </li>
+            <li class="feature-item">
+              <span class="feature-bullet" style="color: var(--blue);">✦</span>
+              <div>
+                <strong>Cryptographic Salted Hashing:</strong> Passwords are never saved in plain text; encrypted on edge via <code>scryptSync</code> (16-byte salt, 64-byte key).
+              </div>
+            </li>
+            <li class="feature-item">
+              <span class="feature-bullet" style="color: var(--blue);">✦</span>
+              <div>
+                <strong>Unique Ticket Code Generator:</strong> A PostgreSQL trigger function automatically computes a collision-free <code>BQF-XXXXXX</code> code upon signup.
+              </div>
+            </li>
+          </ul>
+
+          <h3 style="font-size: 1.35rem; color: #fff; margin: 28px 0 16px 0;">2. Dynamic Social Follow Verification Gate</h3>
+          <ul class="feature-list">
+            <li class="feature-item">
+              <span class="feature-bullet" style="color: var(--gold);">✦</span>
+              <div>
+                <strong>Pre-Pass Requirement:</strong> Attendees cannot generate or download their pass until all database-configured social missions are completed.
+              </div>
+            </li>
+            <li class="feature-item">
+              <span class="feature-bullet" style="color: var(--gold);">✦</span>
+              <div>
+                <strong>10-Second Auto-Countdown:</strong> When an attendee clicks a social link (Facebook, Telegram, X), the modal runs an asynchronous 10-second verification countdown before awarding the green <em>"✓ Verified"</em> badge.
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Right: Visual Pass Mockup -->
+        <div>
+          <div class="qr-pass-mockup">
+            <div class="qr-pass-header">
+              <div style="text-align: left;">
+                <span style="font-size: 0.72rem; color: var(--gold); font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">Official Event Pass</span>
+                <h4 style="font-size: 1.15rem; color: #fff; margin-top: 2px;">Fiesta General Admission</h4>
+              </div>
+              <span class="qr-pill-code">BQF-X79K2M</span>
+            </div>
+
+            <div class="qr-code-box">
+              <svg width="180" height="180" viewBox="0 0 100 100" style="display: block;">
+                <rect width="100" height="100" fill="#fff" />
+                <path d="M10 10h30v30h-30z M60 10h30v30h-30z M10 60h30v30h-30z" fill="#000" />
+                <path d="M18 18h14v14h-14z M68 18h14v14h-14z M18 68h14v14h-14z" fill="#fff" />
+                <path d="M22 22h6v6h-6z M72 22h6v6h-6z M22 72h6v6h-6z" fill="#000" />
+                <path d="M45 10h10v10h-10z M45 30h10v10h-10z M10 45h10v10h-10z M30 45h10v10h-10z M60 45h10v10h-10z M80 45h10v10h-10z M45 60h10v10h-10z M60 60h10v10h-10z M80 60h10v10h-10z M45 80h10v10h-10z M60 80h10v10h-10z M80 80h10v10h-10z" fill="#000" />
+              </svg>
+              <div class="qr-center-logo">BQ</div>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 14px;">
+              <div style="font-size: 1.2rem; font-weight: 800; color: #fff;">Satoshi Nakamoto</div>
+              <div style="font-size: 0.85rem; color: var(--text-muted);">satoshi@blockquest.ph</div>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.04); border-radius: 12px; padding: 12px; display: flex; justify-content: space-around; border: 1px solid var(--border-subtle);">
+              <div>
+                <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Status</span>
+                <div style="font-size: 0.85rem; font-weight: 800; color: var(--emerald);">✓ VALID PASS</div>
+              </div>
+              <div style="border-left: 1px solid var(--border-subtle); padding-left: 14px;">
+                <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Earned XP</span>
+                <div style="font-size: 0.85rem; font-weight: 800; color: var(--gold-light);">⚡ 1,250 XP</div>
+              </div>
+            </div>
+
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 14px;">
+              📱 Present this QR code at the entrance gate scanner or save as screenshot.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION: ADD QUEST DEEP DIVE -->
+    <section id="add-quest-deepdive" style="background: rgba(245, 166, 35, 0.02); border-top: 1px solid var(--border-gold); border-bottom: 1px solid var(--border-gold);">
+      <div class="section-header">
+        <span class="section-tag tag-gold">FEATURE SPOTLIGHT</span>
+        <h2 class="section-title">⚡ In-Depth Guide: "Add New Quest" System</h2>
+        <p class="section-desc">The Fiesta Quest Creation modal is an intelligent authoring environment built with live visual simulation, autosaving drafts, auto-slugging IDs, and flexible formatting tools.</p>
+      </div>
+
+      <!-- 6 Step Breakdown -->
+      <div class="quest-builder-grid">
+        <div class="qb-step-card">
+          <div class="qb-step-header">
+            <div class="qb-num">1</div>
+            <h4 class="qb-title">Identity & Order</h4>
+          </div>
+          <p class="qb-desc">
+            • <strong>Quest ID:</strong> Auto-slugs titles into clean URL-safe keys (e.g. <code>booth-visit-a</code>). Immutable once saved.<br>
+            • <strong>Sort Order:</strong> Sets the numerical display sequence in the attendee quest catalog.
+          </p>
+        </div>
+
+        <div class="qb-step-card">
+          <div class="qb-step-header">
+            <div class="qb-num">2</div>
+            <h4 class="qb-title">Formatted Content</h4>
+          </div>
+          <p class="qb-desc">
+            • <strong>Title:</strong> Catchy quest name displayed on the card banner.<br>
+            • <strong>Quick Format Buttons:</strong> One-click helpers insert pre-styled <code>• Bullet Lists</code> or <code>1. Numbered Steps</code> for clear instructions.
+          </p>
+        </div>
+
+        <div class="qb-step-card">
+          <div class="qb-step-header">
+            <div class="qb-num">3</div>
+            <h4 class="qb-title">Economy & Status</h4>
+          </div>
+          <p class="qb-desc">
+            • <strong>XP Reward:</strong> Configurable points (e.g. 100 to 1,000 XP).<br>
+            • <strong>4 Status Modes:</strong> <span style="color:var(--emerald);">🟢 Live</span>, <span style="color:#f59e0b;">🔜 Soon</span>, <span style="color:#94a3b8;">✅ Done</span>, or <span style="color:#a855f7;">📝 Draft</span>.<br>
+            • <strong>Category:</strong> 🚀 Onboarding, 📣 Social, or 📅 Daily.
+          </p>
+        </div>
+
+        <div class="qb-step-card">
+          <div class="qb-step-header">
+            <div class="qb-num">4</div>
+            <h4 class="qb-title">Action CTA Link</h4>
+          </div>
+          <p class="qb-desc">
+            • <strong>Button Label:</strong> Custom CTA (e.g., "Visit Booth Website", "Retweet Post").<br>
+            • <strong>Target URL:</strong> External partner link or internal relative route.
+          </p>
+        </div>
+
+        <div class="qb-step-card">
+          <div class="qb-step-header">
+            <div class="qb-num">5</div>
+            <h4 class="qb-title">Verification Mode</h4>
+          </div>
+          <p class="qb-desc">
+            • <strong>📷 Proof Required:</strong> Requires attendees to upload screenshot evidence to S3. Routed to the Verifier Queue.<br>
+            • <strong>⚡ Instant Claim:</strong> Awards XP immediately upon button click without manual staff review.
+          </p>
+        </div>
+
+        <div class="qb-step-card">
+          <div class="qb-step-header">
+            <div class="qb-num">6</div>
+            <h4 class="qb-title">Draft Recovery</h4>
+          </div>
+          <p class="qb-desc">
+            • <strong>Browser Autosave:</strong> If an admin accidentally closes the modal or reloads, an alert banner prompts <em>"Resume Unfinished Draft"</em> to prevent lost work.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION: ADMIN DASHBOARD MODULES -->
+    <section id="admin-tabs">
+      <div class="section-header">
+        <span class="section-tag tag-emerald">ADMIN DASHBOARD MODULES</span>
+        <h2 class="section-title">Complete Breakdown of All 6 Admin Tabs</h2>
+        <p class="section-desc">A detailed walkthrough of every tab, capability, safety control, and operational feature available in the Admin Portal.</p>
+      </div>
+
+      <div class="tab-showcase">
+
+        <!-- TAB 1: QR SCANNER -->
+        <div class="tab-card">
+          <div class="tab-card-header">
+            <div class="tab-title-group">
+              <div class="tab-icon-box">📷</div>
+              <div>
+                <h3 class="tab-name">Tab 1: QR Scanner</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Real-time camera gate check-in scanner</p>
+              </div>
+            </div>
+            <span class="tab-badge" style="background: rgba(36,161,222,0.15); color: var(--blue); border: 1px solid var(--blue);">Scanner & Gate Staff</span>
+          </div>
+
+          <div class="tab-grid">
+            <ul class="feature-list">
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>In-Browser Camera Engine:</strong> Works seamlessly on mobile phones, tablets, or laptops without requiring native app installations.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Instant Attendee Lookup:</strong> Decodes the QR ticket code and instantly fetches the attendee's profile and current status.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Safety Confirmation Modal:</strong> Prevents accidental scans by showing attendee name, email, and ticket code before marking as checked-in.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Duplicate Scan Alert:</strong> Prompts an immediate warning banner if the pass has already been used.</div>
+              </li>
+            </ul>
+
+            <div class="mockup-preview">
+              <div class="mockup-bar">
+                <span>VIEWFINDER ACTIVE</span>
+                <span style="color: var(--emerald);">● LIVE CAMERA</span>
+              </div>
+              <div style="color: var(--text-muted); line-height: 1.8;">
+                [ SCANNER READY ]<br>
+                Target: <span style="color: #fff;">BQF-X79K2M</span><br>
+                Attendee: <span style="color: var(--gold-light);">Satoshi Nakamoto</span><br>
+                Status: <span style="color: #f59e0b;">Pending Check-In</span><br>
+                Action: <span style="color: var(--emerald);">Prompt Confirmation Modal →</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: ATTENDEES -->
+        <div class="tab-card">
+          <div class="tab-card-header">
+            <div class="tab-title-group">
+              <div class="tab-icon-box">🎫</div>
+              <div>
+                <h3 class="tab-name">Tab 2: Event Pass Attendees</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Attendee registry, manual search & check-in fallback</p>
+              </div>
+            </div>
+            <span class="tab-badge" style="background: rgba(16,185,129,0.15); color: var(--emerald); border: 1px solid var(--emerald);">Manager & Quester Staff</span>
+          </div>
+
+          <div class="tab-grid">
+            <ul class="feature-list">
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Live Search & Filter:</strong> Instantly filter by status (All, Checked-In, Pending) or search by Name, Email, or Ticket Code.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Manual Check-In Fallback:</strong> Allows staff to manually check-in attendees whose phone battery died or screen is cracked.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Auto-Refresh Polling:</strong> Toggle auto-refresh to keep attendee lists synchronized across multiple gate entrances simultaneously.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Attendee Metrics:</strong> Displays total registrations, total checked-in count, and attendance percentage.</div>
+              </li>
+            </ul>
+
+            <div class="mockup-preview">
+              <div class="mockup-bar">
+                <span>ATTENDEE REGISTRY</span>
+                <span>TOTAL: 1,420</span>
+              </div>
+              <div style="color: var(--text-muted); line-height: 1.8;">
+                • Search: <span style="color: #fff;">"satoshi@block.io"</span><br>
+                • Ticket: <span style="color: var(--gold-light);">BQF-X79K2M</span> (Checked: <span style="color: var(--emerald);">YES</span>)<br>
+                • Ticket: <span style="color: var(--gold-light);">BQF-A190P2</span> (Checked: <span style="color: var(--red);">NO</span>)<br>
+                • Action: <span style="color: var(--blue);">[ Check In With Modal ]</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: FIESTA QUESTS -->
+        <div class="tab-card">
+          <div class="tab-card-header">
+            <div class="tab-title-group">
+              <div class="tab-icon-box">⚡</div>
+              <div>
+                <h3 class="tab-name">Tab 3: Fiesta Event Quests</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Quest creation, XP configuration & scheduling</p>
+              </div>
+            </div>
+            <span class="tab-badge" style="background: rgba(245,166,35,0.15); color: var(--gold); border: 1px solid var(--gold);">Manager & Superadmin</span>
+          </div>
+
+          <div class="tab-grid">
+            <ul class="feature-list">
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Quest Builder & Live Preview:</strong> Create quests with Title, Description, XP amount, Action Label, and external link.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Status Controller:</strong> Switch quests between <strong>Live</strong> (active for users), <strong>Soon</strong> (teaser), <strong>Done</strong> (closed), or <strong>Draft</strong>.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Proof Requirement Toggle:</strong> Toggle "Requires Proof" to mandate photo/screenshot submission before XP award.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Category Filter:</strong> Organize quests by Onboarding, Social Media, Booth Activity, Partner Quests, and Special Events.</div>
+              </li>
+            </ul>
+
+            <div class="mockup-preview">
+              <div class="mockup-bar">
+                <span>QUEST CATALOG</span>
+                <span style="color: var(--gold);">XP POOL: 25,000</span>
+              </div>
+              <div style="color: var(--text-muted); line-height: 1.8;">
+                [+] Add New Quest<br>
+                1. "Visit Partner Booth A" - <span style="color: var(--gold-light);">500 XP</span> [Live]<br>
+                2. "Retweet Announcement" - <span style="color: var(--gold-light);">250 XP</span> [Live]<br>
+                3. "VIP Mixer Pass" - <span style="color: var(--gold-light);">1,000 XP</span> [Soon]<br>
+                Proof Required: <span style="color: var(--emerald);">ENABLED</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: QUEST VERIFICATIONS -->
+        <div class="tab-card">
+          <div class="tab-card-header">
+            <div class="tab-title-group">
+              <div class="tab-icon-box">🔍</div>
+              <div>
+                <h3 class="tab-name">Tab 4: Quest Verifications</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Proof review queue, full-screen image inspector & feedback</p>
+              </div>
+            </div>
+            <span class="tab-badge" style="background: rgba(16,185,129,0.15); color: var(--emerald); border: 1px solid var(--emerald);">Verifier & Manager</span>
+          </div>
+
+          <div class="tab-grid">
+            <ul class="feature-list">
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Dedicated Review Queue:</strong> Filter by Pending, Approved, or Rejected submissions with real-time counters.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Full-Screen Zoom & Pan Inspector:</strong> Click any screenshot to open an interactive zoom modal to verify evidence clarity.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>One-Click Approval:</strong> Instantly deposits XP into the attendee's profile wallet and creates an audit completion receipt.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Mandatory Rejection Feedback:</strong> Prompts the verifier for a reason (e.g. "Blurry photo", "Wrong booth") to guide the attendee.</div>
+              </li>
+            </ul>
+
+            <div class="mockup-preview">
+              <div class="mockup-bar">
+                <span>VERIFICATION QUEUE</span>
+                <span style="color: #fbbf24;">(14 PENDING)</span>
+              </div>
+              <div style="color: var(--text-muted); line-height: 1.8;">
+                Submission: <span style="color: #fff;">Alex Rivera</span><br>
+                Quest: <span style="color: var(--gold-light);">"Booth Photo Quest"</span><br>
+                Proof: <span style="color: var(--blue);">[ View S3 Image Modal ]</span><br>
+                Actions: <span style="color: var(--emerald);">[ APPROVE ]</span> | <span style="color: var(--red);">[ REJECT + REASON ]</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 5: SOCIAL MISSIONS -->
+        <div class="tab-card">
+          <div class="tab-card-header">
+            <div class="tab-title-group">
+              <div class="tab-icon-box">📣</div>
+              <div>
+                <h3 class="tab-name">Tab 5: Social Missions</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Dynamic configuration of registration onboarding tasks</p>
+              </div>
+            </div>
+            <span class="tab-badge" style="background: rgba(245,166,35,0.15); color: var(--gold); border: 1px solid var(--gold);">Superadmin Only</span>
+          </div>
+
+          <div class="tab-grid">
+            <ul class="feature-list">
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Modal-Driven Mission Builder:</strong> Click "+ Add Mission" to open a clean modal form to configure new tasks without code changes.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Platform Type Selector:</strong> Choose Facebook, Telegram, Twitter/X, Discord, or Website to set automated icons.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Custom Button Styling:</strong> Define button text (e.g. "Join TG →") and exact HEX button colors (e.g. #1877f2, #24A1DE).</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Priority Sort Order:</strong> Control the sequence of missions shown in the attendee registration modal.</div>
+              </li>
+            </ul>
+
+            <div class="mockup-preview">
+              <div class="mockup-bar">
+                <span>DYNAMIC MISSIONS</span>
+                <span>TOTAL: 4</span>
+              </div>
+              <div style="color: var(--text-muted); line-height: 1.8;">
+                [+] <span style="color: var(--gold);">+ Add Mission (Modal)</span><br>
+                1. 🌐 Facebook Page -> #1877f2 [Order: 1]<br>
+                2. ✈️ Telegram Channel -> #24A1DE [Order: 2]<br>
+                3. ✈️ Telegram Group -> #24A1DE [Order: 3]<br>
+                4. 🐦 X (Twitter) -> #000000 [Order: 4]
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 6: STAFF / ADMINS -->
+        <div class="tab-card">
+          <div class="tab-card-header">
+            <div class="tab-title-group">
+              <div class="tab-icon-box">🛡️</div>
+              <div>
+                <h3 class="tab-name">Tab 6: Staff / Admins</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Staff account provisioning & RBAC role assignments</p>
+              </div>
+            </div>
+            <span class="tab-badge" style="background: rgba(168,85,247,0.15); color: var(--purple); border: 1px solid var(--purple);">Superadmin Only</span>
+          </div>
+
+          <div class="tab-grid">
+            <ul class="feature-list">
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Staff Account Provisioning:</strong> Create admin accounts with Email, Full Name, Temporary Password, and Role level.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Cryptographic Security:</strong> Automatically salts and hashes staff passwords using <code>node:crypto scryptSync</code>.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Active Staff Registry:</strong> View all staff members, their assigned roles, and creation timestamps.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Instant Revocation:</strong> Delete staff accounts with one click to revoke system access immediately.</div>
+              </li>
+            </ul>
+
+            <div class="mockup-preview">
+              <div class="mockup-bar">
+                <span>STAFF REGISTRY</span>
+                <span style="color: var(--purple);">RBAC ENGINE</span>
+              </div>
+              <div style="color: var(--text-muted); line-height: 1.8;">
+                • superadmin@block.io (<span style="color: var(--gold);">Superadmin</span>)<br>
+                • gate1@block.io (<span style="color: var(--purple);">Manage Quester</span>)<br>
+                • verifier1@block.io (<span style="color: var(--emerald);">Verifier</span>)<br>
+                • manager@block.io (<span style="color: var(--blue);">Manager</span>)<br>
+                Action: <span style="color: var(--red);">[ Revoke / Delete Access ]</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION: RBAC MATRIX -->
+    <section id="rbac">
+      <div class="section-header">
+        <span class="section-tag tag-gold">Security & Access Control</span>
+        <h2 class="section-title">Role-Based Access Control (RBAC) Matrix</h2>
+        <p class="section-desc">Granular permissions ensuring each staff member only accesses what is required for their duties.</p>
+      </div>
+
+      <div class="rbac-table-wrap">
+        <table class="rbac-table">
+          <thead>
+            <tr>
+              <th>Role</th>
+              <th>Permitted Tabs</th>
+              <th>Key Capabilities</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="role-badge badge-superadmin">Superadmin</span></td>
+              <td>All 6 Tabs (Full Access)</td>
+              <td>Full control: Create/Delete staff accounts, configure dynamic social missions, create quests, manage attendees.</td>
+            </tr>
+            <tr>
+              <td><span class="role-badge badge-admin">Manager (Admin)</span></td>
+              <td>Scanner, Attendees, Quests, Verifications</td>
+              <td>Create & schedule quests, manage attendee list, perform check-ins, inspect submissions.</td>
+            </tr>
+            <tr>
+              <td><span class="role-badge badge-quester">Manage Quester</span></td>
+              <td>Scanner, Attendees</td>
+              <td>Gate entrance scanning, manual search by ticket code/email, check-in confirmation.</td>
+            </tr>
+            <tr>
+              <td><span class="role-badge badge-verifier">Verifier</span></td>
+              <td>Quest Verifications Only</td>
+              <td>Dedicated proof inspection queue (Approve XP / Reject with reason).</td>
+            </tr>
+            <tr>
+              <td><span class="role-badge badge-viewer">Viewer</span></td>
+              <td>Read-Only Dashboard</td>
+              <td>Live monitoring for sponsors and observers without modification capabilities.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECTION: DUAL TABLE ARCHITECTURE -->
+    <section id="architecture">
+      <div class="section-header">
+        <span class="section-tag tag-blue">Database Architecture</span>
+        <h2 class="section-title">Why Admin Quest Deletions Never Corrupt XP</h2>
+        <p class="section-desc">The architectural principle separating the running wallet from historical receipts.</p>
+      </div>
+
+      <div class="split-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <div class="card-box" style="border-left: 4px solid var(--blue);">
+          <h3 style="font-size: 1.2rem; color: var(--blue); margin-bottom: 8px;">💰 registrations.total_xp</h3>
+          <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 12px;"><strong>The Running User Wallet</strong></p>
+          <p style="font-size: 0.92rem; color: #fff;">Stored directly on the user record for ultra-fast leaderboard and profile indexing during high-traffic live events. Never requires expensive runtime SUM calculations.</p>
+        </div>
+
+        <div class="card-box" style="border-left: 4px solid var(--emerald);">
+          <h3 style="font-size: 1.2rem; color: var(--emerald); margin-bottom: 8px;">🧾 quest_completions.xp_awarded</h3>
+          <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 12px;"><strong>The Immutable Audit Receipt</strong></p>
+          <p style="font-size: 0.92rem; color: #fff;">Stores exact XP awarded at the moment of approval. If an admin edits a quest XP value or deletes the quest, the user keeps their earned balance safely intact.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION: MASTER FAQ -->
+    <section id="faq">
+      <div class="section-header">
+        <span class="section-tag tag-emerald">KNOWLEDGE BASE & OPERATIONS</span>
+        <h2 class="section-title">❓ Master Frequently Asked Questions (FAQ)</h2>
+        <p class="section-desc">Comprehensive operational answers categorized by Gate Operations, Attendee Issues, Quest Management, and System Security.</p>
+      </div>
+
+      <!-- FAQ 1: Gate & Scanner -->
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>1. What happens if an attendee's phone dies or their screen is too cracked to scan?</span>
+          <span class="faq-tag" style="background: rgba(36,161,222,0.15); color: var(--blue); border: 1px solid var(--blue);">Gate Operations</span>
+        </div>
+        <div class="faq-answer">
+          Gate staff can switch to the <strong>🎫 Event Pass Attendees</strong> tab on any device, type the attendee's name, email, or ticket code (<code>BQF-XXXXXX</code>) into the search bar, and click <strong>"Check In"</strong>. The safety confirmation modal will appear to confirm their identity before marking them as checked-in.
+        </div>
+      </div>
+
+      <!-- FAQ 2: Accidental Check-in -->
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>2. How does the system prevent accidental duplicate check-ins at the gate?</span>
+          <span class="faq-tag" style="background: rgba(36,161,222,0.15); color: var(--blue); border: 1px solid var(--blue);">Gate Operations</span>
+        </div>
+        <div class="faq-answer">
+          The camera scanner has a built-in safety confirmation modal that forces the operator to review the attendee's profile before confirming. If the pass was already scanned at another gate, the system instantly throws a red <strong>"Already Checked In"</strong> banner with the exact timestamp.
+        </div>
+      </div>
+
+      <!-- FAQ 3: Social Missions Addition -->
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>3. Can Superadmins add or remove social follow missions during the live event?</span>
+          <span class="faq-tag" style="background: rgba(245,166,35,0.15); color: var(--gold); border: 1px solid var(--gold);">Superadmin</span>
+        </div>
+        <div class="faq-answer">
+          <strong>Yes!</strong> All social missions are stored dynamically in the Supabase database. Superadmins can click <strong>"+ Add Mission"</strong> to add Discord channels, sponsor pages, or partner links at any time. Changes reflect immediately for all subsequent registrants without needing application rebuilds.
+        </div>
+      </div>
+
+      <!-- FAQ 4: Quest Deletion & XP Safety -->
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>4. If an admin deletes or edits a Quest's XP value, will users lose their earned points?</span>
+          <span class="faq-tag" style="background: rgba(16,185,129,0.15); color: var(--emerald); border: 1px solid var(--emerald);">XP Economy</span>
+        </div>
+        <div class="faq-answer">
+          <strong>No, user points are 100% safe.</strong> The platform uses a dual-table model:
+          <ul>
+            <li><code>registrations.total_xp</code> holds the running wallet balance.</li>
+            <li><code>quest_completions.xp_awarded</code> stores an immutable receipt of what was granted at the time of completion.</li>
+          </ul>
+          Deleting a quest removes it from the catalog, but previously claimed XP remains securely deposited in the attendee's wallet.
+        </div>
+      </div>
+
+      <!-- FAQ 5: Rejection Resubmission -->
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>5. What happens when a quest proof submission is rejected by a Verifier?</span>
+          <span class="faq-tag" style="background: rgba(168,85,247,0.15); color: var(--purple); border: 1px solid var(--purple);">Verifications</span>
+        </div>
+        <div class="faq-answer">
+          When rejecting a proof, the Verifier is required to submit a reason (e.g. <em>"Blurry photo", "Wrong booth selfie"</em>). The submission status updates to <strong>"Rejected"</strong> with the feedback displayed to the user, allowing them to re-take the photo and submit again.
+        </div>
+      </div>
+
+      <!-- FAQ 6: Password Security -->
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>6. How secure are attendee and staff passwords?</span>
+          <span class="faq-tag" style="background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid var(--red);">Security</span>
+        </div>
+        <div class="faq-answer">
+          Passwords are never stored in plain text. Both attendee passwords and admin staff credentials are cryptographically salted and hashed using Node.js's native <code>crypto.scryptSync</code> algorithm (16-byte random salt and 64-byte key length).
+        </div>
+      </div>
+
+      <!-- FAQ 7: Offline Gate Scanning -->
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>7. Does the attendee need active cellular data to present their QR Pass at the venue?</span>
+          <span class="faq-tag" style="background: rgba(36,161,222,0.15); color: var(--blue); border: 1px solid var(--blue);">Attendee Guide</span>
+        </div>
+        <div class="faq-answer">
+          <strong>No.</strong> Once generated, attendees can screenshot their QR pass or save the image to their gallery. The gate camera scanner decodes the encrypted ticket code directly from the screenshot without requiring the attendee to have an active data connection.
+        </div>
+      </div>
+
+      <!-- FAQ 8: Multi-Gate Sync -->
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>8. How does the system handle simultaneous check-ins across 5 different gate entrances?</span>
+          <span class="faq-tag" style="background: rgba(16,185,129,0.15); color: var(--emerald); border: 1px solid var(--emerald);">Infrastructure</span>
+        </div>
+        <div class="faq-answer">
+          All scan actions perform atomic updates directly against the central Supabase PostgreSQL database. If Gate 1 checks in Ticket <code>BQF-X79K2M</code>, Gate 2 will see it as checked-in within milliseconds, preventing ticket-sharing attacks.
+        </div>
+      </div>
+
+      <!-- FAQ 9: Proof Image Storage Limits -->
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>9. Where are quest proof images stored, and is there a storage quota?</span>
+          <span class="faq-tag" style="background: rgba(168,85,247,0.15); color: var(--purple); border: 1px solid var(--purple);">Infrastructure</span>
+        </div>
+        <div class="faq-answer">
+          Proof screenshots are streamed directly to a dedicated Supabase S3 bucket (<code>blockquestbucket</code>). The client pre-compresses images before streaming, ensuring fast uploads and virtually unlimited scalable storage.
+        </div>
+      </div>
+
+      <!-- FAQ 10: Staff Access Revocation -->
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>10. Can a Superadmin immediately terminate a staff member's access if a device is lost?</span>
+          <span class="faq-tag" style="background: rgba(245,166,35,0.15); color: var(--gold); border: 1px solid var(--gold);">Superadmin</span>
+        </div>
+        <div class="faq-answer">
+          <strong>Yes.</strong> The Superadmin can open the <strong>🛡️ Staff / Admins</strong> tab and click the red <strong>"Delete"</strong> button next to the account. Because permissions are checked on every API request, access is revoked instantly across all active sessions.
+        </div>
+      </div>
+
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+      <p>⚡ <strong>BlockQuest Event Platform</strong> • Designed for High-Performance Web3 & Gaming Events</p>
+      <p style="margin-top: 8px; font-size: 0.8rem;">Next.js App Router • Supabase PostgreSQL • S3 Cloud Storage • RBAC Engine</p>
+    </footer>
+
+  </div>
+
+</body>
+</html>
