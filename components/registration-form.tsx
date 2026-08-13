@@ -183,16 +183,14 @@ export default function RegistrationForm() {
 
     const form = event.currentTarget;
     const data = new FormData(form);
-    const firstName = String(data.get("firstName") ?? "").trim();
-    const lastName = String(data.get("lastName") ?? "").trim();
-    const fullName = [firstName, lastName].filter(Boolean).join(" ");
+    const fullName = String(data.get("fullName") ?? "").trim();
     const email = String(data.get("email") ?? "").trim();
     const organization = String(data.get("organization") ?? "").trim();
     const phone = countryCode + mobileNum;
     const password = "blockquest2026";
     const terms = data.get("terms") === "on";
 
-    if (!firstName || !lastName || !email || !mobileNum || !terms) {
+    if (!fullName || !email || !mobileNum || !terms) {
       setStatus({
         type: "error",
         message: "Please complete all required fields correctly.",
@@ -327,14 +325,9 @@ export default function RegistrationForm() {
       {!pendingLogin && !showVerificationOnly && !authenticatedUser && !qrPass ? (
         <form ref={registrationFormRef} className="form" noValidate onSubmit={handleRegistration}>
         <label>
-            First name
-            <input name="firstName" type="text" autoComplete="given-name" placeholder="Mara" required />
+            Name
+            <input name="fullName" type="text" autoComplete="name" placeholder="Mara Ellison" required />
           </label>
-
-          <label>
-            Last name
-            <input name="lastName" type="text" autoComplete="family-name" placeholder="Ellison" required />
-        </label>
 
         <label>
           Email
