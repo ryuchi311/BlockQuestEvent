@@ -54,7 +54,7 @@ interface AdminUser {
 }
 
 
-const ADMIN_TABS = ["scanner", "attendees", "quests", "verifications"] as const;
+const ADMIN_TABS = ["scanner", "attendees", "quests", "verifications", "staff"] as const;
 type AdminTab = (typeof ADMIN_TABS)[number];
 
 const STATUS_OPTIONS: Quest["status"][] = ["Live", "Soon", "Done", "Draft"];
@@ -188,6 +188,11 @@ export default function AdminPage() {
   const [statusModalQuest, setStatusModalQuest] = useState<Quest | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
+  // ── Staff (Superadmin only) ──
+  const [adminUsersList, setAdminUsersList] = useState<any[]>([]);
+  const [newAdminForm, setNewAdminForm] = useState({ email: "", password: "", full_name: "", role: "verifier" });
+  const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
+
   // ── Copy tooltip ──
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
@@ -276,6 +281,22 @@ export default function AdminPage() {
     }
   }, []);
 
+  const fetchAdminUsers = useCallback(async () => {
+    if (adminUser?.role !== "superadmin") return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/users");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to load admin users.");
+      setAdminUsersList(json.adminUsers ?? []);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [adminUser]);
+
   // Load ALL data immediately on auth so stat cards are always accurate
   useEffect(() => {
     if (!authed) return;
@@ -290,7 +311,8 @@ export default function AdminPage() {
     if (tab === "attendees") fetchAttendees();
     else if (tab === "quests") fetchQuests();
     else if (tab === "verifications") fetchVerifications();
-  }, [tab, fetchAttendees, fetchQuests, fetchVerifications]);
+    else if (tab === "staff") fetchAdminUsers();
+  }, [tab, fetchAttendees, fetchQuests, fetchVerifications, fetchAdminUsers]);
 
   // ── Auto Refresh ──
   useEffect(() => {
@@ -633,6 +655,46 @@ export default function AdminPage() {
     }
   }
 
+  // ─── Staff Helpers ───────────────────────────────────────────────────────
+  async function handleCreateAdmin(e: React.FormEvent) {
+    e.preventDefault();
+    setIsCreatingAdmin(true);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newAdminForm),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to create admin");
+      
+      setAdminUsersList(prev => [json.adminUser, ...prev]);
+      setNewAdminForm({ email: "", password: "", full_name: "", role: "verifier" });
+      alert("Admin created successfully!");
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setIsCreatingAdmin(false);
+    }
+  }
+
+  async function handleDeleteAdmin(id: number, email: string) {
+    if (!window.confirm(`Are you sure you want to delete admin: ${email}?`)) return;
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to delete admin");
+      
+      setAdminUsersList(prev => prev.filter(u => u.id !== id));
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    }
+  }
+
   // ─── Stats ───────────────────────────────────────────────────────────────
   const totalXpPool = quests.reduce((sum, q) => sum + (q.xp ?? 0), 0);
   const liveQuestCount = quests.filter((q) => q.status === "Live").length;
@@ -777,7 +839,7 @@ export default function AdminPage() {
 
       {/* Tabs */}
       <div className="admin-tabs">
-        {ADMIN_TABS.map((t) => (
+        {ADMIN_TABS.filter((t) => t !== "staff" || adminUser?.role === "superadmin").map((t) => (
           <button
             key={t}
             className={`admin-tab-btn${tab === t ? " admin-tab-btn--active" : ""}`}
@@ -789,6 +851,8 @@ export default function AdminPage() {
               ? "🎫 Event Pass Attendees"
               : t === "quests"
               ? "⚡ Fiesta Event Quests"
+              : t === "staff"
+              ? "🛡️ Staff / Admins"
               : `🔍 Quest Verifications (${verifications.filter((v) => v.status === "Pending").length})`}
           </button>
         ))}
@@ -1302,6 +1366,123 @@ export default function AdminPage() {
               </table>
             </div>
           </>
+        )}
+
+        {/* ─── STAFF TAB ─── */}
+        {tab === "staff" && adminUser?.role === "superadmin" && !loading && (
+          <div style={{ display: "flex", gap: 24, flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start" }}>
+            
+            {/* Staff List Table */}
+            <div className="admin-table-wrapper" style={{ flex: "2 1 500px" }}>
+              <div className="admin-toolbar" style={{ marginBottom: 0, paddingBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+                <h2 style={{ fontSize: "1.2rem", margin: 0, color: "var(--gold-light)" }}>Staff Directory ({adminUsersList.length})</h2>
+                <button className="admin-refresh-btn" onClick={fetchAdminUsers} title="Refresh Staff" style={{ marginLeft: "auto" }}>
+                  ↻ Refresh
+                </button>
+              </div>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {adminUsersList.length === 0 ? (
+                    <tr><td colSpan={6} className="admin-table__empty">No other admins found.</td></tr>
+                  ) : (
+                    adminUsersList.map(user => (
+                      <tr key={user.id} className="admin-table__row">
+                        <td className="admin-table__num">{user.id}</td>
+                        <td className="admin-table__name">{user.full_name}</td>
+                        <td className="admin-table__email">{user.email}</td>
+                        <td>
+                          <span className={`admin-category-badge admin-category-badge--${user.role === 'superadmin' ? 'social' : user.role === 'admin' ? 'daily' : 'onboarding'}`}>
+                            {user.role}
+                          </span>
+                        </td>
+                        <td className="admin-table__muted">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </td>
+                        <td>
+                          {user.email !== adminUser.email && (
+                            <button 
+                              className="admin-delete-btn" 
+                              onClick={() => handleDeleteAdmin(user.id, user.email)}
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Add Staff Form */}
+            <div className="admin-login-card" style={{ flex: "1 1 300px", maxWidth: 400, marginTop: 0, padding: 24, background: "rgba(18, 18, 20, 0.6)" }}>
+              <h2 style={{ fontSize: "1.1rem", marginBottom: 16 }}>Create New Admin</h2>
+              <form onSubmit={handleCreateAdmin} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <label className="qf-label">
+                  Full Name
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. John Doe"
+                    className="admin-login-input"
+                    value={newAdminForm.full_name}
+                    onChange={(e) => setNewAdminForm(f => ({ ...f, full_name: e.target.value }))}
+                  />
+                </label>
+                <label className="qf-label">
+                  Email
+                  <input
+                    type="email"
+                    required
+                    placeholder="john@example.com"
+                    className="admin-login-input"
+                    value={newAdminForm.email}
+                    onChange={(e) => setNewAdminForm(f => ({ ...f, email: e.target.value }))}
+                  />
+                </label>
+                <label className="qf-label">
+                  Password
+                  <input
+                    type="password"
+                    required
+                    placeholder="Temporary password"
+                    className="admin-login-input"
+                    value={newAdminForm.password}
+                    onChange={(e) => setNewAdminForm(f => ({ ...f, password: e.target.value }))}
+                  />
+                </label>
+                <label className="qf-label">
+                  Role Access Level
+                  <select 
+                    className="admin-login-input" 
+                    value={newAdminForm.role}
+                    onChange={(e) => setNewAdminForm(f => ({ ...f, role: e.target.value }))}
+                    style={{ padding: "12px", cursor: "pointer" }}
+                  >
+                    <option value="verifier">Verifier (Quest Verifications only)</option>
+                    <option value="manage_quester">Manage Quester (Scanner & Attendees)</option>
+                    <option value="admin">Manager (Scanner, Attendees, Quests)</option>
+                    <option value="viewer">Viewer (Read-only)</option>
+                    <option value="superadmin">Superadmin (Full Access)</option>
+                  </select>
+                </label>
+                <button type="submit" className="admin-add-btn" disabled={isCreatingAdmin} style={{ marginTop: 8, padding: 12, justifyContent: "center" }}>
+                  {isCreatingAdmin ? "Creating..." : "Create Account"}
+                </button>
+              </form>
+            </div>
+          </div>
         )}
       </section>
 

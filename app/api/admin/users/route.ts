@@ -1,0 +1,90 @@
+import { createClient } from "@supabase/supabase-js";
+import { NextResponse } from "next/server";
+import { randomBytes, scryptSync } from "node:crypto";
+
+export const runtime = "nodejs";
+
+function getSupabase() {
+  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error("Missing Supabase env vars");
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+}
+
+function hashPassword(password: string) {
+  const salt = randomBytes(16).toString("hex");
+  const hash = scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${hash}`;
+}
+
+// GET - fetch all admin users (except password hash)
+export async function GET(request: Request) {
+  try {
+    const supabase = getSupabase();
+    // We only select the fields we need, omitting password_hash
+    const { data, error } = await supabase
+      .from("admin_users")
+      .select("id, email, full_name, role, created_at")
+      .order("created_at", { ascending: false });
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ adminUsers: data });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+// POST - create a new admin user
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { email, password, full_name, role } = body;
+
+    if (!email || !password || !full_name) {
+      return NextResponse.json({ error: "Email, password, and full name are required." }, { status: 400 });
+    }
+
+    const supabase = getSupabase();
+    const hashed = hashPassword(password);
+
+    const { data, error } = await supabase
+      .from("admin_users")
+      .insert({
+        email,
+        password_hash: hashed,
+        full_name,
+        role: role ?? "admin"
+      })
+      .select("id, email, full_name, role, created_at")
+      .single();
+
+    if (error) {
+      if (error.code === '23505') {
+        return NextResponse.json({ error: "An admin with this email already exists." }, { status: 400 });
+      }
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ adminUser: data }, { status: 201 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+// DELETE - remove an admin user
+export async function DELETE(request: Request) {
+  try {
+    const { id } = await request.json();
+    if (!id) return NextResponse.json({ error: "Admin id is required." }, { status: 400 });
+
+    const supabase = getSupabase();
+    const { error } = await supabase.from("admin_users").delete().eq("id", id);
+    
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
