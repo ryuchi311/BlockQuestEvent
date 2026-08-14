@@ -1038,7 +1038,6 @@ export default function AdminPage() {
           <a href="/shortcuts" className="admin-nav-link" style={{ borderColor: "rgba(59, 130, 246, 0.4)", color: "#60a5fa" }}>🧭 Shortcuts</a>
           <a href="/" className="admin-nav-link" onClick={(e) => handleNavigate(e, "/")}>Home Portal</a>
           <a href="/register" className="admin-nav-link" onClick={(e) => handleNavigate(e, "/register")}>Registration</a>
-          <a href="/stress-test" target="_blank" rel="noreferrer" className="admin-nav-link" style={{ borderColor: "rgba(245, 166, 35, 0.4)", color: "var(--gold-light)" }}>⚡ Stress Test</a>
           <button
             onClick={handleLogout}
             className="admin-nav-link"

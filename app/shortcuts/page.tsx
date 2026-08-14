@@ -305,27 +305,6 @@ export default function ShortcutsPage() {
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
             <Link
-              href="/stress-test"
-              style={{
-                background: "rgba(255, 255, 255, 0.04)",
-                border: "1px solid rgba(255, 255, 255, 0.08)",
-                padding: "14px 16px",
-                borderRadius: 12,
-                textDecoration: "none",
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                transition: "all 0.2s"
-              }}
-            >
-              <span style={{ fontSize: "1.4rem" }}>⚡</span>
-              <div>
-                <strong style={{ color: "#fff", fontSize: "0.9rem", display: "block" }}>Stress Testing Suite</strong>
-                <span style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>/stress-test</span>
-              </div>
-            </Link>
-
-            <Link
               href="/register"
               style={{
                 background: "rgba(255, 255, 255, 0.04)",

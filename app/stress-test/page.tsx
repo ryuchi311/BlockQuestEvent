@@ -43,10 +43,24 @@ export default function StressTestGuidePage() {
     p95Latency: 0,
   });
 
+  const [authed, setAuthed] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     setMounted(true);
+    const saved = sessionStorage.getItem("blockquest_admin_session");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.authed && parsed.user && (parsed.user.role === "superadmin" || parsed.user.role === "admin")) {
+          setCurrentUser(parsed.user);
+          setAuthed(true);
+        }
+      } catch {}
+    }
   }, []);
 
   const addLog = (log: TestLog) => {
@@ -203,6 +217,80 @@ export default function StressTestGuidePage() {
   };
 
   if (!mounted) return null;
+
+  if (!authed) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: "#05060b",
+        color: "#fff",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "Outfit, Inter, sans-serif",
+        padding: 20
+      }}>
+        <div style={{
+          maxWidth: 440,
+          width: "100%",
+          background: "rgba(15, 16, 28, 0.9)",
+          border: "1px solid rgba(239, 68, 68, 0.3)",
+          borderRadius: 20,
+          padding: "36px 28px",
+          textAlign: "center",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.8)"
+        }}>
+          <div style={{
+            width: 56,
+            height: 56,
+            borderRadius: 16,
+            background: "rgba(239, 68, 68, 0.15)",
+            border: "1px solid rgba(239, 68, 68, 0.3)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "1.8rem",
+            margin: "0 auto 16px"
+          }}>
+            🔒
+          </div>
+          <h1 style={{ fontSize: "1.3rem", fontWeight: 800, marginBottom: 8 }}>Confidential Portal</h1>
+          <p style={{ fontSize: "0.88rem", color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 24 }}>
+            This load benchmark suite is restricted to Superadmin and Manager roles. Please sign in to the Admin Dashboard first.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <Link
+              href="/admin"
+              style={{
+                display: "block",
+                background: "linear-gradient(135deg, #f5a623 0%, #e69512 100%)",
+                color: "#000",
+                padding: "12px",
+                borderRadius: 12,
+                fontWeight: 800,
+                fontSize: "0.9rem",
+                textDecoration: "none"
+              }}
+            >
+              Sign In to Admin Dashboard →
+            </Link>
+            <Link
+              href="/shortcut"
+              style={{
+                display: "block",
+                color: "var(--text-muted)",
+                fontSize: "0.82rem",
+                textDecoration: "none",
+                marginTop: 6
+              }}
+            >
+              ← Return to Shortcut Hub
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ background: "#05060b", color: "#f8fafc", minHeight: "100vh", fontFamily: "Outfit, Inter, sans-serif" }}>
