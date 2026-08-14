@@ -721,7 +721,7 @@ export default function ZealyMobileApp() {
           )}
 
           <div className="app-content-scroll">
-            {activeTab !== "profile" && activeTab !== "info" && (
+            {activeTab !== "profile" && activeTab !== "info" && (authenticatedUser || qrPass) && (
               <div className="xp-card">
                 {authenticatedUser && (
                   <p style={{
