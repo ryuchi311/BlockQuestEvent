@@ -27,7 +27,7 @@ interface TestMetrics {
 export default function StressTestGuidePage() {
   const [mounted, setMounted] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [targetEndpoint, setTargetEndpoint] = useState<"all" | "register" | "checkin" | "booth" | "leaderboard">("all");
+  const [targetEndpoint, setTargetEndpoint] = useState<"all" | "register" | "checkin" | "booth" | "zealy" | "leaderboard">("all");
   const [concurrency, setConcurrency] = useState<number>(10);
   const [totalRequests, setTotalRequests] = useState<number>(50);
 
@@ -106,7 +106,7 @@ export default function StressTestGuidePage() {
       let body: any = null;
 
       const selected = targetEndpoint === "all"
-        ? (["register", "checkin", "booth", "leaderboard"] as const)[index % 4]
+        ? (["register", "checkin", "booth", "zealy", "leaderboard"] as const)[index % 5]
         : targetEndpoint;
 
       if (selected === "register") {
@@ -131,6 +131,14 @@ export default function StressTestGuidePage() {
           ticket_code: `BQF-BOOTH-${randomId}`,
           booth_id: "polygon-guild-booth",
           points: 150,
+        });
+      } else if (selected === "zealy") {
+        url = "/api/user/claim";
+        method = "POST";
+        body = JSON.stringify({
+          quest_id: "twitter-follow",
+          user_email: `browser_stress_${Date.now()}_${randomId}@blockquest.ph`,
+          xp: 50,
         });
       } else {
         url = index % 2 === 0 ? "/api/leaderboard" : "/api/admin/users";
@@ -442,6 +450,7 @@ export default function StressTestGuidePage() {
                   <option value="register">📝 Attendee Registrations (/api/register)</option>
                   <option value="checkin">🎟️ Gate Check-Ins (/api/admin/checkin)</option>
                   <option value="booth">🏪 Booth Station Scans (/api/booth-scan)</option>
+                  <option value="zealy">📱 Zealy Social Quests (/api/user/claim)</option>
                   <option value="leaderboard">📊 Leaderboard & Stats (/api/leaderboard)</option>
                 </select>
               </div>

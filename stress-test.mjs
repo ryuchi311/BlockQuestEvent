@@ -11,7 +11,7 @@
  *   --url=<baseUrl>       Target Base URL (default: http://localhost:3000)
  *   --concurrency=<num>   Number of concurrent worker threads (default: 20)
  *   --requests=<num>      Total requests per test suite (default: 100)
- *   --suite=<all|register|checkin|booth|admin> Target suite (default: all)
+ *   --suite=<all|register|checkin|booth|zealy|admin> Target suite (default: all)
  * ==============================================================================
  */
 
@@ -233,10 +233,41 @@ async function main() {
   }
 
   // ==========================================================================
-  // SUITE 4: Dashboard API Polling & Real-Time Monitoring (GET /api/admin/users)
+  // SUITE 4: Zealy Social Quest XP Claim (POST /api/user/claim)
+  // ==========================================================================
+  if (TARGET_SUITE === 'all' || TARGET_SUITE === 'zealy') {
+    console.log(`\n▶ 4/5 Testing Zealy Social Quest Claims (POST /api/user/claim)...`);
+    const quests = ['twitter-follow', 'discord-join', 'profile-setup', 'telegram-join'];
+    const sampleEmails = registeredTickets.length > 0
+      ? registeredTickets.map(t => t.replace('BQF-TEST', 'stresstest') + '@blockquest.ph') // rough approximation if we didn't save emails, but wait... registeredTickets stores ticket_code. 
+      // Actually we can just generate valid-looking emails since api/user/claim uses email.
+      : Array.from({ length: TOTAL_REQUESTS }, (_, i) => `browser_stress_${Date.now()}_${i}@blockquest.ph`);
+
+    const zealyTasks = Array.from({ length: TOTAL_REQUESTS }, (_, i) => {
+      const email = `stresstest_zealy_${i}@blockquest.ph`;
+      const quest = quests[i % quests.length];
+      return () =>
+        executeRequest(`${BASE_URL}/api/user/claim`, {
+          method: 'POST',
+          body: JSON.stringify({
+            quest_id: quest,
+            user_email: email,
+            xp: 50,
+          }),
+        });
+    });
+
+    const startZealy = performance.now();
+    const zealyResults = await runConcurrentBatch(zealyTasks, CONCURRENCY);
+    const endZealy = performance.now() - startZealy;
+    printReport('Zealy Social Quest Claims', zealyResults, endZealy);
+  }
+
+  // ==========================================================================
+  // SUITE 5: Dashboard API Polling & Real-Time Monitoring (GET /api/admin/users)
   // ==========================================================================
   if (TARGET_SUITE === 'all' || TARGET_SUITE === 'admin') {
-    console.log(`\n▶ 4/4 Testing Admin Dashboard Data Polling (GET /api/admin/users & /api/leaderboard)...`);
+    console.log(`\n▶ 5/5 Testing Admin Dashboard Data Polling (GET /api/admin/users & /api/leaderboard)...`);
     const adminTasks = Array.from({ length: TOTAL_REQUESTS }, (_, i) => {
       const endpoint = i % 2 === 0 ? '/api/admin/users' : '/api/leaderboard';
       return () => executeRequest(`${BASE_URL}${endpoint}`);
