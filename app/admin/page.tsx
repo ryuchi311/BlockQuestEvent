@@ -192,6 +192,11 @@ export default function AdminPage() {
   const [adminUsersList, setAdminUsersList] = useState<any[]>([]);
   const [newAdminForm, setNewAdminForm] = useState({ email: "", password: "", full_name: "", role: "verifier" });
   const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
+  const [editingAdminUser, setEditingAdminUser] = useState<any | null>(null);
+  const [editAdminForm, setEditAdminForm] = useState({ id: 0, email: "", password: "", full_name: "", role: "verifier" });
+  const [isUpdatingAdmin, setIsUpdatingAdmin] = useState(false);
+  const [deletingAdminUser, setDeletingAdminUser] = useState<any | null>(null);
+  const [isDeletingAdmin, setIsDeletingAdmin] = useState(false);
   const [checkInConfirmAttendee, setCheckInConfirmAttendee] = useState<Attendee | null>(null);
 
   // ── Social Missions (Superadmin only) ──
@@ -241,6 +246,19 @@ export default function AdminPage() {
     setError("");
     localStorage.removeItem("blockquest_admin_session");
   }
+
+  // Set default accessible tab based on role when logging in
+  useEffect(() => {
+    if (!adminUser) return;
+    const role = adminUser.role;
+    if (role === "verifier" && tab !== "verifications") {
+      setTab("verifications");
+    } else if ((role === "manage_attendees" || role === "manage_quester") && tab !== "scanner" && tab !== "attendees") {
+      setTab("scanner");
+    } else if ((role === "admin" || role === "viewer") && (tab === "staff" || tab === "socials")) {
+      setTab("attendees");
+    }
+  }, [adminUser]);
 
   // ─── Fetch data ──────────────────────────────────────────────────────────
   const fetchAttendees = useCallback(async () => {
@@ -681,6 +699,63 @@ export default function AdminPage() {
   }
 
   // ─── Staff Helpers ───────────────────────────────────────────────────────
+  function handleOpenEditAdmin(user: any) {
+    setEditingAdminUser(user);
+    setEditAdminForm({
+      id: user.id,
+      email: user.email,
+      password: "", // empty means keep existing password
+      full_name: user.full_name,
+      role: user.role,
+    });
+  }
+
+  async function handleUpdateAdmin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editAdminForm.id) return;
+    setIsUpdatingAdmin(true);
+    try {
+      const payload: Record<string, any> = {
+        id: editAdminForm.id,
+        full_name: editAdminForm.full_name,
+        email: editAdminForm.email,
+        role: editAdminForm.role,
+      };
+      if (editAdminForm.password && editAdminForm.password.trim().length > 0) {
+        payload.password = editAdminForm.password;
+      }
+
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to update admin");
+
+      setAdminUsersList(prev =>
+        prev.map(u => (u.id === json.adminUser.id ? json.adminUser : u))
+      );
+
+      // If the current superadmin edited their own profile info, update adminUser state & localStorage
+      if (adminUser && adminUser.id === json.adminUser.id) {
+        const updatedSelf = { ...adminUser, ...json.adminUser };
+        setAdminUser(updatedSelf);
+        localStorage.setItem(
+          "blockquest_admin_session",
+          JSON.stringify({ authed: true, adminUser: updatedSelf })
+        );
+      }
+
+      setEditingAdminUser(null);
+      alert("Admin updated successfully!");
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setIsUpdatingAdmin(false);
+    }
+  }
+
   async function handleCreateAdmin(e: React.FormEvent) {
     e.preventDefault();
     setIsCreatingAdmin(true);
@@ -703,20 +778,24 @@ export default function AdminPage() {
     }
   }
 
-  async function handleDeleteAdmin(id: number, email: string) {
-    if (!window.confirm(`Are you sure you want to delete admin: ${email}?`)) return;
+  async function executeDeleteAdmin() {
+    if (!deletingAdminUser) return;
+    setIsDeletingAdmin(true);
     try {
       const res = await fetch("/api/admin/users", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id: deletingAdminUser.id }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to delete admin");
       
-      setAdminUsersList(prev => prev.filter(u => u.id !== id));
+      setAdminUsersList(prev => prev.filter(u => u.id !== deletingAdminUser.id));
+      setDeletingAdminUser(null);
     } catch (err: any) {
       alert("Error: " + err.message);
+    } finally {
+      setIsDeletingAdmin(false);
     }
   }
 
@@ -904,7 +983,14 @@ export default function AdminPage() {
 
       {/* Tabs */}
       <div className="admin-tabs">
-        {ADMIN_TABS.filter((t) => (t !== "staff" && t !== "socials") || adminUser?.role === "superadmin").map((t) => (
+        {ADMIN_TABS.filter((t) => {
+          const role = adminUser?.role;
+          if (role === "superadmin") return true;
+          if (role === "verifier") return t === "verifications";
+          if (role === "manage_attendees" || role === "manage_quester") return t === "scanner" || t === "attendees";
+          if (role === "admin" || role === "viewer") return t === "scanner" || t === "attendees" || t === "quests" || t === "verifications";
+          return false;
+        }).map((t) => (
           <button
             key={t}
             className={`admin-tab-btn${tab === t ? " admin-tab-btn--active" : ""}`}
@@ -1506,11 +1592,19 @@ export default function AdminPage() {
                         <td className="admin-table__muted">
                           {new Date(user.created_at).toLocaleDateString()}
                         </td>
-                        <td>
+                        <td style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <button
+                            type="button"
+                            className="admin-refresh-btn"
+                            onClick={() => handleOpenEditAdmin(user)}
+                            style={{ padding: "6px 12px", fontSize: "0.75rem" }}
+                          >
+                            ✏️ Edit
+                          </button>
                           {user.email !== adminUser.email && (
                             <button 
                               className="admin-delete-btn" 
-                              onClick={() => handleDeleteAdmin(user.id, user.email)}
+                              onClick={() => setDeletingAdminUser(user)}
                             >
                               Delete
                             </button>
@@ -1569,7 +1663,7 @@ export default function AdminPage() {
                     style={{ padding: "12px", cursor: "pointer" }}
                   >
                     <option value="verifier">Verifier (Quest Verifications only)</option>
-                    <option value="manage_quester">Manage Quester (Scanner & Attendees)</option>
+                    <option value="manage_attendees">Manage Attendees (Scanner & Attendees)</option>
                     <option value="admin">Manager (Scanner, Attendees, Quests)</option>
                     <option value="viewer">Viewer (Read-only)</option>
                     <option value="superadmin">Superadmin (Full Access)</option>
@@ -2328,6 +2422,151 @@ export default function AdminPage() {
               >
                 Confirm Rejection
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit Admin Modal ── */}
+      {editingAdminUser && (
+        <div className="admin-modal-overlay" onClick={() => setEditingAdminUser(null)}>
+          <div
+            className="admin-modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 480, width: "92%" }}
+          >
+            <div className="admin-modal__header" style={{ padding: "24px 28px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: "1.4rem" }}>✏️</span>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800 }}>Edit Admin Account</h2>
+                  <p style={{ margin: "2px 0 0", fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                    Update details, role permissions, or password
+                  </p>
+                </div>
+              </div>
+              <button className="admin-modal__close" onClick={() => setEditingAdminUser(null)}>✕</button>
+            </div>
+
+            <form onSubmit={handleUpdateAdmin} className="admin-quest-form" style={{ padding: "24px 28px" }}>
+              <label className="qf-label">
+                Full Name
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. John Doe"
+                  className="qf-input"
+                  value={editAdminForm.full_name}
+                  onChange={(e) => setEditAdminForm((f) => ({ ...f, full_name: e.target.value }))}
+                />
+              </label>
+
+              <label className="qf-label">
+                Email Address
+                <input
+                  type="email"
+                  required
+                  placeholder="john@example.com"
+                  className="qf-input"
+                  value={editAdminForm.email}
+                  onChange={(e) => setEditAdminForm((f) => ({ ...f, email: e.target.value }))}
+                />
+              </label>
+
+              <label className="qf-label">
+                Role Access Level
+                <select
+                  className="qf-input"
+                  value={editAdminForm.role}
+                  onChange={(e) => setEditAdminForm((f) => ({ ...f, role: e.target.value }))}
+                  style={{ cursor: "pointer" }}
+                >
+                  <option value="verifier">Verifier (Quest Verifications only)</option>
+                  <option value="manage_attendees">Manage Attendees (Scanner & Attendees)</option>
+                  <option value="admin">Manager (Scanner, Attendees, Quests)</option>
+                  <option value="viewer">Viewer (Read-only)</option>
+                  <option value="superadmin">Superadmin (Full Access)</option>
+                </select>
+              </label>
+
+              <label className="qf-label">
+                New Password <small style={{ color: "var(--text-muted)" }}>(Leave blank to keep unchanged)</small>
+                <input
+                  type="password"
+                  placeholder="Enter new password to change"
+                  className="qf-input"
+                  value={editAdminForm.password}
+                  onChange={(e) => setEditAdminForm((f) => ({ ...f, password: e.target.value }))}
+                />
+              </label>
+
+              <div className="admin-modal__footer" style={{ marginTop: 12, display: "flex", justifyContent: "flex-end", gap: 12 }}>
+                <button
+                  type="button"
+                  className="admin-cancel-btn"
+                  onClick={() => setEditingAdminUser(null)}
+                  disabled={isUpdatingAdmin}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="admin-save-btn"
+                  disabled={isUpdatingAdmin}
+                >
+                  {isUpdatingAdmin ? "Saving Changes..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Admin Modal ── */}
+      {deletingAdminUser && (
+        <div className="admin-modal-overlay" onClick={() => setDeletingAdminUser(null)}>
+          <div
+            className="admin-modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 440, width: "92%" }}
+          >
+            <div className="admin-modal__header" style={{ padding: "24px 28px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: "1.4rem" }}>⚠️</span>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800, color: "#ef4444" }}>Delete Admin</h2>
+                  <p style={{ margin: "2px 0 0", fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                    This action is permanent and cannot be undone
+                  </p>
+                </div>
+              </div>
+              <button className="admin-modal__close" onClick={() => setDeletingAdminUser(null)}>✕</button>
+            </div>
+
+            <div style={{ padding: "24px 28px" }}>
+              <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", marginBottom: 16 }}>
+                Are you sure you want to permanently delete the admin account for <strong>{deletingAdminUser.full_name}</strong> ({deletingAdminUser.email})?
+              </p>
+
+              <div className="admin-modal__footer" style={{ marginTop: 20, display: "flex", justifyContent: "flex-end", gap: 12 }}>
+                <button
+                  type="button"
+                  className="admin-cancel-btn"
+                  onClick={() => setDeletingAdminUser(null)}
+                  disabled={isDeletingAdmin}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="admin-delete-btn"
+                  onClick={executeDeleteAdmin}
+                  disabled={isDeletingAdmin}
+                  style={{ padding: "11px 24px", fontSize: "0.9rem", borderRadius: 10, background: "rgba(239, 68, 68, 0.15)", borderColor: "rgba(239, 68, 68, 0.4)", color: "#ef4444" }}
+                >
+                  {isDeletingAdmin ? "Deleting..." : "Confirm Delete"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

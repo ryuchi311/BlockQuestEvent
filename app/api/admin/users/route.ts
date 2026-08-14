@@ -73,6 +73,49 @@ export async function POST(request: Request) {
   }
 }
 
+// PATCH - update an existing admin user
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, full_name, email, role, password } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: "Admin id is required." }, { status: 400 });
+    }
+
+    const updates: Record<string, any> = {};
+    if (full_name !== undefined) updates.full_name = full_name;
+    if (email !== undefined) updates.email = email;
+    if (role !== undefined) updates.role = role;
+    if (password) {
+      updates.password_hash = hashPassword(password);
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: "No fields to update." }, { status: 400 });
+    }
+
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from("admin_users")
+      .update(updates)
+      .eq("id", id)
+      .select("id, email, full_name, role, created_at")
+      .single();
+
+    if (error) {
+      if (error.code === "23505") {
+        return NextResponse.json({ error: "An admin with this email already exists." }, { status: 400 });
+      }
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ adminUser: data });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
 // DELETE - remove an admin user
 export async function DELETE(request: Request) {
   try {
@@ -88,3 +131,4 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+

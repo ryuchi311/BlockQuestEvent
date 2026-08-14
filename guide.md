@@ -205,20 +205,22 @@ The admin portal supports multiple roles to securely delegate tasks during the e
 1. **`superadmin`**: Full access. Can create/delete quests, publish drafts, export attendees, and manage other admins.
 2. **`admin` (Manager)**: Broad access. Can check in users, edit quests, and verify proofs, but cannot delete quests or export data.
 3. **`verifier`**: Restricted to the **Quest Verifications** tab. Their primary job is to approve or reject submitted screenshot proofs rapidly during peak hours.
-4. **`manage_quester` (Scanner)**: Restricted to the **Scanner** and **Event Pass Attendees** tabs. Their primary job is to scan QR codes and manually check in attendees at the physical event gate.
+4. **`manage_attendees` (Scanner & Attendees)**: Restricted to the **Scanner** and **Event Pass Attendees** tabs. Their primary job is to scan QR codes and manually check in attendees at the physical event gate.
 5. **`viewer`**: Read-only access across the dashboard. Cannot modify any data.
 
 ### How a Superadmin Creates Roles
-Currently, assigning roles requires direct database access or executing a custom seed script (until a User Management UI is built). To add a new staff member with a specific role:
+Superadmins can add, edit, and assign roles directly from the **Staff / Admins** tab in the dashboard, or via database / scripts:
 
-1. **Option A: Modify the Seed Script**
-   Update `seed_admin.mjs` with the new user's email and preferred role (`verifier`, `manage_quester`, etc.), then execute the script.
-2. **Option B: Supabase Dashboard**
+1. **Option A: Admin Dashboard UI (Recommended)**
+   Go to the **Staff / Admins** tab and use the Create / Edit Admin forms to assign roles (`superadmin`, `admin`, `manage_attendees`, `verifier`, `viewer`).
+2. **Option B: Modify the Seed Script**
+   Update `seed_admin.mjs` with the new user's email and preferred role (`verifier`, `manage_attendees`, etc.), then execute the script.
+3. **Option C: Supabase Dashboard**
    - Go to your Supabase project dashboard -> Table Editor -> `admin_users`.
-   - Insert a new row or edit an existing user's `role` column to the desired string (e.g., `verifier`).
+   - Insert a new row or edit an existing user's `role` column to the desired string (e.g., `manage_attendees`).
 
 > [!TIP]
-> **Security Best Practice:** Do not share the `superadmin` account. Instead, create dedicated `verifier` accounts for staff approving quests, and `manage_quester` accounts for staff working the check-in gates.
+> **Security Best Practice:** Do not share the `superadmin` account. Instead, create dedicated `verifier` accounts for staff approving quests, and `manage_attendees` accounts for staff working the check-in gates.
 
 ---
 
