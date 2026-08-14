@@ -1488,48 +1488,167 @@ export default function ZealyMobileApp() {
                           )}
 
                           {selectedQuest.requiresProof && selectedQuest.status !== "Approved" ? (
-                            <div style={{ marginTop: 8, marginBottom: 16, background: "rgba(255,255,255,0.03)", padding: 14, borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)" }}>
-                              <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--gold-light)", display: "block", marginBottom: 8 }}>
-                                📷 Upload Proof Screenshot Required:
-                              </label>
+                            <div style={{
+                              marginTop: 12,
+                              marginBottom: 16,
+                              background: "rgba(18, 19, 32, 0.85)",
+                              padding: "18px 16px",
+                              borderRadius: 16,
+                              border: "1px solid rgba(245, 166, 35, 0.25)",
+                              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)"
+                            }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                                <span style={{ fontSize: "1.1rem" }}>📷</span>
+                                <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--gold-light)" }}>
+                                  Upload Proof Screenshot Required
+                                </span>
+                              </div>
+
+                              {/* Hidden Native File Input */}
                               <input
+                                id="proof-screenshot-upload"
                                 type="file"
                                 accept="image/*"
                                 onChange={handleProofImageChange}
                                 disabled={!isActionCompleted}
-                                style={{
-                                  width: "100%",
-                                  padding: "8px 12px",
-                                  borderRadius: "8px",
-                                  border: "1px solid rgba(255,255,255,0.15)",
-                                  background: "rgba(0,0,0,0.4)",
-                                  color: "#fff",
-                                  fontSize: "0.82rem",
-                                  opacity: isActionCompleted ? 1 : 0.5,
-                                }}
+                                style={{ display: "none" }}
                               />
-                              {proofImage && (
-                                <div style={{ marginTop: 12, textAlign: "center" }}>
-                                  <p style={{ fontSize: "0.72rem", color: "#a1a1aa", marginBottom: 6 }}>Proof Screenshot Preview:</p>
-                                  <img
-                                    src={proofImage}
-                                    alt="Screenshot Proof Preview"
-                                    style={{ maxHeight: 150, maxWidth: "100%", borderRadius: 8, border: "1px solid rgba(245,166,35,0.4)" }}
-                                  />
+
+                              {/* Custom Dropzone / Upload Trigger Button */}
+                              {!proofImage ? (
+                                <label
+                                  htmlFor="proof-screenshot-upload"
+                                  style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: 8,
+                                    padding: "20px 16px",
+                                    borderRadius: 14,
+                                    border: isActionCompleted ? "2px dashed rgba(245, 166, 35, 0.4)" : "2px dashed rgba(255, 255, 255, 0.1)",
+                                    background: isActionCompleted
+                                      ? "radial-gradient(ellipse at 50% 50%, rgba(245, 166, 35, 0.08) 0%, rgba(168, 85, 247, 0.04) 100%)"
+                                      : "rgba(0, 0, 0, 0.3)",
+                                    cursor: isActionCompleted ? "pointer" : "not-allowed",
+                                    opacity: isActionCompleted ? 1 : 0.6,
+                                    transition: "all 0.25s ease"
+                                  }}
+                                >
+                                  <div style={{
+                                    width: 48,
+                                    height: 48,
+                                    borderRadius: 14,
+                                    background: isActionCompleted ? "rgba(245, 166, 35, 0.15)" : "rgba(255,255,255,0.05)",
+                                    border: isActionCompleted ? "1px solid rgba(245, 166, 35, 0.3)" : "1px solid rgba(255,255,255,0.1)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    fontSize: "1.5rem"
+                                  }}>
+                                    {isActionCompleted ? "📸" : "🔒"}
+                                  </div>
+                                  <div style={{ textAlign: "center" }}>
+                                    <strong style={{ fontSize: "0.88rem", color: isActionCompleted ? "#fff" : "var(--text-muted)", display: "block" }}>
+                                      {isActionCompleted ? "Tap to Choose Screenshot" : "Complete Task Above First"}
+                                    </strong>
+                                    <span style={{ fontSize: "0.74rem", color: "var(--text-muted)", display: "block", marginTop: 2 }}>
+                                      {isActionCompleted ? "Supports PNG, JPG, WEBP photos" : "Click action button above to unlock proof upload"}
+                                    </span>
+                                  </div>
+                                </label>
+                              ) : (
+                                /* Screenshot Selected Preview Box */
+                                <div style={{
+                                  background: "rgba(0, 0, 0, 0.4)",
+                                  border: "1px solid rgba(168, 85, 247, 0.4)",
+                                  borderRadius: 14,
+                                  padding: 14,
+                                  textAlign: "center"
+                                }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                                    <span style={{ fontSize: "0.76rem", fontWeight: 800, color: "#c084fc", display: "flex", alignItems: "center", gap: 6 }}>
+                                      <span>✅</span> Screenshot Loaded
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setProofImage(null)}
+                                      style={{
+                                        background: "rgba(239, 68, 68, 0.15)",
+                                        border: "1px solid rgba(239, 68, 68, 0.3)",
+                                        color: "#f87171",
+                                        fontSize: "0.72rem",
+                                        fontWeight: 700,
+                                        padding: "4px 8px",
+                                        borderRadius: 6,
+                                        cursor: "pointer"
+                                      }}
+                                    >
+                                      ✕ Remove
+                                    </button>
+                                  </div>
+
+                                  <div style={{ position: "relative", display: "inline-block" }}>
+                                    <img
+                                      src={proofImage}
+                                      alt="Screenshot Proof Preview"
+                                      style={{
+                                        maxHeight: 180,
+                                        maxWidth: "100%",
+                                        borderRadius: 10,
+                                        border: "2px solid rgba(168, 85, 247, 0.5)",
+                                        boxShadow: "0 8px 24px rgba(0,0,0,0.5)"
+                                      }}
+                                    />
+                                  </div>
+
+                                  <label
+                                    htmlFor="proof-screenshot-upload"
+                                    style={{
+                                      display: "block",
+                                      marginTop: 10,
+                                      fontSize: "0.75rem",
+                                      color: "#60a5fa",
+                                      fontWeight: 700,
+                                      textDecoration: "underline",
+                                      cursor: "pointer"
+                                    }}
+                                  >
+                                    🔄 Choose Different Image
+                                  </label>
                                 </div>
                               )}
+
+                              {/* Submit Proof Button */}
                               <button
                                 onClick={handleSubmitProof}
                                 disabled={proofSubmitting || !proofImage || !isActionCompleted}
                                 className="modal-claim-btn"
                                 style={{
-                                  marginTop: 14,
-                                  background: (proofImage && isActionCompleted) ? "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)" : "rgba(255,255,255,0.1)",
-                                  opacity: (proofImage && isActionCompleted) ? 1 : 0.5,
+                                  marginTop: 16,
+                                  width: "100%",
+                                  padding: "14px",
+                                  borderRadius: 12,
+                                  fontWeight: 800,
+                                  fontSize: "0.9rem",
+                                  border: "none",
+                                  background: (proofImage && isActionCompleted)
+                                    ? "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)"
+                                    : "rgba(255, 255, 255, 0.08)",
+                                  color: (proofImage && isActionCompleted) ? "#fff" : "rgba(255, 255, 255, 0.4)",
+                                  boxShadow: (proofImage && isActionCompleted) ? "0 0 25px rgba(168, 85, 247, 0.4)" : "none",
+                                  opacity: (proofImage && isActionCompleted) ? 1 : 0.6,
                                   cursor: (proofImage && isActionCompleted) ? "pointer" : "not-allowed",
+                                  transition: "all 0.25s ease"
                                 }}
                               >
-                                {proofSubmitting ? "Submitting Proof..." : "📤 Submit Screenshot for Verification"}
+                                {proofSubmitting
+                                  ? "⏳ Submitting Proof for Verification..."
+                                  : (proofImage && isActionCompleted)
+                                  ? "📤 Submit Screenshot for Verification →"
+                                  : !isActionCompleted
+                                  ? "🔒 Complete Task First"
+                                  : "📷 Select Screenshot Above"}
                               </button>
                             </div>
                           ) : (
