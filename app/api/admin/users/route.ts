@@ -19,7 +19,7 @@ function hashPassword(password: string) {
   return `${salt}:${hash}`;
 }
 
-// GET - fetch all admin users (except password hash)
+// GET - fetch all admin users (except password hash) and booth scan statistics
 export async function GET(request: Request) {
   try {
     const supabase = getSupabase();
@@ -30,7 +30,35 @@ export async function GET(request: Request) {
       .order("created_at", { ascending: false });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ adminUsers: data });
+
+    // Fetch quest completions to calculate scan counts per booth
+    let boothScanCounts: Record<string, number> = {};
+    try {
+      const { data: compData } = await supabase
+        .from("quest_completions")
+        .select("quest_id");
+
+      if (compData) {
+        compData.forEach((c) => {
+          if (c.quest_id && c.quest_id.startsWith("booth-")) {
+            const key = c.quest_id.replace(/^booth-/, "");
+            boothScanCounts[key] = (boothScanCounts[key] || 0) + 1;
+          }
+        });
+      }
+    } catch {}
+
+    const usersWithStats = (data || []).map((u) => {
+      const boothSlug = u.full_name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const scanCount = boothScanCounts[boothSlug] || 0;
+      return {
+        ...u,
+        scan_count: scanCount,
+        is_active: scanCount >= 1,
+      };
+    });
+
+    return NextResponse.json({ adminUsers: usersWithStats, boothScanCounts });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

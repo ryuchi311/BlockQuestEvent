@@ -54,7 +54,7 @@ interface AdminUser {
 }
 
 
-const ADMIN_TABS = ["scanner", "attendees", "quests", "verifications", "socials", "staff"] as const;
+const ADMIN_TABS = ["scanner", "attendees", "quests", "verifications", "socials", "booths", "staff"] as const;
 type AdminTab = (typeof ADMIN_TABS)[number];
 
 const STATUS_OPTIONS: Quest["status"][] = ["Live", "Soon", "Done", "Draft"];
@@ -198,6 +198,24 @@ export default function AdminPage() {
   const [deletingAdminUser, setDeletingAdminUser] = useState<any | null>(null);
   const [isDeletingAdmin, setIsDeletingAdmin] = useState(false);
   const [checkInConfirmAttendee, setCheckInConfirmAttendee] = useState<Attendee | null>(null);
+
+  // ── Booths / Vendors (Superadmin only) ──
+  const [boothList, setBoothList] = useState<any[]>([
+    { id: "polygon-guild", name: "Polygon Guild Booth", points: 150, email: "booth.polygon@blockquest.ph" },
+    { id: "solana-superteam", name: "Solana Superteam PH", points: 150, email: "booth.solana@blockquest.ph" },
+    { id: "binance-academy", name: "Binance Academy Booth", points: 150, email: "booth.binance@blockquest.ph" },
+    { id: "base-hub", name: "Base Ecosystem Hub", points: 150, email: "booth.base@blockquest.ph" },
+    { id: "trezor-ledger", name: "Trezor & Ledger Hardware", points: 200, email: "booth.trezor@blockquest.ph" },
+    { id: "gaming-arena", name: "Web3 Gaming Arena", points: 200, email: "booth.gaming@blockquest.ph" },
+    { id: "tamago-lounge", name: "BRGY Tamago Lounge", points: 100, email: "booth.tamago@blockquest.ph" },
+  ]);
+  const [newBoothForm, setNewBoothForm] = useState({ name: "", email: "", password: "", points: 150 });
+  const [isCreatingBooth, setIsCreatingBooth] = useState(false);
+  const [showAddBoothModal, setShowAddBoothModal] = useState(false);
+
+  const [editingBooth, setEditingBooth] = useState<any | null>(null);
+  const [editBoothForm, setEditBoothForm] = useState({ id: 0, name: "", email: "", password: "", points: 150 });
+  const [isUpdatingBooth, setIsUpdatingBooth] = useState(false);
 
   // ── Social Missions (Superadmin only) ──
   const [socialMissions, setSocialMissions] = useState<any[]>([]);
@@ -756,6 +774,89 @@ export default function AdminPage() {
     }
   }
 
+  async function handleCreateBoothStation(e: React.FormEvent) {
+    e.preventDefault();
+    setIsCreatingBooth(true);
+    try {
+      // 1. Create admin user with booth_staff role
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: newBoothForm.email,
+          password: newBoothForm.password,
+          full_name: newBoothForm.name,
+          role: "booth_staff",
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to create booth account");
+
+      const newId = newBoothForm.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      setBoothList(prev => [
+        { id: newId, name: newBoothForm.name, points: newBoothForm.points, email: newBoothForm.email },
+        ...prev
+      ]);
+      setNewBoothForm({ name: "", email: "", password: "", points: 150 });
+      setShowAddBoothModal(false);
+      alert(`Booth station "${newBoothForm.name}" created successfully! Login: ${newBoothForm.email}`);
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setIsCreatingBooth(false);
+    }
+  }
+
+  function handleOpenEditBooth(booth: any) {
+    setEditingBooth(booth);
+    setEditBoothForm({
+      id: booth.id,
+      name: booth.name || "",
+      email: booth.email || "",
+      password: "",
+      points: booth.points || 150,
+    });
+  }
+
+  async function handleUpdateBoothStation(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingBooth) return;
+    setIsUpdatingBooth(true);
+
+    try {
+      if (editingBooth.isDb) {
+        // Update database admin user record
+        const payload: any = {
+          id: editBoothForm.id,
+          full_name: editBoothForm.name,
+          email: editBoothForm.email,
+        };
+        if (editBoothForm.password.trim()) {
+          payload.password = editBoothForm.password.trim();
+        }
+
+        const res = await fetch("/api/admin/users", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Failed to update booth station");
+
+        setAdminUsersList(prev => prev.map(u => u.id === editBoothForm.id ? { ...u, full_name: editBoothForm.name, email: editBoothForm.email } : u));
+      }
+
+      // Update local booth list points and details
+      setBoothList(prev => prev.map(b => (b.id === editingBooth.id || b.email === editingBooth.email) ? { ...b, name: editBoothForm.name, email: editBoothForm.email, points: editBoothForm.points } : b));
+      setEditingBooth(null);
+      alert(`Booth "${editBoothForm.name}" updated successfully with ${editBoothForm.points} XP!`);
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setIsUpdatingBooth(false);
+    }
+  }
+
   async function handleCreateAdmin(e: React.FormEvent) {
     e.preventDefault();
     setIsCreatingAdmin(true);
@@ -1002,6 +1103,8 @@ export default function AdminPage() {
               ? "🎫 Event Pass Attendees"
               : t === "quests"
               ? "⚡ Fiesta Event Quests"
+              : t === "booths"
+              ? "🏪 Booth Stations"
               : t === "staff"
               ? "🛡️ Staff / Admins"
               : t === "socials"
@@ -1576,10 +1679,10 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {adminUsersList.length === 0 ? (
+                  {adminUsersList.filter(u => u.role !== 'booth_staff').length === 0 ? (
                     <tr><td colSpan={6} className="admin-table__empty">No other admins found.</td></tr>
                   ) : (
-                    adminUsersList.map(user => (
+                    adminUsersList.filter(u => u.role !== 'booth_staff').map(user => (
                       <tr key={user.id} className="admin-table__row">
                         <td className="admin-table__num">{user.id}</td>
                         <td className="admin-table__name">{user.full_name}</td>
@@ -1848,6 +1951,400 @@ export default function AdminPage() {
                       {isCreatingMission ? "Creating..." : "Save Mission"}
                     </button>
                   </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── BOOTH STATIONS TAB ─── */}
+        {tab === "booths" && adminUser?.role === "superadmin" && !loading && (
+          <div>
+            <div className="admin-toolbar" style={{ flexWrap: "wrap", gap: 10 }}>
+              <div>
+                <h2 style={{ fontSize: "1.2rem", margin: 0, color: "#c084fc" }}>🏪 Vendor & Booth Stations ({boothList.length})</h2>
+                <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", margin: "2px 0 0" }}>
+                  Manage authorized booths, view assigned scan credentials, and set 1-time visit XP reward amounts.
+                </p>
+              </div>
+
+              <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
+                <a
+                  href="/booth-scan"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="admin-refresh-btn"
+                  style={{ borderColor: "rgba(168, 85, 247, 0.4)", color: "#c084fc" }}
+                >
+                  🚀 Open Scanner UI ↗
+                </a>
+                <button
+                  className="admin-add-btn"
+                  onClick={() => setShowAddBoothModal(true)}
+                  style={{ background: "linear-gradient(135deg, #a855f7 0%, #6366f1 100%)", color: "#fff" }}
+                >
+                  + Add Booth Station
+                </button>
+              </div>
+            </div>
+
+            {/* Booth Performance Overview KPI Stats */}
+            {(() => {
+              const dbBooths = adminUsersList.filter(u => u.role === 'booth_staff');
+              const totalScans = dbBooths.reduce((sum, u) => sum + (u.scan_count || 0), 0);
+              const activeCount = dbBooths.filter(u => (u.scan_count || 0) >= 1).length;
+              const inactiveCount = dbBooths.length - activeCount;
+
+              return (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 16 }}>
+                  <div className="admin-stat-card" style={{ borderLeft: "3px solid #c084fc", background: "rgba(168,85,247,0.06)" }}>
+                    <span className="admin-stat-card__icon">📊</span>
+                    <div>
+                      <p className="admin-stat-card__label" style={{ color: "#c084fc" }}>Total Booth Scans</p>
+                      <p className="admin-stat-card__value" style={{ color: "#fff" }}>{totalScans} Attendees</p>
+                    </div>
+                  </div>
+
+                  <div className="admin-stat-card" style={{ borderLeft: "3px solid #34d399", background: "rgba(16,185,129,0.06)" }}>
+                    <span className="admin-stat-card__icon">⚡</span>
+                    <div>
+                      <p className="admin-stat-card__label" style={{ color: "#34d399" }}>Active Stations</p>
+                      <p className="admin-stat-card__value">{activeCount} / {dbBooths.length || boothList.length}</p>
+                    </div>
+                  </div>
+
+                  <div className="admin-stat-card" style={{ borderLeft: "3px solid #f5a623", background: "rgba(245,166,35,0.06)" }}>
+                    <span className="admin-stat-card__icon">🏪</span>
+                    <div>
+                      <p className="admin-stat-card__label">Total Stations</p>
+                      <p className="admin-stat-card__value">{dbBooths.length || boothList.length}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="admin-table-wrapper">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Booth / Vendor Name</th>
+                    <th>Login Email</th>
+                    <th>Total Scanned Attendees</th>
+                    <th>Fixed Score (1-Time)</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const dbBooths = adminUsersList.filter(u => u.role === 'booth_staff');
+                    const displayList = dbBooths.length > 0
+                      ? dbBooths.map(u => ({ id: u.id, name: u.full_name, email: u.email, points: 150, isDb: true, rawUser: u }))
+                      : boothList;
+
+                    return displayList.map((b: any, idx: number) => (
+                      <tr key={b.id || idx} className="admin-table__row">
+                        <td className="admin-table__num">{idx + 1}</td>
+                        <td className="admin-table__name">
+                          <strong>{b.name}</strong>
+                        </td>
+                        <td className="admin-table__email">
+                          <code>{b.email || `booth.${b.id}@blockquest.ph`}</code>
+                        </td>
+                        <td>
+                          <span style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            padding: "4px 10px",
+                            borderRadius: "8px",
+                            fontSize: "0.82rem",
+                            fontWeight: 800,
+                            background: (b.rawUser?.scan_count || b.scan_count || 0) > 0 ? "rgba(59, 130, 246, 0.15)" : "rgba(255, 255, 255, 0.04)",
+                            border: (b.rawUser?.scan_count || b.scan_count || 0) > 0 ? "1px solid rgba(59, 130, 246, 0.35)" : "1px solid rgba(255, 255, 255, 0.08)",
+                            color: (b.rawUser?.scan_count || b.scan_count || 0) > 0 ? "#60a5fa" : "var(--text-muted)",
+                          }}>
+                            👥 {b.rawUser?.scan_count || b.scan_count || 0} Attendees
+                          </span>
+                        </td>
+                        <td>
+                          <span className="admin-xp-badge" style={{ background: "linear-gradient(135deg, #c084fc, #a855f7)", color: "#fff" }}>
+                            +{b.points || 150} XP
+                          </span>
+                        </td>
+                        <td>
+                          {b.rawUser?.is_active || (b.scan_count && b.scan_count >= 1) ? (
+                            <span
+                              className="admin-status-badge admin-status-badge--live"
+                              style={{
+                                background: "rgba(16, 185, 129, 0.15)",
+                                color: "#34d399",
+                                borderColor: "rgba(16, 185, 129, 0.35)",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px"
+                              }}
+                            >
+                              ⚡ Active ({b.rawUser?.scan_count || b.scan_count || 1} scans)
+                            </span>
+                          ) : (
+                            <span
+                              className="admin-status-badge"
+                              style={{
+                                background: "rgba(148, 163, 184, 0.12)",
+                                color: "#94a3b8",
+                                borderColor: "rgba(148, 163, 184, 0.25)",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px"
+                              }}
+                            >
+                              ⏳ Inactive (0 scans)
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ verticalAlign: "middle" }}>
+                          <div style={{ display: "flex", gap: "8px", alignItems: "center", justifyContent: "flex-start" }}>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditBooth(b)}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "5px",
+                                padding: "6px 12px",
+                                borderRadius: "8px",
+                                fontSize: "0.76rem",
+                                fontWeight: 700,
+                                background: "rgba(168, 85, 247, 0.12)",
+                                border: "1px solid rgba(168, 85, 247, 0.35)",
+                                color: "#c084fc",
+                                cursor: "pointer",
+                                transition: "all 0.2s ease"
+                              }}
+                              onMouseOver={(e) => (e.currentTarget.style.background = "rgba(168, 85, 247, 0.25)")}
+                              onMouseOut={(e) => (e.currentTarget.style.background = "rgba(168, 85, 247, 0.12)")}
+                            >
+                              ✏️ Edit
+                            </button>
+
+                            <a
+                              href="/booth-scan"
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "5px",
+                                padding: "6px 12px",
+                                borderRadius: "8px",
+                                fontSize: "0.76rem",
+                                fontWeight: 700,
+                                background: "rgba(245, 166, 35, 0.1)",
+                                border: "1px solid rgba(245, 166, 35, 0.3)",
+                                color: "var(--gold-light)",
+                                textDecoration: "none",
+                                transition: "all 0.2s ease"
+                              }}
+                              onMouseOver={(e) => (e.currentTarget.style.background = "rgba(245, 166, 35, 0.2)")}
+                              onMouseOut={(e) => (e.currentTarget.style.background = "rgba(245, 166, 35, 0.1)")}
+                            >
+                              🚀 Launch ↗
+                            </a>
+
+                            {b.isDb && (
+                              <button
+                                type="button"
+                                onClick={() => setDeletingAdminUser(b.rawUser)}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  padding: "6px 10px",
+                                  borderRadius: "8px",
+                                  fontSize: "0.76rem",
+                                  fontWeight: 700,
+                                  background: "rgba(239, 68, 68, 0.08)",
+                                  border: "1px solid rgba(239, 68, 68, 0.25)",
+                                  color: "#f87171",
+                                  cursor: "pointer",
+                                  marginLeft: "6px",
+                                  transition: "all 0.2s ease"
+                                }}
+                                onMouseOver={(e) => {
+                                  e.currentTarget.style.background = "rgba(239, 68, 68, 0.2)";
+                                  e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.5)";
+                                }}
+                                onMouseOut={(e) => {
+                                  e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)";
+                                  e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.25)";
+                                }}
+                              >
+                                🗑️ Delete
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ));
+                  })()}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Modal to Edit Booth */}
+            {editingBooth && (
+              <div className="admin-modal-overlay" onClick={() => setEditingBooth(null)}>
+                <div className="admin-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
+                  <div className="admin-modal__header" style={{ padding: "20px 24px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                    <h2 style={{ fontSize: "1.15rem", margin: 0, color: "#fff", display: "flex", alignItems: "center", gap: 8 }}>
+                      <span>✏️</span> Edit Booth Station & XP Points
+                    </h2>
+                    <button className="admin-modal__close" onClick={() => setEditingBooth(null)}>✕</button>
+                  </div>
+
+                  <form onSubmit={handleUpdateBoothStation} style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+                    <label className="qf-label">
+                      Booth / Vendor Station Name *
+                      <input
+                        type="text"
+                        required
+                        className="qf-input"
+                        value={editBoothForm.name}
+                        onChange={(e) => setEditBoothForm(f => ({ ...f, name: e.target.value }))}
+                      />
+                    </label>
+
+                    <label className="qf-label">
+                      Assigned Login Email *
+                      <input
+                        type="email"
+                        required
+                        className="qf-input"
+                        value={editBoothForm.email}
+                        onChange={(e) => setEditBoothForm(f => ({ ...f, email: e.target.value }))}
+                      />
+                    </label>
+
+                    <label className="qf-label">
+                      Reset Password (leave blank to keep current)
+                      <input
+                        type="password"
+                        placeholder="New password (optional)"
+                        className="qf-input"
+                        value={editBoothForm.password}
+                        onChange={(e) => setEditBoothForm(f => ({ ...f, password: e.target.value }))}
+                      />
+                    </label>
+
+                    <label className="qf-label">
+                      Fixed XP Score per Attendee First Visit (XP Points)
+                      <input
+                        type="number"
+                        min={10}
+                        max={1000}
+                        required
+                        className="qf-input"
+                        value={editBoothForm.points}
+                        onChange={(e) => setEditBoothForm(f => ({ ...f, points: Number(e.target.value) || 150 }))}
+                      />
+                    </label>
+
+                    <div className="admin-modal__footer" style={{ marginTop: 10, display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                      <button type="button" className="admin-cancel-btn" onClick={() => setEditingBooth(null)}>
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isUpdatingBooth}
+                        className="admin-save-btn"
+                        style={{ background: "linear-gradient(135deg, #a855f7 0%, #6366f1 100%)", color: "#fff" }}
+                      >
+                        {isUpdatingBooth ? "Saving…" : "Save Changes"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* Modal to Add Booth */}
+            {showAddBoothModal && (
+              <div className="admin-modal-overlay" onClick={() => setShowAddBoothModal(false)}>
+                <div className="admin-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
+                  <div className="admin-modal__header" style={{ padding: "20px 24px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                    <h2 style={{ fontSize: "1.15rem", margin: 0, color: "#fff", display: "flex", alignItems: "center", gap: 8 }}>
+                      <span>🏪</span> Create Vendor Booth Station
+                    </h2>
+                    <button className="admin-modal__close" onClick={() => setShowAddBoothModal(false)}>✕</button>
+                  </div>
+
+                  <form onSubmit={handleCreateBoothStation} style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+                    <label className="qf-label">
+                      Booth / Vendor Station Name *
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Polygon Guild Booth"
+                        className="qf-input"
+                        value={newBoothForm.name}
+                        onChange={(e) => setNewBoothForm(f => ({ ...f, name: e.target.value }))}
+                      />
+                    </label>
+
+                    <label className="qf-label">
+                      Assigned Login Email *
+                      <input
+                        type="email"
+                        required
+                        placeholder="e.g. booth.polygon@blockquest.ph"
+                        className="qf-input"
+                        value={newBoothForm.email}
+                        onChange={(e) => setNewBoothForm(f => ({ ...f, email: e.target.value }))}
+                      />
+                    </label>
+
+                    <label className="qf-label">
+                      Temporary Password *
+                      <input
+                        type="password"
+                        required
+                        placeholder="Password for booth staff"
+                        className="qf-input"
+                        value={newBoothForm.password}
+                        onChange={(e) => setNewBoothForm(f => ({ ...f, password: e.target.value }))}
+                      />
+                    </label>
+
+                    <label className="qf-label">
+                      Fixed XP Score per Attendee First Visit
+                      <input
+                        type="number"
+                        min={10}
+                        max={1000}
+                        required
+                        className="qf-input"
+                        value={newBoothForm.points}
+                        onChange={(e) => setNewBoothForm(f => ({ ...f, points: Number(e.target.value) || 150 }))}
+                      />
+                    </label>
+
+                    <div className="admin-modal__footer" style={{ marginTop: 10, display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                      <button type="button" className="admin-cancel-btn" onClick={() => setShowAddBoothModal(false)}>
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isCreatingBooth}
+                        className="admin-save-btn"
+                        style={{ background: "linear-gradient(135deg, #a855f7 0%, #6366f1 100%)", color: "#fff" }}
+                      >
+                        {isCreatingBooth ? "Provisioning…" : "Create & Authorize"}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
             )}
