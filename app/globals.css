@@ -40,6 +40,16 @@
   padding: 0;
 }
 
+/* ── Hide Next.js Dev Indicator Badge ("N" button) ────────── */
+nextjs-portal,
+[data-nextjs-dev-indicator],
+[data-nextjs-toast-wrapper],
+div[data-nextjs-dialog-overlay] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 /* ── Global Dropdown & Select Styling ───────────────────────── */
 select {
   color-scheme: dark;
