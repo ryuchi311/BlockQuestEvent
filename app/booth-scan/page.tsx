@@ -406,9 +406,12 @@ export default function BoothScanPage() {
             </button>
           </form>
 
-          <div style={{ marginTop: 20, textAlign: "center" }}>
+          <div style={{ marginTop: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Link href="/shortcut" className="scan-back-link" style={{ color: "var(--gold-light)", fontSize: "0.82rem" }}>
+              ← Back to Shortcut
+            </Link>
             <Link href="/" className="scan-back-link" style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>
-              ← Return to Home Portal
+              Public Portal →
             </Link>
           </div>
         </div>
@@ -473,22 +476,40 @@ export default function BoothScanPage() {
             </div>
           </div>
           
-          <button
-            onClick={handleLogout}
-            style={{
-              background: "rgba(239, 68, 68, 0.12)",
-              border: "1px solid rgba(239, 68, 68, 0.3)",
-              color: "#f87171",
-              borderRadius: 8,
-              padding: "6px 12px",
-              fontSize: "0.75rem",
-              fontWeight: 700,
-              cursor: "pointer",
-              flexShrink: 0
-            }}
-          >
-            Logout
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Link
+              href="/shortcuts"
+              style={{
+                background: "rgba(245, 166, 35, 0.12)",
+                border: "1px solid rgba(245, 166, 35, 0.35)",
+                color: "var(--gold-light)",
+                borderRadius: 8,
+                padding: "6px 10px",
+                fontSize: "0.75rem",
+                fontWeight: 700,
+                textDecoration: "none",
+                flexShrink: 0
+              }}
+            >
+              🧭 Hub
+            </Link>
+            <button
+              onClick={handleLogout}
+              style={{
+                background: "rgba(239, 68, 68, 0.12)",
+                border: "1px solid rgba(239, 68, 68, 0.3)",
+                color: "#f87171",
+                borderRadius: 8,
+                padding: "6px 12px",
+                fontSize: "0.75rem",
+                fontWeight: 700,
+                cursor: "pointer",
+                flexShrink: 0
+              }}
+            >
+              Logout
+            </button>
+          </div>
         </header>
 
         {/* Active Station Points Banner */}

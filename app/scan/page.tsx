@@ -441,7 +441,10 @@ export default function ScanPage() {
               {loginLoading ? "Authenticating..." : "Unlock Scanner →"}
             </button>
           </form>
-          <Link href="/admin" className="scan-back-link">← Admin Dashboard</Link>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
+            <Link href="/shortcut" className="scan-back-link" style={{ color: "var(--gold-light)" }}>← Back to Shortcut</Link>
+            <Link href="/admin" className="scan-back-link">Admin Dashboard →</Link>
+          </div>
         </div>
       </main>
     );
@@ -464,7 +467,10 @@ export default function ScanPage() {
           />
           <span>QR Scanner</span>
         </div>
-        <Link href="/admin" className="scan-topbar__back">✕ Exit</Link>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Link href="/shortcuts" className="scan-topbar__back" style={{ borderColor: "rgba(245, 166, 35, 0.4)", color: "var(--gold-light)" }}>🧭 Hub</Link>
+          <Link href="/admin" className="scan-topbar__back">✕ Exit</Link>
+        </div>
       </header>
 
       {/* Camera fullscreen area */}

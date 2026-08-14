@@ -994,7 +994,7 @@ export default function AdminPage() {
               {loginLoading ? "Authenticating..." : "Unlock Dashboard →"}
             </button>
           </form>
-          <Link href="/" className="admin-back-link">← Back to Home Portal</Link>
+          <Link href="/shortcut" className="admin-back-link">← Back to Shortcut</Link>
         </div>
       </main>
     );
@@ -1031,6 +1031,7 @@ export default function AdminPage() {
               <span style={{ fontSize: "0.7rem", color: "var(--gold-light)", textTransform: "uppercase" }}>{adminUser.role}</span>
             </div>
           )}
+          <a href="/shortcuts" className="admin-nav-link" style={{ borderColor: "rgba(59, 130, 246, 0.4)", color: "#60a5fa" }}>🧭 Shortcuts</a>
           <a href="/" className="admin-nav-link" onClick={(e) => handleNavigate(e, "/")}>Home Portal</a>
           <a href="/register" className="admin-nav-link" onClick={(e) => handleNavigate(e, "/register")}>Registration</a>
           <a href="/stress-test" target="_blank" rel="noreferrer" className="admin-nav-link" style={{ borderColor: "rgba(245, 166, 35, 0.4)", color: "var(--gold-light)" }}>⚡ Stress Test</a>

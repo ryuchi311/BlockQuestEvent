@@ -80,25 +80,9 @@ export default function Home() {
             </span>
           </Link>
         </div>
-        <div style={{ textAlign: "center", marginTop: "32px", display: "flex", justifyContent: "center", gap: "24px" }}>
+        <div style={{ textAlign: "center", marginTop: "32px", display: "flex", justifyContent: "center" }}>
           <Link
-            href="/booth-scan"
-            style={{
-              fontSize: "0.78rem",
-              color: "#c084fc",
-              textDecoration: "none",
-              letterSpacing: "0.06em",
-              opacity: 0.8,
-              transition: "opacity 0.2s"
-            }}
-            onMouseOver={(e) => (e.currentTarget.style.opacity = "1")}
-            onMouseOut={(e) => (e.currentTarget.style.opacity = "0.8")}
-          >
-            🏪 Booth / Vendor Scanner
-          </Link>
-          <span style={{ color: "rgba(255,255,255,0.2)" }}>•</span>
-          <Link
-            href="/admin"
+            href="/shortcut"
             style={{
               fontSize: "0.78rem",
               color: "var(--text-muted)",
@@ -107,10 +91,10 @@ export default function Home() {
               opacity: 0.6,
               transition: "opacity 0.2s"
             }}
-            onMouseOver={(e) => (e.currentTarget.style.opacity = "1")}
+            onMouseOver={(e) => (e.currentTarget.style.opacity = "0.9")}
             onMouseOut={(e) => (e.currentTarget.style.opacity = "0.6")}
           >
-            ⚙ Admin
+            🧭 Shortcut
           </Link>
         </div>
 
