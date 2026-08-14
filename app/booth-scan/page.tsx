@@ -346,6 +346,11 @@ export default function BoothScanPage() {
     }
   }, [startScanner]);
 
+  // ── Render Guard for SSR Hydration ──
+  if (!mounted) {
+    return null;
+  }
+
   // ── Render Login Gate ──
   if (!authed) {
     return (

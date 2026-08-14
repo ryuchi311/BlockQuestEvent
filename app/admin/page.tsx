@@ -957,6 +957,10 @@ export default function AdminPage() {
   const liveQuestCount = quests.filter((q) => q.status === "Live").length;
 
   // ─── Login gate ──────────────────────────────────────────────────────────
+  if (!mounted) {
+    return null;
+  }
+
   if (!authed) {
     return (
       <main className="admin-login-page" suppressHydrationWarning>
