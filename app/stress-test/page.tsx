@@ -51,12 +51,14 @@ export default function StressTestGuidePage() {
 
   useEffect(() => {
     setMounted(true);
-    const saved = sessionStorage.getItem("blockquest_admin_session");
+    // Support both localStorage (new) and sessionStorage (old) so we don't drop existing sessions
+    const saved = localStorage.getItem("blockquest_admin_session") || sessionStorage.getItem("blockquest_admin_session");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed.authed && parsed.user && (parsed.user.role === "superadmin" || parsed.user.role === "admin")) {
-          setCurrentUser(parsed.user);
+        const user = parsed.adminUser || parsed.user; // support both just in case
+        if (parsed.authed && user && (user.role === "superadmin" || user.role === "admin")) {
+          setCurrentUser(user);
           setAuthed(true);
         }
       } catch {}

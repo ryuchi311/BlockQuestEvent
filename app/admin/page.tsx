@@ -87,14 +87,14 @@ export default function AdminPage() {
   // ── Session persistence & Idle Timeout ──
   useEffect(() => {
     setMounted(true);
-    // Restore authenticated session from sessionStorage (auto-cleared when browser/tab closes)
-    const savedSession = sessionStorage.getItem("blockquest_admin_session");
+    // Restore authenticated session from localStorage (works across tabs)
+    const savedSession = localStorage.getItem("blockquest_admin_session");
     if (savedSession) {
       try {
         const session = JSON.parse(savedSession);
         if (session.authed && session.adminUser) {
           if (session.adminUser.role === "booth_staff") {
-            sessionStorage.removeItem("blockquest_admin_session");
+            localStorage.removeItem("blockquest_admin_session");
           } else {
             setAuthed(true);
             setAdminUser(session.adminUser);
@@ -253,7 +253,7 @@ export default function AdminPage() {
 
       setAdminUser(json.adminUser);
       setAuthed(true);
-      sessionStorage.setItem("blockquest_admin_session", JSON.stringify({
+      localStorage.setItem("blockquest_admin_session", JSON.stringify({
         authed: true,
         adminUser: json.adminUser
       }));
@@ -274,7 +274,7 @@ export default function AdminPage() {
     setQuests([]);
     setVerifications([]);
     setError("");
-    sessionStorage.removeItem("blockquest_admin_session");
+    localStorage.removeItem("blockquest_admin_session");
   }
 
   // Set default accessible tab based on role when logging in
