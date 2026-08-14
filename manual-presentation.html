@@ -971,7 +971,7 @@
               <div class="tab-icon-box">⚡</div>
               <div>
                 <h3 class="tab-name">Tab 3: Fiesta Event Quests</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted);">Quest creation, XP configuration & scheduling</p>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Interactive quest creation studio, live preview simulation, draft autosave & catalog management</p>
               </div>
             </div>
             <span class="tab-badge" style="background: rgba(245,166,35,0.15); color: var(--gold); border: 1px solid var(--gold);">Manager & Superadmin</span>
@@ -981,33 +981,45 @@
             <ul class="feature-list">
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
-                <div><strong>Quest Builder & Live Preview:</strong> Create quests with Title, Description, XP amount, Action Label, and external link.</div>
+                <div><strong>5-Section Quest Creation Studio:</strong>
+                  <ul style="margin: 6px 0 0 16px; font-size: 0.84rem; color: var(--text-secondary); line-height: 1.6;">
+                    <li><strong>① Identity & Ordering:</strong> Auto-slugs titles into immutable lowercase alphanumeric IDs (e.g., <code>booth-visit-a</code>) and sets display priority numbers.</li>
+                    <li><strong>② Content & Quick-Format Bar:</strong> Multi-line description editor with 1-click markdown tools for <code>• Bullet Lists</code> and <code>1. Numbered Steps</code>.</li>
+                    <li><strong>③ Economy & State:</strong> Assign exact XP rewards (e.g., +250 XP), choose category (🚀 Onboarding, 📣 Social, 📅 Daily), and select status (🟢 Live, 🔜 Soon, ✅ Done, 📝 Draft).</li>
+                    <li><strong>④ Action Button CTA:</strong> Define external/internal URLs with custom button text (e.g., "Join Discord →", "Visit Booth Website").</li>
+                    <li><strong>⑤ Verification Mode Switch:</strong> Toggle between <strong>Instant Claim</strong> (zero-friction 1-click XP) and <strong>Screenshot Proof Required</strong> (routed to Verifier Queue).</li>
+                  </ul>
+                </div>
               </li>
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
-                <div><strong>Status Controller:</strong> Switch quests between <strong>Live</strong> (active for users), <strong>Soon</strong> (teaser), <strong>Done</strong> (closed), or <strong>Draft</strong>.</div>
+                <div><strong>Real-Time Live Preview Panel:</strong> A synchronized visual card updates keystroke-by-keystroke on the right side of the modal, simulating exactly how the quest will render on attendee screens.</div>
               </li>
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
-                <div><strong>Proof Requirement Toggle:</strong> Toggle "Requires Proof" to mandate photo/screenshot submission before XP award.</div>
+                <div><strong>Browser Draft Autosave & Recovery:</strong> In-flight form changes are continuously cached in localStorage. If closed accidentally or reloaded, a recovery banner lets staff resume work seamlessly.</div>
               </li>
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
-                <div><strong>Category Filter:</strong> Organize quests by Onboarding, Social Media, Booth Activity, Partner Quests, and Special Events.</div>
+                <div><strong>Instant Status Switcher Modal:</strong> Click any status badge directly in the catalog table to change status between Live, Soon, Done, or Draft without entering the full edit modal.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Publish Draft Flow:</strong> Draft quests remain invisible to attendees until a Superadmin clicks <em>"🚀 Publish Quest"</em> to launch them live.</div>
               </li>
             </ul>
 
             <div class="mockup-preview">
               <div class="mockup-bar">
-                <span>QUEST CATALOG</span>
+                <span>QUEST STUDIO & SIMULATOR</span>
                 <span style="color: var(--gold);">XP POOL: 25,000</span>
               </div>
               <div style="color: var(--text-muted); line-height: 1.8;">
-                [+] Add New Quest<br>
-                1. "Visit Partner Booth A" - <span style="color: var(--gold-light);">500 XP</span> [Live]<br>
-                2. "Retweet Announcement" - <span style="color: var(--gold-light);">250 XP</span> [Live]<br>
-                3. "VIP Mixer Pass" - <span style="color: var(--gold-light);">1,000 XP</span> [Soon]<br>
-                Proof Required: <span style="color: var(--emerald);">ENABLED</span>
+                [+] <span style="color: var(--gold);">+ Add New Quest (Studio Modal)</span><br>
+                1. "Follow X Account" [Onboarding] <span style="color: var(--gold-light);">+100 XP</span> <span style="color: var(--emerald);">[🟢 Live]</span><br>
+                2. "Booth Partner Photo" [Social] <span style="color: var(--gold-light);">+500 XP</span> <span style="color: var(--blue);">[📷 Proof Req]</span><br>
+                3. "VIP Mixer Pass" [Daily] <span style="color: var(--gold-light);">+1,000 XP</span> <span style="color: #fbbf24;">[📝 Draft]</span><br>
+                Actions: <span style="color: var(--emerald);">[ 🚀 Publish ]</span> | <span style="color: var(--gold-light);">[ ✏️ Edit ]</span> | <span style="color: var(--red);">[ ⚠️ Delete ]</span>
               </div>
             </div>
           </div>
@@ -1127,33 +1139,50 @@
             <ul class="feature-list">
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
-                <div><strong>Staff Account Provisioning:</strong> Create admin accounts with Email, Full Name, Temporary Password, and Role level.</div>
+                <div><strong>Staff Account Provisioning:</strong> Superadmins create admin accounts with Email, Full Name, Temporary Password, and predefined Role access levels.</div>
               </li>
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
-                <div><strong>Cryptographic Security:</strong> Automatically salts and hashes staff passwords using <code>node:crypto scryptSync</code>.</div>
+                <div><strong>Staff Profile & Role Editing:</strong> Superadmins can modify staff Full Names, Emails, Role permissions, or reset passwords on the fly via a dedicated modal.</div>
               </li>
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
-                <div><strong>Active Staff Registry:</strong> View all staff members, their assigned roles, and creation timestamps.</div>
+                <div><strong>Strict Role Access Boundaries (Least-Privilege Isolation):</strong>
+                  <ul style="margin: 6px 0 0 16px; font-size: 0.84rem; color: var(--text-secondary); line-height: 1.6;">
+                    <li><strong><code>verifier</code>:</strong> Restricted solely to the Quest Verifications queue. Scanner, Attendees, Staff, and Quest editing are completely hidden.</li>
+                    <li><strong><code>manage_attendees</code>:</strong> Restricted to QR Scanner & Attendee Check-In. Cannot access quest configurations, review queues, or staff management.</li>
+                    <li><strong><code>admin</code> (Manager):</strong> Handles Day-of-Event operations (Scanner, Attendees, Quests, Verifications) but is blocked from Staff management and Social Missions.</li>
+                    <li><strong><code>viewer</code>:</strong> Read-only observation tier with all action buttons disabled to prevent unauthorized edits.</li>
+                  </ul>
+                </div>
               </li>
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
-                <div><strong>Instant Revocation:</strong> Delete staff accounts with one click to revoke system access immediately.</div>
+                <div><strong>Cryptographic Security & Password Hashing:</strong> Passwords are never stored in plaintext — salted and hashed using Node.js native <code>crypto.scryptSync</code> (16-byte random salt, 64-byte key).</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Session Timeout & Inactivity Guards:</strong> Active admin sessions automatically expire after 5 minutes of inactivity to protect unattended gate devices.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Self-Protection & Safe Revocation:</strong> Superadmins cannot delete their own active account, and all account removals require verification through a safety confirmation modal.</div>
               </li>
             </ul>
 
             <div class="mockup-preview">
               <div class="mockup-bar">
-                <span>STAFF REGISTRY</span>
+                <span>STAFF REGISTRY & SECURITY</span>
                 <span style="color: var(--purple);">RBAC ENGINE</span>
               </div>
               <div style="color: var(--text-muted); line-height: 1.8;">
-                • superadmin@block.io (<span style="color: var(--gold);">Superadmin</span>)<br>
-                • gate1@block.io (<span style="color: var(--purple);">Manage Quester</span>)<br>
-                • verifier1@block.io (<span style="color: var(--emerald);">Verifier</span>)<br>
-                • manager@block.io (<span style="color: var(--blue);">Manager</span>)<br>
-                Action: <span style="color: var(--red);">[ Revoke / Delete Access ]</span>
+                • superadmin@block.io (<span style="color: var(--gold);">Superadmin</span>) → [Full Access]<br>
+                • gate1@block.io (<span style="color: var(--purple);">Manage Attendees</span>) → [Scanner & Check-in Only]<br>
+                • verifier1@block.io (<span style="color: var(--emerald);">Verifier</span>) → [Verifications Only]<br>
+                • manager@block.io (<span style="color: var(--blue);">Manager</span>) → [Operations Access]<br>
+                • observer@block.io (<span style="color: #94a3b8;">Viewer</span>) → [Read-Only View]<br>
+                Security: <span style="color: var(--emerald);">scryptSync Active</span> | <span style="color: var(--gold);">5-Min Auto Timeout</span><br>
+                Actions: <span style="color: var(--gold-light);">[ ✏️ Edit Modal ]</span> | <span style="color: var(--red);">[ ⚠️ Delete Modal ]</span>
               </div>
             </div>
           </div>
@@ -1183,7 +1212,7 @@
             <tr>
               <td><span class="role-badge badge-superadmin">Superadmin</span></td>
               <td>All 6 Tabs (Full Access)</td>
-              <td>Full control: Create/Delete staff accounts, configure dynamic social missions, create quests, manage attendees.</td>
+              <td>Full control: Create, Edit & Delete staff accounts, configure dynamic social missions, create/publish/delete quests, manage attendees.</td>
             </tr>
             <tr>
               <td><span class="role-badge badge-admin">Manager (Admin)</span></td>
@@ -1191,9 +1220,9 @@
               <td>Create & schedule quests, manage attendee list, perform check-ins, inspect submissions.</td>
             </tr>
             <tr>
-              <td><span class="role-badge badge-quester">Manage Quester</span></td>
+              <td><span class="role-badge badge-quester">Manage Attendees</span></td>
               <td>Scanner, Attendees</td>
-              <td>Gate entrance scanning, manual search by ticket code/email, check-in confirmation.</td>
+              <td>Gate entrance QR scanning, manual search by ticket code/email, check-in confirmation modal.</td>
             </tr>
             <tr>
               <td><span class="role-badge badge-verifier">Verifier</span></td>

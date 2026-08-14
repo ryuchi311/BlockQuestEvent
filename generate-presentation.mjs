@@ -735,7 +735,7 @@ function createBaseSlide(title, subtitle, category = "USER MANUAL") {
     line: { color: EMERALD, width: 1 },
   });
 
-  slide.addText("🛡️ Staff Account Provisioning", {
+  slide.addText("🛡️ Staff Provisioning, Access Limits & Security", {
     x: 7.1,
     y: 2.1,
     w: 5.0,
@@ -746,7 +746,7 @@ function createBaseSlide(title, subtitle, category = "USER MANUAL") {
   });
 
   slide.addText(
-    "• Dedicated Staff Tab: View all active administrators and staff accounts.\n\n• Create New Staff: Form allows assigning Email, Temporary Password, Name, and Role Level.\n\n• Built-in Cryptographic Security: Automatically salts and hashes passwords using node:crypto scryptSync.\n\n• Revocation: Instant deletion button to remove staff access on demand.",
+    "• Staff Account Provisioning: Assign Email, Password, Name, and Role (manage_attendees, verifier, admin, viewer).\n\n• Least-Privilege Isolation: Verifiers only see proof queues; Gate staff only access scanners; Viewers are strictly read-only.\n\n• Edit Staff Modal: Modify details, alter permissions, or reset passwords dynamically.\n\n• Security Safeguards: scryptSync hashing, 5-minute inactivity timeouts, and safety modals for account deletions.",
     {
       x: 7.1,
       y: 2.7,
@@ -754,7 +754,7 @@ function createBaseSlide(title, subtitle, category = "USER MANUAL") {
       h: 3.7,
       fontSize: 11,
       color: WHITE,
-      lineSpacing: 20,
+      lineSpacing: 18,
     }
   );
 }
