@@ -1270,13 +1270,13 @@
           <tbody>
             <tr>
               <td><span class="role-badge badge-superadmin">Superadmin</span></td>
-              <td>All 6 Tabs (Full Access)</td>
-              <td>Full control: Create, Edit & Delete staff accounts, configure dynamic social missions, create/publish/delete quests, manage attendees.</td>
+              <td>All 7 Tabs (Full Access)</td>
+              <td>Full control: Create, Edit & Delete staff accounts, provision/edit booth stations & fixed XP, configure social missions, manage quests & attendees.</td>
             </tr>
             <tr>
               <td><span class="role-badge badge-admin">Manager (Admin)</span></td>
-              <td>Scanner, Attendees, Quests, Verifications</td>
-              <td>Create & schedule quests, manage attendee list, perform check-ins, inspect submissions.</td>
+              <td>Scanner, Attendees, Quests, Verifications, Booth Stations</td>
+              <td>Event operations: Schedule quests, review submissions, check-in attendees, monitor live booth station scans and update fixed XP scores.</td>
             </tr>
             <tr>
               <td><span class="role-badge badge-quester">Manage Attendees</span></td>
@@ -1292,6 +1292,11 @@
               <td><span class="role-badge badge-viewer">Viewer</span></td>
               <td>Read-Only Dashboard</td>
               <td>Live monitoring for sponsors and observers without modification capabilities.</td>
+            </tr>
+            <tr>
+              <td><span class="role-badge" style="background: rgba(168,85,247,0.15); color: var(--purple); border: 1px solid var(--purple);">Booth Staff</span></td>
+              <td>Dedicated <code>/booth-scan</code> Portal</td>
+              <td>Dedicated sponsor camera scanner: 1-time fixed XP award (+150 XP) per attendee with immutable receipt logging. Blocked from Admin Dashboard.</td>
             </tr>
           </tbody>
         </table>
@@ -1528,7 +1533,7 @@
           <span class="faq-tag" style="background: rgba(168,85,247,0.15); color: var(--purple); border: 1px solid var(--purple);">Booth Operations</span>
         </div>
         <div class="faq-answer">
-          Vendors open the dedicated <strong>🏪 Booth Scanner</strong> (<code>/booth-scan</code>) and select their station identity. When attendees show their QR pass, the vendor camera scans it and awards a 1-time fixed XP score (e.g. +150 XP) instantly. Subsequent scans on the same booth return an <strong>"Already Visited"</strong> status to prevent double-claiming.
+          Vendors open the dedicated <strong>🏪 Booth Scanner</strong> (<code>/booth-scan</code>) and authenticate with their station credentials (accessible to <code>superadmin</code>, <code>admin</code>, and <code>booth_staff</code>). When attendees present their QR pass, the vendor camera scans it and awards a 1-time fixed XP score (e.g. +150 XP) configured in advance by the Superadmin. The XP score is securely locked on the scanner UI to prevent vendor tampering. Subsequent scans on the same booth return an <strong>"Already Visited"</strong> status to prevent double-claiming. For maximum security, closing the browser or tab automatically terminates the station session.
         </div>
       </div>
 
