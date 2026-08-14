@@ -30,6 +30,8 @@ interface Quest {
   action_url: string | null;
   requires_proof?: boolean;
   sort_order: number;
+  created_by?: string;
+  updated_by?: string;
 }
 
 interface QuestVerification {
@@ -613,6 +615,7 @@ export default function AdminPage() {
         action_label: questForm.action_label || null,
         action_url: questForm.action_url || null,
         description: questForm.description || null,
+        admin_email: adminUser?.email,
       };
       const res = await fetch("/api/admin/quests", {
         method,
@@ -669,7 +672,7 @@ export default function AdminPage() {
       const res = await fetch("/api/admin/quests", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: statusModalQuest.id, status: newStatus }),
+        body: JSON.stringify({ id: statusModalQuest.id, status: newStatus, admin_email: adminUser?.email }),
       });
       if (!res.ok) throw new Error("Failed to update status.");
       setQuests((prev) => prev.map((q) => (q.id === statusModalQuest.id ? { ...q, status: newStatus } : q)));
@@ -686,7 +689,7 @@ export default function AdminPage() {
       const res = await fetch("/api/admin/quests", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: quest.id, status: "Live" }),
+        body: JSON.stringify({ id: quest.id, status: "Live", admin_email: adminUser?.email }),
       });
       if (!res.ok) throw new Error("Failed to publish quest.");
       setQuests((prev) => prev.map((q) => (q.id === quest.id ? { ...q, status: "Live" } : q)));
@@ -1393,6 +1396,7 @@ export default function AdminPage() {
                     <th>Category</th>
                     <th>XP</th>
                     <th>Status</th>
+                    <th>Creator / Editor</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -1429,6 +1433,16 @@ export default function AdminPage() {
                           >
                             {q.status}
                           </button>
+                        </td>
+                        <td style={{ fontSize: "0.75rem", lineHeight: "1.4" }}>
+                          <div style={{ color: "var(--text-secondary)" }}>
+                            <span style={{ color: "rgba(255,255,255,0.4)" }}>Created:</span><br/>
+                            {q.created_by || "System"}
+                          </div>
+                          <div style={{ color: "var(--text-secondary)", marginTop: 4 }}>
+                            <span style={{ color: "rgba(255,255,255,0.4)" }}>Edited:</span><br/>
+                            {q.updated_by || "System"}
+                          </div>
                         </td>
                         <td>
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

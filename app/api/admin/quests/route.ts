@@ -32,7 +32,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id, title, description, xp, status, category, action_label, action_url, requires_proof, sort_order } = body;
+    const { id, title, description, xp, status, category, action_label, action_url, requires_proof, sort_order, admin_email } = body;
 
     if (!id || !title) {
       return NextResponse.json({ error: "id and title are required." }, { status: 400 });
@@ -52,6 +52,8 @@ export async function POST(request: Request) {
         action_url,
         requires_proof: !!requires_proof,
         sort_order: sort_order ?? 99,
+        created_by: admin_email || "System",
+        updated_by: admin_email || "System",
       })
       .select()
       .single();
@@ -67,9 +69,13 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { id, ...updates } = body;
+    const { id, admin_email, ...updates } = body;
 
     if (!id) return NextResponse.json({ error: "Quest id is required." }, { status: 400 });
+
+    if (admin_email) {
+      updates.updated_by = admin_email;
+    }
 
     const supabase = getSupabase();
     const { data, error } = await supabase
