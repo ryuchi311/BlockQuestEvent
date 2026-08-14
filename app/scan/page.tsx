@@ -187,13 +187,68 @@ export default function ScanPage() {
   }, []);
 
   // ── Auth gate ─────────────────────────────────────────────────
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // Restore authenticated gate session from sessionStorage
+  useEffect(() => {
+    const saved = sessionStorage.getItem("blockquest_gate_session");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const role = parsed.user?.role;
+        const BLOCKED_ROLES = ["booth_staff", "verifier"];
+        if (parsed.authed && parsed.user && !BLOCKED_ROLES.includes(role)) {
+          setCurrentUser(parsed.user);
+          setAuthed(true);
+        } else {
+          sessionStorage.removeItem("blockquest_gate_session");
+        }
+      } catch {}
+    }
+  }, []);
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
+    setLoginLoading(true);
+    setAuthError("");
     await unlockAudio();
-    if (password === "blockquest2026") {
+
+    // Support legacy fallback or full DB authentication
+    if (password === "blockquest2026" && !loginEmail) {
       setAuthed(true);
-    } else {
-      setAuthError("Wrong password.");
+      setLoginLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginEmail, password }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Login failed.");
+
+      const role = json.adminUser?.role;
+      if (role === "booth_staff") {
+        throw new Error("Access Denied. Booth Staff accounts are restricted to /booth-scan and cannot access the Gate Entrance Scanner.");
+      }
+      if (role === "verifier") {
+        throw new Error("Access Denied. Verifier accounts cannot access the Gate Scanner.");
+      }
+
+      setCurrentUser(json.adminUser);
+      setAuthed(true);
+      sessionStorage.setItem("blockquest_gate_session", JSON.stringify({
+        authed: true,
+        user: json.adminUser,
+      }));
+    } catch (err: any) {
+      setAuthError(err.message || "Invalid credentials.");
+    } finally {
+      setLoginLoading(false);
     }
   }
 
@@ -361,20 +416,30 @@ export default function ScanPage() {
             alt="BlockQuest Logo"
             className="scan-login__logo"
           />
-          <h1>Scanner Login</h1>
-          <p className="scan-login__hint">Enter admin password to start scanning.</p>
-          <form onSubmit={handleLogin} suppressHydrationWarning>
+          <h1>Gate Scanner Login</h1>
+          <p className="scan-login__hint">Enter gate staff credentials to start check-in scanning.</p>
+          <form onSubmit={handleLogin} suppressHydrationWarning style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <input
+              className="scan-login__input"
+              type="email"
+              placeholder="Staff email (e.g. gate@blockquest.ph)"
+              value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)}
+              suppressHydrationWarning
+            />
             <input
               className="scan-login__input"
               type="password"
-              placeholder="Admin password"
+              placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               suppressHydrationWarning
             />
-            {authError && <p className="scan-error-inline">{authError}</p>}
-            <button type="submit" className="scan-login__btn">Unlock Scanner →</button>
+            {authError && <p className="scan-error-inline" style={{ color: "#f87171" }}>{authError}</p>}
+            <button type="submit" className="scan-login__btn" disabled={loginLoading}>
+              {loginLoading ? "Authenticating..." : "Unlock Scanner →"}
+            </button>
           </form>
           <Link href="/admin" className="scan-back-link">← Admin Dashboard</Link>
         </div>

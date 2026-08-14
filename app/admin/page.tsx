@@ -93,8 +93,12 @@ export default function AdminPage() {
       try {
         const session = JSON.parse(savedSession);
         if (session.authed && session.adminUser) {
-          setAuthed(true);
-          setAdminUser(session.adminUser);
+          if (session.adminUser.role === "booth_staff") {
+            sessionStorage.removeItem("blockquest_admin_session");
+          } else {
+            setAuthed(true);
+            setAdminUser(session.adminUser);
+          }
         }
       } catch (e) {}
     }
@@ -242,6 +246,11 @@ export default function AdminPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Login failed");
+      const role = json.adminUser?.role;
+      if (role === "booth_staff") {
+        throw new Error("Access Denied. Booth Staff accounts are restricted to the Booth Scanner portal (/booth-scan) and cannot access the Admin Dashboard.");
+      }
+
       setAdminUser(json.adminUser);
       setAuthed(true);
       sessionStorage.setItem("blockquest_admin_session", JSON.stringify({
@@ -1024,7 +1033,7 @@ export default function AdminPage() {
           )}
           <a href="/" className="admin-nav-link" onClick={(e) => handleNavigate(e, "/")}>Home Portal</a>
           <a href="/register" className="admin-nav-link" onClick={(e) => handleNavigate(e, "/register")}>Registration</a>
-          <a href="/zealy" className="admin-nav-link" onClick={(e) => handleNavigate(e, "/zealy")}>Quest Game</a>
+          <a href="/stress-test" target="_blank" rel="noreferrer" className="admin-nav-link" style={{ borderColor: "rgba(245, 166, 35, 0.4)", color: "var(--gold-light)" }}>⚡ Stress Test</a>
           <button
             onClick={handleLogout}
             className="admin-nav-link"

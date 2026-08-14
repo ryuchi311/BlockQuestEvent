@@ -1303,6 +1303,169 @@
       </div>
     </section>
 
+    <!-- SECTION: QA TESTER GUIDE FOR ALL ROLES -->
+    <section id="qa-guide" style="background: rgba(16, 185, 129, 0.02); border-top: 1px solid rgba(16, 185, 129, 0.25); border-bottom: 1px solid rgba(16, 185, 129, 0.25);">
+      <div class="section-header">
+        <span class="section-tag tag-emerald">QUALITY ASSURANCE & TESTER PLAYBOOK</span>
+        <h2 class="section-title">🧪 Comprehensive QA Tester Guide for All Roles</h2>
+        <p class="section-desc">Step-by-step test scenarios and credentials to verify access boundaries, camera scanning, and state isolation.</p>
+      </div>
+
+      <!-- Test Credentials Overview -->
+      <div style="background: rgba(15, 16, 28, 0.8); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 20px; margin-bottom: 28px;">
+        <h3 style="font-size: 1.1rem; color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+          🔑 QA Test Credentials & Target Portals
+        </h3>
+        <div class="rbac-table-wrap">
+          <table class="rbac-table">
+            <thead>
+              <tr>
+                <th>Role</th>
+                <th>Login Email</th>
+                <th>Password</th>
+                <th>Allowed Target Portal</th>
+                <th>Blocked Portals</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="role-badge badge-superadmin">Superadmin</span></td>
+                <td><code>superadmin@blockquest.ph</code></td>
+                <td><code>superadmin2026</code></td>
+                <td><code>/admin</code> (All 7 Tabs)</td>
+                <td>None (Full System Access)</td>
+              </tr>
+              <tr>
+                <td><span class="role-badge badge-admin">Manager (Admin)</span></td>
+                <td><code>manager@blockquest.ph</code></td>
+                <td><code>manager2026</code></td>
+                <td><code>/admin</code> (5 Tabs) & <code>/scan</code></td>
+                <td>Staff Tab & Social Missions</td>
+              </tr>
+              <tr>
+                <td><span class="role-badge badge-quester">Manage Attendees</span></td>
+                <td><code>gate@blockquest.ph</code></td>
+                <td><code>gate2026</code></td>
+                <td><code>/scan</code> & <code>/admin</code> (2 Tabs)</td>
+                <td>Quests, Verifications, Staff, Booths</td>
+              </tr>
+              <tr>
+                <td><span class="role-badge badge-verifier">Verifier</span></td>
+                <td><code>verifier@blockquest.ph</code></td>
+                <td><code>verifier2026</code></td>
+                <td><code>/admin</code> (Verifications Only)</td>
+                <td>Scanner, Attendees, Quests, Staff, Booths</td>
+              </tr>
+              <tr>
+                <td><span class="role-badge badge-viewer">Viewer</span></td>
+                <td><code>viewer@blockquest.ph</code></td>
+                <td><code>viewer2026</code></td>
+                <td><code>/admin</code> (Read-Only Observer)</td>
+                <td>All Edit / Action Modals</td>
+              </tr>
+              <tr>
+                <td><span class="role-badge" style="background: rgba(168,85,247,0.15); color: var(--purple); border: 1px solid var(--purple);">Booth Staff</span></td>
+                <td><code>booth.polygon@blockquest.ph</code></td>
+                <td><code>polygon2026</code></td>
+                <td><code>/booth-scan</code> ONLY</td>
+                <td><code>/admin</code> & <code>/scan</code> (Strictly Blocked)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Step-by-Step Testing Playbook per Role -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px;">
+        
+        <!-- Scenario 1: Superadmin -->
+        <div class="card-box" style="border-left: 4px solid var(--gold);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h4 style="font-size: 1.05rem; color: var(--gold-light);">1. Superadmin Role Test</h4>
+            <span class="tab-badge" style="background: rgba(245,166,35,0.15); color: var(--gold); border: 1px solid var(--gold);">Full Access</span>
+          </div>
+          <ol style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.7; padding-left: 18px;">
+            <li>Log in at <code>/admin</code> with <code>superadmin@blockquest.ph</code> / <code>superadmin2026</code>.</li>
+            <li>Verify all 7 tabs are visible: <em>Scanner, Attendees, Quests, Verifications, Social Missions, Staff, Booth Stations</em>.</li>
+            <li>Open <strong>🏪 Booth Stations</strong> tab. Click <strong>+ Add Booth Station</strong> to create a test vendor.</li>
+            <li>Click <strong>✏️ Edit</strong> on a booth row and update the fixed XP reward (e.g. from +150 to +200 XP).</li>
+            <li>Close browser tab, reopen <code>/admin</code>, and confirm session auto-logged out.</li>
+          </ol>
+        </div>
+
+        <!-- Scenario 2: Operations Manager -->
+        <div class="card-box" style="border-left: 4px solid var(--blue-bright);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h4 style="font-size: 1.05rem; color: #60a5fa;">2. Operations Manager Test</h4>
+            <span class="tab-badge" style="background: rgba(59,130,246,0.15); color: var(--blue-bright); border: 1px solid var(--blue-bright);">5 Tabs Access</span>
+          </div>
+          <ol style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.7; padding-left: 18px;">
+            <li>Log in at <code>/admin</code> with <code>manager@blockquest.ph</code> / <code>manager2026</code>.</li>
+            <li>Confirm <strong>🛡️ Staff / Admins</strong> and <strong>🌐 Social Missions</strong> tabs are HIDDEN.</li>
+            <li>Verify access to <strong>🏪 Booth Stations</strong> tab: monitor scan counts and edit XP rewards.</li>
+            <li>Create a new Quest and verify it appears immediately in the Quest directory.</li>
+          </ol>
+        </div>
+
+        <!-- Scenario 3: Gate Staff -->
+        <div class="card-box" style="border-left: 4px solid var(--purple);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h4 style="font-size: 1.05rem; color: #c084fc;">3. Gate Entrance Staff Test</h4>
+            <span class="tab-badge" style="background: rgba(168,85,247,0.15); color: var(--purple); border: 1px solid var(--purple);">Scanner & Check-In</span>
+          </div>
+          <ol style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.7; padding-left: 18px;">
+            <li>Log in at <code>/scan</code> with <code>gate@blockquest.ph</code> / <code>gate2026</code>.</li>
+            <li>Verify browser prompts for Camera Permission and video stream opens cleanly.</li>
+            <li>Type manual ticket code <code>BQF-X79K2M</code> and verify instant check-in success.</li>
+            <li>Attempt to navigate to <code>/booth-scan</code> and verify system blocks login with error message.</li>
+          </ol>
+        </div>
+
+        <!-- Scenario 4: Quest Verifier -->
+        <div class="card-box" style="border-left: 4px solid var(--emerald);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h4 style="font-size: 1.05rem; color: var(--emerald);">4. Quest Verifier Role Test</h4>
+            <span class="tab-badge" style="background: rgba(16,185,129,0.15); color: var(--emerald); border: 1px solid var(--emerald);">Verifications Only</span>
+          </div>
+          <ol style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.7; padding-left: 18px;">
+            <li>Log in at <code>/admin</code> with <code>verifier@blockquest.ph</code> / <code>verifier2026</code>.</li>
+            <li>Confirm ONLY the <strong>🔍 Quest Verifications</strong> tab is accessible.</li>
+            <li>Click a proof screenshot thumbnail, zoom in, and click <strong>Approve (+XP)</strong>.</li>
+            <li>Verify user's wallet total XP increments immediately on the leaderboard.</li>
+          </ol>
+        </div>
+
+        <!-- Scenario 5: Sponsor Observer -->
+        <div class="card-box" style="border-left: 4px solid #94a3b8;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h4 style="font-size: 1.05rem; color: #cbd5e1;">5. Sponsor Observer Test</h4>
+            <span class="tab-badge" style="background: rgba(148,163,184,0.15); color: #cbd5e1; border: 1px solid #94a3b8;">Read-Only</span>
+          </div>
+          <ol style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.7; padding-left: 18px;">
+            <li>Log in at <code>/admin</code> with <code>viewer@blockquest.ph</code> / <code>viewer2026</code>.</li>
+            <li>Verify live statistics (Total Attendees, Total XP Pool) update in real-time.</li>
+            <li>Confirm all action buttons (Add, Edit, Delete, Check-In) are disabled or hidden.</li>
+          </ol>
+        </div>
+
+        <!-- Scenario 6: Booth Staff -->
+        <div class="card-box" style="border-left: 4px solid var(--purple);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h4 style="font-size: 1.05rem; color: #c084fc;">6. Vendor Booth Staff Test</h4>
+            <span class="tab-badge" style="background: rgba(168,85,247,0.15); color: var(--purple); border: 1px solid var(--purple);">/booth-scan Only</span>
+          </div>
+          <ol style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.7; padding-left: 18px;">
+            <li>Log in at <code>/booth-scan</code> with <code>booth.polygon@blockquest.ph</code> / <code>polygon2026</code>.</li>
+            <li>Confirm station title displays <strong>Polygon Guild Booth</strong> and assigned XP reward is locked.</li>
+            <li>Scan an attendee QR pass: verify celebratory sound + 1-time XP deposit.</li>
+            <li>Scan the SAME attendee again: verify audio tone plays and <strong>"Already Visited"</strong> badge is shown.</li>
+            <li>Try logging in with this booth account at <code>/admin</code> or <code>/scan</code>: confirm login is <strong>DENIED</strong>.</li>
+          </ol>
+        </div>
+
+      </div>
+    </section>
+
     <!-- SECTION: DUAL TABLE ARCHITECTURE -->
     <section id="architecture">
       <div class="section-header">
@@ -1534,6 +1697,17 @@
         </div>
         <div class="faq-answer">
           Vendors open the dedicated <strong>🏪 Booth Scanner</strong> (<code>/booth-scan</code>) and authenticate with their station credentials (accessible to <code>superadmin</code>, <code>admin</code>, and <code>booth_staff</code>). When attendees present their QR pass, the vendor camera scans it and awards a 1-time fixed XP score (e.g. +150 XP) configured in advance by the Superadmin. The XP score is securely locked on the scanner UI to prevent vendor tampering. Subsequent scans on the same booth return an <strong>"Already Visited"</strong> status to prevent double-claiming. For maximum security, closing the browser or tab automatically terminates the station session.
+        </div>
+      </div>
+
+      <!-- FAQ 12: Stress Testing & Load Benchmarking -->
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>12. How do engineers stress test registration, gate check-in, booth scan, and admin endpoints?</span>
+          <span class="faq-tag" style="background: rgba(16,185,129,0.15); color: var(--emerald); border: 1px solid var(--emerald);">Performance & Load</span>
+        </div>
+        <div class="faq-answer">
+          The system features a dedicated interactive load testing portal at <code>/stress-test</code> and a terminal CLI script (<code>npm run stress-test</code>). This allows developers to simulate concurrent bursts of 50–500 requests across registration, gate check-in, booth visits, and admin dashboard polling to verify latency, throughput (TPS), and database connection pool health before live event day.
         </div>
       </div>
 
