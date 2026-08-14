@@ -283,13 +283,18 @@ body {
   width: 100%;
   height: 100%;
   min-height: 280px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.scan-camera-inner video {
+.scan-camera-inner video,
+#booth-qr-reader video,
+#qr-fullscreen-reader video {
   width: 100% !important;
   height: 100% !important;
-  object-fit: cover;
+  object-fit: cover !important;
   background: #000;
 }
 

@@ -24,7 +24,8 @@ interface BoothStaffUser {
 }
 
 export default function BoothScanPage() {
-  // ── Auth Gate ──
+  // ── Client Mount & Auth Gate ──
+  const [mounted, setMounted] = useState(false);
   const [authed, setAuthed] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -52,15 +53,20 @@ export default function BoothScanPage() {
 
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  // Restore authenticated booth session from localStorage
+  // Restore authenticated booth session from sessionStorage (auto-cleared on browser/tab close)
   useEffect(() => {
-    const saved = localStorage.getItem("blockquest_booth_session");
+    setMounted(true);
+    const saved = sessionStorage.getItem("blockquest_booth_session");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed.authed && parsed.user) {
+        const role = parsed.user?.role;
+        const ALLOWED_ROLES = ["superadmin", "admin", "booth_staff"];
+        if (parsed.authed && parsed.user && ALLOWED_ROLES.includes(role)) {
           setCurrentUser(parsed.user);
           setAuthed(true);
+        } else {
+          sessionStorage.removeItem("blockquest_booth_session");
         }
       } catch {}
     }
@@ -176,9 +182,15 @@ export default function BoothScanPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Login failed.");
 
+      const role = json.adminUser?.role;
+      const ALLOWED_ROLES = ["superadmin", "admin", "booth_staff"];
+      if (!ALLOWED_ROLES.includes(role)) {
+        throw new Error(`Access Denied. Role "${role}" is not authorized to operate booth stations. Only Superadmin, Manager, and Booth Staff are permitted.`);
+      }
+
       setCurrentUser(json.adminUser);
       setAuthed(true);
-      localStorage.setItem("blockquest_booth_session", JSON.stringify({
+      sessionStorage.setItem("blockquest_booth_session", JSON.stringify({
         authed: true,
         user: json.adminUser
       }));
@@ -193,7 +205,7 @@ export default function BoothScanPage() {
     setAuthed(false);
     setCurrentUser(null);
     setLoginPassword("");
-    localStorage.removeItem("blockquest_booth_session");
+    sessionStorage.removeItem("blockquest_booth_session");
     if (scannerRef.current) {
       try { scannerRef.current.stop(); } catch {}
       scannerRef.current = null;
@@ -258,9 +270,10 @@ export default function BoothScanPage() {
     [currentUser, boothPoints, playFailureTone, playSuccessTone, playAlreadyVisitedTone]
   );
 
-  // ── Scanner lifecycle ──
+  // ── Scanner lifecycle (Matching /scan implementation) ──
   const startScanner = useCallback(async () => {
-    if (!authed || scannerRef.current) return;
+    if (scannerRef.current) return;
+
     await unlockAudio();
     setCameraError("");
 
@@ -272,10 +285,10 @@ export default function BoothScanPage() {
       scannerRef.current = scanner;
 
       await scanner.start(
-        { facingMode: { ideal: "environment" } },
+        { facingMode: "environment" },
         {
           fps: 15,
-          qrbox: { width: 260, height: 260 },
+          qrbox: { width: 280, height: 280 },
           aspectRatio: 1.0,
           disableFlip: false,
         },
@@ -291,7 +304,7 @@ export default function BoothScanPage() {
       scannerRef.current = null;
       setCameraError(err?.message ?? "Camera unavailable.");
     }
-  }, [authed, processScan, unlockAudio]);
+  }, [processScan, unlockAudio]);
 
   const stopScanner = useCallback(async () => {
     if (scannerRef.current) {
@@ -336,8 +349,8 @@ export default function BoothScanPage() {
   // ── Render Login Gate ──
   if (!authed) {
     return (
-      <main className="scan-login" style={{ background: "radial-gradient(ellipse at 50% 30%, rgba(168, 85, 247, 0.12) 0%, #07090e 80%)" }}>
-        <div className="scan-login__card" style={{ borderColor: "rgba(168, 85, 247, 0.3)", boxShadow: "0 20px 60px rgba(0,0,0,0.8), 0 0 30px rgba(168, 85, 247, 0.15)" }}>
+      <main className="scan-login" style={{ background: "radial-gradient(ellipse at 50% 30%, rgba(168, 85, 247, 0.12) 0%, #07090e 80%)" }} suppressHydrationWarning>
+        <div className="scan-login__card" style={{ borderColor: "rgba(168, 85, 247, 0.3)", boxShadow: "0 20px 60px rgba(0,0,0,0.8), 0 0 30px rgba(168, 85, 247, 0.15)" }} suppressHydrationWarning>
           <div style={{
             width: 54,
             height: 54,
@@ -351,12 +364,12 @@ export default function BoothScanPage() {
           }}>
             🏪
           </div>
-          <h1 style={{ fontSize: "1.5rem", fontWeight: 900, color: "#fff" }}>Booth Staff Login</h1>
+          <h1>Booth Staff Login</h1>
           <p className="scan-login__hint" style={{ color: "var(--text-secondary)", fontSize: "0.88rem" }}>
             Enter your dedicated vendor/booth email and password to start scanning attendees.
           </p>
 
-          <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
+          <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }} suppressHydrationWarning>
             <input
               className="scan-login__input"
               type="email"
@@ -364,7 +377,7 @@ export default function BoothScanPage() {
               placeholder="Booth email (e.g. booth.polygon@blockquest.ph)"
               value={loginEmail}
               onChange={(e) => setLoginEmail(e.target.value)}
-              autoFocus
+              suppressHydrationWarning
             />
             <input
               className="scan-login__input"
@@ -373,6 +386,7 @@ export default function BoothScanPage() {
               placeholder="Booth password"
               value={loginPassword}
               onChange={(e) => setLoginPassword(e.target.value)}
+              suppressHydrationWarning
             />
             {authError && <p className="scan-error-inline" style={{ color: "#f87171" }}>{authError}</p>}
             
@@ -410,25 +424,50 @@ export default function BoothScanPage() {
         {status === "success" && <div className="scan-flash-overlay" style={{ background: "rgba(168, 85, 247, 0.3)" }} />}
 
         {/* Top bar */}
-        <header className="scan-topbar" style={{ background: "rgba(13, 14, 25, 0.95)", borderBottom: "1px solid rgba(168, 85, 247, 0.25)" }}>
-          <div className="scan-topbar__brand">
+        <header className="scan-topbar" style={{
+          background: "rgba(13, 14, 25, 0.96)",
+          borderBottom: "1px solid rgba(168, 85, 247, 0.25)",
+          padding: "12px 16px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "10px"
+        }}>
+          <div className="scan-topbar__brand" style={{ minWidth: 0, flex: "1 1 auto" }}>
             <div style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
+              width: 36,
+              height: 36,
+              borderRadius: 10,
               background: "linear-gradient(135deg, #a855f7 0%, #6366f1 100%)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "1.1rem"
+              fontSize: "1.2rem",
+              flexShrink: 0
             }}>
               🏪
             </div>
-            <div>
-              <span style={{ fontSize: "0.95rem", fontWeight: 800, color: "#fff", display: "block" }}>
+            <div style={{ minWidth: 0, overflow: "hidden" }}>
+              <span style={{
+                fontSize: "0.92rem",
+                fontWeight: 800,
+                color: "#fff",
+                display: "block",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis"
+              }}>
                 {currentUser?.fullName || "Vendor Booth"}
               </span>
-              <span style={{ fontSize: "0.72rem", color: "#c084fc", letterSpacing: "0.04em" }}>
+              <span style={{
+                fontSize: "0.72rem",
+                color: "#c084fc",
+                letterSpacing: "0.02em",
+                display: "block",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis"
+              }}>
                 {currentUser?.email}
               </span>
             </div>
@@ -444,7 +483,8 @@ export default function BoothScanPage() {
               padding: "6px 12px",
               fontSize: "0.75rem",
               fontWeight: 700,
-              cursor: "pointer"
+              cursor: "pointer",
+              flexShrink: 0
             }}
           >
             Logout
@@ -453,60 +493,57 @@ export default function BoothScanPage() {
 
         {/* Active Station Points Banner */}
         <div style={{
-          background: "linear-gradient(90deg, rgba(168, 85, 247, 0.18) 0%, rgba(99, 102, 241, 0.12) 100%)",
+          background: "linear-gradient(90deg, rgba(20, 16, 35, 0.98) 0%, rgba(13, 14, 25, 0.98) 100%)",
           borderBottom: "1px solid rgba(168, 85, 247, 0.2)",
           padding: "10px 16px",
-          display: "flex",
+          display: "grid",
+          gridTemplateColumns: "1fr auto",
           alignItems: "center",
-          justifyContent: "space-between",
-          fontSize: "0.82rem"
+          gap: "12px"
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ color: "#c084fc", fontWeight: 700 }}>Scans This Session:</span>
-            <strong style={{ color: "#fff" }}>{scanCount} Attendees</strong>
+          <div>
+            <span style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", display: "block" }}>
+              Session Scans
+            </span>
+            <strong style={{ fontSize: "0.95rem", color: "#fff", display: "inline-flex", alignItems: "center", gap: 4 }}>
+              👥 {scanCount} Attendees
+            </strong>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>Reward:</span>
-            <select
-              value={boothPoints}
-              onChange={(e) => setBoothPoints(Number(e.target.value))}
+
+          <div style={{ textAlign: "right" }}>
+            <span style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", display: "block", marginBottom: 2 }}>
+              Reward
+            </span>
+            <span
               style={{
                 background: "rgba(245, 166, 35, 0.15)",
                 border: "1px solid rgba(245, 166, 35, 0.4)",
                 color: "var(--gold-light)",
-                padding: "3px 8px",
+                padding: "3px 10px",
                 borderRadius: 8,
                 fontWeight: 800,
-                fontSize: "0.78rem",
-                cursor: "pointer"
+                fontSize: "0.82rem",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px"
               }}
             >
-              <option value={50}>+50 XP</option>
-              <option value={100}>+100 XP</option>
-              <option value={150}>+150 XP</option>
-              <option value={200}>+200 XP</option>
-              <option value={300}>+300 XP</option>
-              <option value={500}>+500 XP</option>
-            </select>
+              ⚡ +{boothPoints} XP
+            </span>
           </div>
         </div>
 
         {/* Camera Scanner Viewport */}
-        <div className="scan-camera-area" style={{ background: "#05050a" }}>
-          <div id="booth-qr-reader" className="scan-camera-inner" />
-
-          {scanning && (
-            <div className="scan-finder-overlay">
-              <div className="scan-finder-corner scan-finder-corner--tl" style={{ borderColor: "#a855f7" }} />
-              <div className="scan-finder-corner scan-finder-corner--tr" style={{ borderColor: "#a855f7" }} />
-              <div className="scan-finder-corner scan-finder-corner--bl" style={{ borderColor: "#a855f7" }} />
-              <div className="scan-finder-corner scan-finder-corner--br" style={{ borderColor: "#a855f7" }} />
-              <div className="scan-finder-line" style={{ background: "linear-gradient(90deg, transparent, #c084fc, transparent)" }} />
-            </div>
-          )}
+        <div className="scan-camera-area" style={{ background: "#05050a", position: "relative" }}>
+          <div id="booth-qr-reader" className="scan-camera-inner" style={{ minHeight: "100%", width: "100%" }} />
 
           {status === "idle" && scanning && (
-            <div className="scan-instruction" style={{ background: "rgba(20, 15, 35, 0.8)", border: "1px solid rgba(168, 85, 247, 0.3)" }}>
+            <div className="scan-instruction" style={{
+              background: "rgba(10, 10, 20, 0.85)",
+              border: "1px solid rgba(168, 85, 247, 0.4)",
+              boxShadow: "0 8px 20px rgba(0,0,0,0.6)",
+              bottom: "16px"
+            }}>
               <span>📷 Point camera at Attendee QR Pass (+{boothPoints} XP)</span>
             </div>
           )}

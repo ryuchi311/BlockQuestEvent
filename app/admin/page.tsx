@@ -76,6 +76,7 @@ const EMPTY_QUEST: Omit<Quest, "created_at" | "updated_at"> = {
 // ─── Admin Dashboard ─────────────────────────────────────────────────────────
 export default function AdminPage() {
   // ── Auth gate ──
+  const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authed, setAuthed] = useState(false);
@@ -85,7 +86,9 @@ export default function AdminPage() {
 
   // ── Session persistence & Idle Timeout ──
   useEffect(() => {
-    const savedSession = localStorage.getItem("blockquest_admin_session");
+    setMounted(true);
+    // Restore authenticated session from sessionStorage (auto-cleared when browser/tab closes)
+    const savedSession = sessionStorage.getItem("blockquest_admin_session");
     if (savedSession) {
       try {
         const session = JSON.parse(savedSession);
@@ -241,7 +244,7 @@ export default function AdminPage() {
       if (!res.ok) throw new Error(json.error || "Login failed");
       setAdminUser(json.adminUser);
       setAuthed(true);
-      localStorage.setItem("blockquest_admin_session", JSON.stringify({
+      sessionStorage.setItem("blockquest_admin_session", JSON.stringify({
         authed: true,
         adminUser: json.adminUser
       }));
@@ -262,7 +265,7 @@ export default function AdminPage() {
     setQuests([]);
     setVerifications([]);
     setError("");
-    localStorage.removeItem("blockquest_admin_session");
+    sessionStorage.removeItem("blockquest_admin_session");
   }
 
   // Set default accessible tab based on role when logging in
@@ -325,7 +328,7 @@ export default function AdminPage() {
   }, []);
 
   const fetchAdminUsers = useCallback(async () => {
-    if (adminUser?.role !== "superadmin") return;
+    if (adminUser?.role !== "superadmin" && adminUser?.role !== "admin") return;
     setLoading(true);
     setError("");
     try {
@@ -947,8 +950,8 @@ export default function AdminPage() {
   // ─── Login gate ──────────────────────────────────────────────────────────
   if (!authed) {
     return (
-      <main className="admin-login-page">
-        <div className="admin-login-card">
+      <main className="admin-login-page" suppressHydrationWarning>
+        <div className="admin-login-card" suppressHydrationWarning>
           <div className="admin-login-logo">
             <img
               src="https://block-quest.com/assets/images/block_quest_logo.png"
@@ -958,15 +961,15 @@ export default function AdminPage() {
           </div>
           <h1>Admin Portal</h1>
           <p className="admin-login-hint">Enter your admin credentials to access the dashboard.</p>
-          <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 12 }} suppressHydrationWarning>
             <input
               type="email"
               placeholder="Admin email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="admin-login-input"
-              autoFocus
               required
+              suppressHydrationWarning
             />
             <input
               type="password"
@@ -975,6 +978,7 @@ export default function AdminPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="admin-login-input"
               required
+              suppressHydrationWarning
             />
             {authError && <p className="admin-error-msg">{authError}</p>}
             <button type="submit" className="admin-login-btn" disabled={loginLoading}>
@@ -1089,7 +1093,8 @@ export default function AdminPage() {
           if (role === "superadmin") return true;
           if (role === "verifier") return t === "verifications";
           if (role === "manage_attendees" || role === "manage_quester") return t === "scanner" || t === "attendees";
-          if (role === "admin" || role === "viewer") return t === "scanner" || t === "attendees" || t === "quests" || t === "verifications";
+          if (role === "admin") return t === "scanner" || t === "attendees" || t === "quests" || t === "verifications" || t === "booths";
+          if (role === "viewer") return t === "scanner" || t === "attendees" || t === "quests" || t === "verifications";
           return false;
         }).map((t) => (
           <button
@@ -1958,7 +1963,7 @@ export default function AdminPage() {
         )}
 
         {/* ─── BOOTH STATIONS TAB ─── */}
-        {tab === "booths" && adminUser?.role === "superadmin" && !loading && (
+        {tab === "booths" && (adminUser?.role === "superadmin" || adminUser?.role === "admin") && !loading && (
           <div>
             <div className="admin-toolbar" style={{ flexWrap: "wrap", gap: 10 }}>
               <div>

@@ -297,18 +297,12 @@ export default function ScanPage() {
       scannerRef.current = scanner;
 
       await scanner.start(
-        { facingMode: { ideal: "environment" } },
+        { facingMode: "environment" },
         {
           fps: 15,
           qrbox: { width: 280, height: 280 },
           aspectRatio: 1.0,
           disableFlip: false,
-          videoConstraints: {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            frameRate: { ideal: 30, max: 60 },
-          },
         },
         (decodedText: string) => {
           scanner.pause();
@@ -360,8 +354,8 @@ export default function ScanPage() {
   // ── Login gate ────────────────────────────────────────────────
   if (!authed) {
     return (
-      <main className="scan-login">
-        <div className="scan-login__card">
+      <main className="scan-login" suppressHydrationWarning>
+        <div className="scan-login__card" suppressHydrationWarning>
           <img
             src="https://block-quest.com/assets/images/block_quest_logo.png"
             alt="BlockQuest Logo"
@@ -369,14 +363,15 @@ export default function ScanPage() {
           />
           <h1>Scanner Login</h1>
           <p className="scan-login__hint">Enter admin password to start scanning.</p>
-          <form onSubmit={handleLogin}>
+          <form onSubmit={handleLogin} suppressHydrationWarning>
             <input
               className="scan-login__input"
               type="password"
               placeholder="Admin password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              autoFocus
+              required
+              suppressHydrationWarning
             />
             {authError && <p className="scan-error-inline">{authError}</p>}
             <button type="submit" className="scan-login__btn">Unlock Scanner →</button>

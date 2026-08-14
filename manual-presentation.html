@@ -1162,7 +1162,7 @@
               </li>
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
-                <div><strong>Session Timeout & Inactivity Guards:</strong> Active admin sessions automatically expire after 5 minutes of inactivity to protect unattended gate devices.</div>
+                <div><strong>Ephemeral Session Lifecycles & Browser Closure Auto-Logout:</strong> Active sessions are strictly stored in volatile <code>sessionStorage</code> rather than permanent local disks. Closing the browser tab or window automatically purges credentials immediately, alongside the 5-minute inactivity idle timer.</div>
               </li>
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
@@ -1183,6 +1183,65 @@
                 • observer@block.io (<span style="color: #94a3b8;">Viewer</span>) → [Read-Only View]<br>
                 Security: <span style="color: var(--emerald);">scryptSync Active</span> | <span style="color: var(--gold);">5-Min Auto Timeout</span><br>
                 Actions: <span style="color: var(--gold-light);">[ ✏️ Edit Modal ]</span> | <span style="color: var(--red);">[ ⚠️ Delete Modal ]</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 7: BOOTH STATIONS -->
+        <div class="tab-card">
+          <div class="tab-card-header">
+            <div class="tab-title-group">
+              <div class="tab-icon-box">🏪</div>
+              <div>
+                <h3 class="tab-name">Tab 7: Vendor & Booth Stations</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Sponsor station credentials, XP rewards, and live attendee visit tracking</p>
+              </div>
+            </div>
+            <span class="tab-badge" style="background: rgba(168,85,247,0.15); color: var(--purple); border: 1px solid var(--purple);">Superadmin & Manager</span>
+          </div>
+
+          <div class="tab-grid">
+            <ul class="feature-list">
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Dedicated Booth Provisioning:</strong> Superadmins create dedicated credentials for each sponsor/vendor booth station (e.g. <em>Polygon, Solana, Binance, Base, Trezor</em>) with fixed first-visit XP point rewards (e.g. +150 XP).</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Station Edit & XP Customization:</strong> Modify booth names, assigned login emails, temporary passwords, or change fixed XP rewards on the fly via the <strong>✏️ Edit Modal</strong>.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Dynamic Activation Threshold:</strong>
+                  <ul style="margin: 6px 0 0 16px; font-size: 0.84rem; color: var(--text-secondary); line-height: 1.6;">
+                    <li><strong><code>⏳ Inactive (0 scans)</code>:</strong> Station is provisioned but has not yet scanned any event attendees.</li>
+                    <li><strong><code>⚡ Active (N scans)</code>:</strong> Station automatically becomes Active as soon as it completes its 1st successful attendee QR scan.</li>
+                  </ul>
+                </div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Real-Time Scan KPI Monitoring:</strong> Live dashboard metrics showing <strong>Total Booth Scans</strong>, <strong>Active Stations Ratio</strong>, and individual <strong>Total Scanned Attendees</strong> counters per station.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Accidental Click Protection:</strong> Action buttons feature clear visual separation, distinct purple edit badges, gold launch links, and guarded delete confirmation modals.</div>
+              </li>
+            </ul>
+
+            <div class="mockup-preview">
+              <div class="mockup-bar">
+                <span>BOOTH MONITORING & KPIS</span>
+                <span style="color: var(--purple);">LIVE STATIONS</span>
+              </div>
+              <div style="color: var(--text-muted); line-height: 1.8;">
+                • Total Booth Scans: <span style="color: #fff; font-weight: 800;">482 Attendees</span><br>
+                • Active Stations: <span style="color: var(--emerald); font-weight: 800;">6 / 7 Active</span><br>
+                • Polygon Guild: <span style="color: var(--blue);">142 Scanned</span> | <span style="color: var(--gold);">+150 XP</span> | <span style="color: var(--emerald);">⚡ Active</span><br>
+                • Solana Superteam: <span style="color: var(--blue);">118 Scanned</span> | <span style="color: var(--gold);">+150 XP</span> | <span style="color: var(--emerald);">⚡ Active</span><br>
+                • Custom Vendor: <span style="color: var(--text-muted);">0 Scanned</span> | <span style="color: var(--gold);">+200 XP</span> | <span style="color: #94a3b8;">⏳ Inactive</span><br>
+                Actions: <span style="color: var(--purple);">[ ✏️ Edit ]</span> | <span style="color: var(--gold);">[ 🚀 Launch ↗ ]</span> | <span style="color: var(--red);">[ 🗑️ Delete ]</span>
               </div>
             </div>
           </div>
