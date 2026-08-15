@@ -14,6 +14,11 @@ interface Quest {
   actionUrl?: string;
   requiresProof?: boolean;
   is_quiz?: boolean;
+  quiz_options?: string[];
+  correct_option_index?: number;
+  passcode?: string;
+  expires_at?: string;
+  depends_on_quest_id?: string;
 }
 
 const initialQuests: Quest[] = [
@@ -120,6 +125,7 @@ export default function ZealyMobileApp() {
   const [proofImage, setProofImage] = useState<string | null>(null);
   const [proofSubmitting, setProofSubmitting] = useState(false);
   const [quizAnswer, setQuizAnswer] = useState("");
+  const [passcodeAnswer, setPasscodeAnswer] = useState("");
   const [visitedActions, setVisitedActions] = useState<Record<string, boolean>>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("bq_visited");
@@ -456,6 +462,23 @@ export default function ZealyMobileApp() {
 
   const handleQuestClick = (quest: Quest) => {
     if (quest.status === "Soon") return;
+
+    // Check expiration
+    if (quest.expires_at && new Date(quest.expires_at).getTime() < Date.now()) {
+      alert("⏱️ This quest has expired and can no longer be claimed.");
+      return;
+    }
+
+    // Check prerequisite lock
+    if (quest.depends_on_quest_id) {
+      const parentCompleted = quests.some((p) => p.id === quest.depends_on_quest_id && p.status === "Done");
+      if (!parentCompleted) {
+        const parentQuest = quests.find((p) => p.id === quest.depends_on_quest_id);
+        alert(`🔒 Locked! You must complete "${parentQuest?.title || quest.depends_on_quest_id}" first before unlocking this quest.`);
+        return;
+      }
+    }
+
     setSelectedQuest(quest);
   };
 
@@ -535,6 +558,14 @@ export default function ZealyMobileApp() {
 
   const handleClaimXp = async () => {
     if (!selectedQuest || selectedQuest.status === "Done" || selectedQuest.status === "Pending Verification") return;
+
+    if (selectedQuest.passcode) {
+      if (!passcodeAnswer.trim() || passcodeAnswer.trim().toUpperCase() !== selectedQuest.passcode.trim().toUpperCase()) {
+        alert("🔑 Incorrect secret passcode! Please ask the booth staff or stage presenter for the valid code.");
+        return;
+      }
+    }
+
     setClaiming(true);
     try {
       const email = ticketEmail || authenticatedUser?.email || qrPass?.email || "quester@blockquest.ph";
@@ -859,6 +890,21 @@ export default function ZealyMobileApp() {
                               {q.category}
                             </span>
                             <span className="xp-badge">+{q.xp} XP</span>
+                            {q.passcode && (
+                              <span style={{ fontSize: "0.7rem", padding: "2px 8px", borderRadius: "10px", background: "rgba(245, 158, 11, 0.2)", color: "#fbbf24", border: "1px solid rgba(245, 158, 11, 0.3)" }}>
+                                🔑 Passcode
+                              </span>
+                            )}
+                            {q.expires_at && (
+                              <span style={{ fontSize: "0.7rem", padding: "2px 8px", borderRadius: "10px", background: "rgba(239, 68, 68, 0.2)", color: "#f87171", border: "1px solid rgba(239, 68, 68, 0.3)" }}>
+                                {new Date(q.expires_at).getTime() < Date.now() ? "⏳ Expired" : `⏱️ Ends ${new Date(q.expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                              </span>
+                            )}
+                            {q.depends_on_quest_id && !quests.some((p) => p.id === q.depends_on_quest_id && p.status === "Done") && (
+                              <span style={{ fontSize: "0.7rem", padding: "2px 8px", borderRadius: "10px", background: "rgba(100, 116, 139, 0.25)", color: "#94a3b8", border: "1px solid rgba(100, 116, 139, 0.4)" }}>
+                                🔒 Locked (Prerequisite)
+                              </span>
+                            )}
                             {q.requiresProof && q.status !== "Approved" && (
                               <span style={{ fontSize: "0.7rem", padding: "2px 8px", borderRadius: "10px", background: "rgba(139, 92, 246, 0.2)", color: "#a78bfa", border: "1px solid rgba(139, 92, 246, 0.3)" }}>
                                 📷 Proof Required
@@ -1205,6 +1251,48 @@ export default function ZealyMobileApp() {
                   <div style={{ textAlign: "right" }}>
                     <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Global Rank</p>
                     <strong style={{ fontSize: "1.2rem", color: "var(--gold-light)" }}>#{userRank}</strong>
+                  </div>
+                </div>
+
+                {/* 🏆 Milestone Badges & Achievements */}
+                <div className="info-card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <h3 style={{ fontSize: "0.95rem", fontWeight: 800, color: "#fff", margin: 0 }}>
+                    🏆 Milestone Badges & Tier
+                  </h3>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+                    {[
+                      { name: "Rookie Quester", xp: 100, icon: "🥉", color: "#cd7f32" },
+                      { name: "Explorer", xp: 500, icon: "🥈", color: "#c0c0c0" },
+                      { name: "Master Quester", xp: 1200, icon: "🥇", color: "#ffd700" },
+                      { name: "Fiesta Legend", xp: 2500, icon: "👑", color: "#a855f7" },
+                    ].map((b) => {
+                      const unlocked = userXp >= b.xp;
+                      return (
+                        <div
+                          key={b.name}
+                          style={{
+                            background: unlocked ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.25)",
+                            border: `1px solid ${unlocked ? b.color : "rgba(255,255,255,0.08)"}`,
+                            borderRadius: "10px",
+                            padding: "8px 10px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            opacity: unlocked ? 1 : 0.45,
+                          }}
+                        >
+                          <span style={{ fontSize: "1.3rem" }}>{unlocked ? b.icon : "🔒"}</span>
+                          <div style={{ display: "flex", flexDirection: "column" }}>
+                            <span style={{ fontSize: "0.78rem", fontWeight: 800, color: unlocked ? "#fff" : "var(--text-muted)" }}>
+                              {b.name}
+                            </span>
+                            <span style={{ fontSize: "0.65rem", color: unlocked ? b.color : "var(--text-muted)" }}>
+                              {unlocked ? "✓ Unlocked" : `${b.xp} XP needed`}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1682,6 +1770,41 @@ export default function ZealyMobileApp() {
                                 }}
                               >
                                 {claiming ? "Claiming..." : isActionCompleted ? "Submit Answer & Claim XP" : "🔒 Complete Task First"}
+                              </button>
+                            </div>
+                          ) : selectedQuest.passcode ? (
+                            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+                              <div style={{ background: "rgba(245, 158, 11, 0.12)", border: "1px solid rgba(245, 158, 11, 0.3)", borderRadius: 10, padding: 10, fontSize: "0.82rem", color: "#fbbf24" }}>
+                                🔑 <strong>Passcode Required:</strong> Ask the booth staff or stage presenter for the secret code.
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="ENTER SECRET PASSCODE (e.g. BOOTH-07)..."
+                                value={passcodeAnswer}
+                                onChange={(e) => setPasscodeAnswer(e.target.value.toUpperCase())}
+                                style={{
+                                  padding: "14px",
+                                  borderRadius: 12,
+                                  border: "1px solid rgba(245, 158, 11, 0.4)",
+                                  background: "rgba(0, 0, 0, 0.5)",
+                                  color: "#fbbf24",
+                                  fontSize: "1.05rem",
+                                  fontWeight: 800,
+                                  letterSpacing: "0.08em",
+                                  textTransform: "uppercase",
+                                }}
+                              />
+                              <button
+                                onClick={handleClaimXp}
+                                disabled={claiming || !passcodeAnswer.trim() || !isActionCompleted}
+                                className="modal-claim-btn"
+                                style={{
+                                  opacity: (passcodeAnswer.trim() && isActionCompleted) ? 1 : 0.5,
+                                  cursor: (passcodeAnswer.trim() && isActionCompleted) ? "pointer" : "not-allowed",
+                                  background: (passcodeAnswer.trim() && isActionCompleted) ? "linear-gradient(135deg, #ffd166 0%, #f5a623 100%)" : "rgba(255,255,255,0.1)"
+                                }}
+                              >
+                                {claiming ? "Claiming..." : isActionCompleted ? "Unlock Passcode & Claim XP" : "🔒 Complete Task First"}
                               </button>
                             </div>
                           ) : (

@@ -3435,6 +3435,93 @@ a {
 .qf-pill--done.qf-pill--active { background: rgba(99,102,241,0.15) !important; border-color: rgba(99,102,241,0.5) !important; color: #a5b4fc !important; }
 .qf-pill--draft.qf-pill--active { background: rgba(251,191,36,0.12) !important; border-color: rgba(251,191,36,0.4) !important; color: #fbbf24 !important; }
 
+/* Preset Template Chips */
+.qf-presets-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.qf-presets-bar::-webkit-scrollbar {
+  display: none;
+}
+.qf-preset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.qf-preset-chip:hover {
+  background: rgba(245, 166, 35, 0.12);
+  border-color: rgba(245, 166, 35, 0.4);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+/* 4-Way Mode Selector Cards */
+.qf-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+@media (max-width: 600px) {
+  .qf-mode-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.qf-mode-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+.qf-mode-card:hover {
+  border-color: rgba(245, 166, 35, 0.3);
+  background: rgba(245, 166, 35, 0.05);
+}
+.qf-mode-card--active {
+  border-color: var(--gold) !important;
+  background: rgba(245, 166, 35, 0.12) !important;
+  box-shadow: 0 0 16px rgba(245, 166, 35, 0.15);
+}
+.qf-mode-card__icon {
+  font-size: 1.4rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.qf-mode-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.qf-mode-card__title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #fff;
+}
+.qf-mode-card__desc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
 /* Save as Draft button */
 .qf-draft-btn {
   border-color: rgba(251,191,36,0.3) !important;

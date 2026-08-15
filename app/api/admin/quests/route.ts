@@ -18,7 +18,7 @@ export async function GET() {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("fiesta_event_quests")
-      .select("id, title, description, xp, status, category, action_label, action_url, requires_proof, is_quiz, sort_order, created_by, updated_by, created_at, updated_at")
+      .select("id, title, description, xp, status, category, action_label, action_url, requires_proof, is_quiz, quiz_answer, quiz_options, correct_option_index, passcode, expires_at, depends_on_quest_id, sort_order, created_by, updated_by, created_at, updated_at")
       .order("sort_order", { ascending: true });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -32,7 +32,26 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id, title, description, xp, status, category, action_label, action_url, requires_proof, is_quiz, quiz_answer, sort_order, admin_email } = body;
+    const {
+      id,
+      title,
+      description,
+      xp,
+      status,
+      category,
+      action_label,
+      action_url,
+      requires_proof,
+      is_quiz,
+      quiz_answer,
+      quiz_options,
+      correct_option_index,
+      passcode,
+      expires_at,
+      depends_on_quest_id,
+      sort_order,
+      admin_email
+    } = body;
 
     if (!id || !title) {
       return NextResponse.json({ error: "id and title are required." }, { status: 400 });
@@ -53,6 +72,11 @@ export async function POST(request: Request) {
         requires_proof: !!requires_proof,
         is_quiz: !!is_quiz,
         quiz_answer: quiz_answer || null,
+        quiz_options: quiz_options || null,
+        correct_option_index: correct_option_index ?? null,
+        passcode: passcode || null,
+        expires_at: expires_at || null,
+        depends_on_quest_id: depends_on_quest_id || null,
         sort_order: sort_order ?? 99,
         created_by: admin_email || "System",
         updated_by: admin_email || "System",

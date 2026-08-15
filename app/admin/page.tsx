@@ -31,6 +31,11 @@ interface Quest {
   requires_proof?: boolean;
   is_quiz?: boolean;
   quiz_answer?: string;
+  quiz_options?: string[];
+  correct_option_index?: number;
+  passcode?: string;
+  expires_at?: string;
+  depends_on_quest_id?: string;
   sort_order: number;
   created_by?: string;
   updated_by?: string;
@@ -78,6 +83,11 @@ const EMPTY_QUEST: Omit<Quest, "created_at" | "updated_at"> = {
   requires_proof: false,
   is_quiz: false,
   quiz_answer: "",
+  quiz_options: [],
+  correct_option_index: 0,
+  passcode: "",
+  expires_at: "",
+  depends_on_quest_id: "",
   sort_order: 99,
 };
 
@@ -614,6 +624,11 @@ export default function AdminPage() {
       action_label: q.action_label ?? "",
       action_url: q.action_url ?? "",
       requires_proof: q.requires_proof ?? false,
+      is_quiz: q.is_quiz ?? false,
+      quiz_answer: q.quiz_answer ?? "",
+      passcode: q.passcode ?? "",
+      expires_at: q.expires_at ?? "",
+      depends_on_quest_id: q.depends_on_quest_id ?? "",
       sort_order: q.sort_order,
     });
     setQuestError("");
@@ -2555,12 +2570,143 @@ export default function AdminPage() {
               {/* LEFT: Form */}
               <form onSubmit={saveQuest} className="quest-form-panel">
 
-                {/* ① Identity */}
+                {/* ⚡ Quick Preset Templates */}
+                <div className="qf-section" style={{ background: "rgba(245, 166, 35, 0.03)", padding: "14px 24px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <span className="qf-section__label" style={{ margin: 0 }}>⚡ Quick Preset Templates</span>
+                    <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Click to pre-fill</span>
+                  </div>
+                  <div className="qf-presets-bar">
+                    {[
+                      {
+                        icon: "📱",
+                        name: "Social Follow",
+                        data: {
+                          title: "Follow @BlockQuest on X",
+                          description: "1. Follow our official X account @BlockQuest\n2. Upload screenshot proof below to verify",
+                          category: "social" as const,
+                          xp: 100,
+                          requires_proof: true,
+                          is_quiz: false,
+                          passcode: "",
+                          action_label: "Follow on X",
+                          action_url: "https://x.com",
+                        }
+                      },
+                      {
+                        icon: "🔑",
+                        name: "Booth Passcode",
+                        data: {
+                          title: "Visit Sponsor Booth",
+                          description: "Visit our sponsor booth in the main exhibition hall and ask for the secret passcode!",
+                          category: "onboarding" as const,
+                          xp: 150,
+                          requires_proof: false,
+                          is_quiz: false,
+                          passcode: "BOOTH-01",
+                          action_label: "View Booth Info",
+                          action_url: "",
+                        }
+                      },
+                      {
+                        icon: "❓",
+                        name: "Trivia Quiz",
+                        data: {
+                          title: "Web3 Fiesta Trivia",
+                          description: "Answer the trivia question: What is the native token of Ethereum?",
+                          category: "quiz" as const,
+                          xp: 100,
+                          requires_proof: false,
+                          is_quiz: true,
+                          quiz_answer: "ETH",
+                          passcode: "",
+                          action_label: "Start Quiz",
+                          action_url: "",
+                        }
+                      },
+                      {
+                        icon: "📸",
+                        name: "Stage Selfie",
+                        data: {
+                          title: "Take a Stage Photo / Selfie",
+                          description: "Take a photo at the keynote stage during live sessions and upload proof!",
+                          category: "daily" as const,
+                          xp: 200,
+                          requires_proof: true,
+                          is_quiz: false,
+                          passcode: "",
+                          action_label: "Stage Schedule",
+                          action_url: "",
+                        }
+                      },
+                      {
+                        icon: "⚡",
+                        name: "Instant Check-in",
+                        data: {
+                          title: "Daily Community Check-in",
+                          description: "Claim your daily event participation bonus points!",
+                          category: "daily" as const,
+                          xp: 50,
+                          requires_proof: false,
+                          is_quiz: false,
+                          passcode: "",
+                          action_label: "",
+                          action_url: "",
+                        }
+                      },
+                    ].map((preset) => (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        className="qf-preset-chip"
+                        onClick={() => {
+                          setQuestForm((prev) => {
+                            const autoId = preset.data.title.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+                            return {
+                              ...prev,
+                              ...preset.data,
+                              id: editingQuest ? prev.id : autoId,
+                            };
+                          });
+                        }}
+                      >
+                        <span>{preset.icon}</span>
+                        <span>{preset.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ① Quest Title & Details */}
                 <div className="qf-section">
-                  <div className="qf-section__label">① Identity</div>
-                  <div className="admin-form-row" style={{ gridTemplateColumns: "1fr 90px" }}>
+                  <div className="qf-section__label">① Quest Details</div>
+                  
+                  <label className="qf-label">
+                    Quest Title *
+                    <input
+                      type="text"
+                      value={questForm.title}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setQuestForm((prev) => {
+                          const autoId = val.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+                          return {
+                            ...prev,
+                            title: val,
+                            id: editingQuest ? prev.id : (autoId || prev.id),
+                          };
+                        });
+                      }}
+                      placeholder="e.g. Follow @BlockQuest on X"
+                      required
+                      className="qf-input"
+                      style={{ fontSize: "1rem", fontWeight: 600 }}
+                    />
+                  </label>
+
+                  <div className="admin-form-row" style={{ gridTemplateColumns: "1fr 100px", marginTop: 12 }}>
                     <label className="qf-label">
-                      Quest ID *
+                      Quest ID (Slug) *
                       <input
                         type="text"
                         value={questForm.id}
@@ -2569,11 +2715,13 @@ export default function AdminPage() {
                         required
                         disabled={!!editingQuest}
                         className="qf-input"
+                        style={{ fontFamily: "monospace" }}
                       />
-                      <small>Auto-slugged · cannot change after creation</small>
+                      <small>{editingQuest ? "Locked ID" : "Auto-generated from title · click to customize"}</small>
                     </label>
+                    
                     <label className="qf-label">
-                      Order
+                      Sort Order
                       <input
                         type="number"
                         value={questForm.sort_order}
@@ -2583,25 +2731,10 @@ export default function AdminPage() {
                       />
                     </label>
                   </div>
-                </div>
 
-                {/* ② Content */}
-                <div className="qf-section">
-                  <div className="qf-section__label">② Content</div>
-                  <label className="qf-label">
-                    Quest Title *
-                    <input
-                      type="text"
-                      value={questForm.title}
-                      onChange={(e) => setQuestForm((f) => ({ ...f, title: e.target.value }))}
-                      placeholder="e.g. Follow @BlockQuest on X"
-                      required
-                      className="qf-input"
-                    />
-                  </label>
-                  <label className="qf-label" style={{ marginTop: 10 }}>
+                  <label className="qf-label" style={{ marginTop: 12 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span>Description <small style={{ fontWeight: 400, color: "#64748b" }}>(supports line breaks & bullet points)</small></span>
+                      <span>Instructions / Description</span>
                       <div style={{ display: "flex", gap: 4 }}>
                         <button
                           type="button"
@@ -2611,7 +2744,6 @@ export default function AdminPage() {
                             ...f,
                             description: (f.description ? f.description + "\n" : "") + "• Step 1:\n• Step 2:\n• Step 3:"
                           }))}
-                          title="Insert bulleted list template"
                         >
                           + Bullet List
                         </button>
@@ -2621,9 +2753,8 @@ export default function AdminPage() {
                           style={{ padding: "2px 8px", fontSize: "0.7rem" }}
                           onClick={() => setQuestForm((f) => ({
                             ...f,
-                            description: (f.description ? f.description + "\n" : "") + "1. Visit the page\n2. Complete action\n3. Take a screenshot"
+                            description: (f.description ? f.description + "\n" : "") + "1. Visit the page\n2. Complete action\n3. Upload screenshot proof"
                           }))}
-                          title="Insert numbered list template"
                         >
                           + Numbered List
                         </button>
@@ -2633,23 +2764,23 @@ export default function AdminPage() {
                       value={questForm.description ?? ""}
                       onChange={(e) => setQuestForm((f) => ({ ...f, description: e.target.value }))}
                       placeholder={`Format example:\n1. Follow @BlockQuest on X\n2. Retweet pinned tweet\n3. Upload screenshot proof below`}
-                      rows={5}
+                      rows={4}
                       className="qf-input"
                       style={{
                         whiteSpace: "pre-wrap",
                         fontFamily: "inherit",
                         lineHeight: 1.5,
-                        minHeight: 100,
+                        minHeight: 80,
                         resize: "vertical"
                       }}
                     />
                   </label>
                 </div>
 
-                {/* ③ Settings */}
+                {/* ② Reward, Category & Status */}
                 <div className="qf-section">
-                  <div className="qf-section__label">③ Settings</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "110px 1fr", gap: 12, marginBottom: 12 }}>
+                  <div className="qf-section__label">② Reward & Category</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "130px 1fr", gap: 14, marginBottom: 12 }}>
                     <label className="qf-label">
                       XP Reward
                       <div style={{ position: "relative" }}>
@@ -2660,13 +2791,14 @@ export default function AdminPage() {
                           min={0}
                           step={10}
                           className="qf-input"
-                          style={{ paddingLeft: 34 }}
+                          style={{ paddingLeft: 34, fontWeight: 800, color: "#ffd166" }}
                         />
                         <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "#f5a623", fontWeight: 800 }}>⚡</span>
                       </div>
                     </label>
+
                     <label className="qf-label">
-                      Status
+                      Publish Status
                       <div className="qf-pill-group">
                         {(["Live", "Soon", "Done", "Draft"] as Quest["status"][]).map((s) => (
                           <button key={s} type="button"
@@ -2679,6 +2811,7 @@ export default function AdminPage() {
                       </div>
                     </label>
                   </div>
+
                   <label className="qf-label">
                     Category
                     <div className="qf-pill-group">
@@ -2694,15 +2827,15 @@ export default function AdminPage() {
                   </label>
                 </div>
 
-                {/* ④ Action link */}
+                {/* ③ Action Button (Optional) */}
                 <div className="qf-section">
-                  <div className="qf-section__label">④ Action Button <span style={{ fontWeight: 400, textTransform: "none", fontSize: "0.75rem", color: "#64748b" }}>(optional)</span></div>
+                  <div className="qf-section__label">③ External Action Button <span style={{ fontWeight: 400, textTransform: "none", fontSize: "0.75rem", color: "#64748b" }}>(optional)</span></div>
                   <div className="admin-form-row">
                     <label className="qf-label">
                       Button Label
                       <input type="text" value={questForm.action_label ?? ""}
                         onChange={(e) => setQuestForm((f) => ({ ...f, action_label: e.target.value }))}
-                        placeholder="e.g. Register now" className="qf-input" />
+                        placeholder="e.g. Follow on X or Register now" className="qf-input" />
                     </label>
                     <label className="qf-label">
                       Button URL
@@ -2710,64 +2843,133 @@ export default function AdminPage() {
                         onChange={(e) => setQuestForm((f) => ({ ...f, action_url: e.target.value }))}
                         placeholder="/register or https://x.com" className="qf-input" />
                     </label>
-                    </div>
+                  </div>
                 </div>
 
-                {/* ⑤ Verification */}
+                {/* ④ Verification Mode (Interactive 4-Way Selector) */}
                 <div className="qf-section">
-                  <div className="qf-section__label">⑤ Verification Mode</div>
-                  <button
-                    type="button"
-                    onClick={() => setQuestForm((f) => ({ ...f, requires_proof: !f.requires_proof, is_quiz: false }))}
-                    className={`qf-proof-toggle${questForm.requires_proof ? " qf-proof-toggle--on" : ""}`}
-                  >
-                    <span className="qf-proof-toggle__icon">{questForm.requires_proof ? "📷" : "⚡"}</span>
-                    <div className="qf-proof-toggle__text">
-                      <strong>{questForm.requires_proof ? "Screenshot Proof Required" : "Instant Claim (No Proof)"}</strong>
-                      <span>{questForm.requires_proof
-                        ? "Players upload a screenshot. Admin reviews before XP is awarded."
-                        : "Players claim XP instantly. Click to require screenshot proof."}</span>
+                  <div className="qf-section__label">④ Verification Mode</div>
+                  
+                  <div className="qf-mode-grid" style={{ marginBottom: 14 }}>
+                    {/* Instant Claim */}
+                    <div
+                      className={`qf-mode-card${!questForm.requires_proof && !questForm.is_quiz && !questForm.passcode ? " qf-mode-card--active" : ""}`}
+                      onClick={() => setQuestForm((f) => ({ ...f, requires_proof: false, is_quiz: false, passcode: "" }))}
+                    >
+                      <span className="qf-mode-card__icon">⚡</span>
+                      <div className="qf-mode-card__info">
+                        <span className="qf-mode-card__title">Instant Claim</span>
+                        <span className="qf-mode-card__desc">Players click claim to receive XP instantly.</span>
+                      </div>
                     </div>
-                    <div className={`qf-proof-toggle__switch${questForm.requires_proof ? " qf-proof-toggle__switch--on" : ""}`}>
-                      <div className="qf-proof-toggle__knob" />
-                    </div>
-                  </button>
-                </div>
 
-                {/* ⑥ Quiz Configuration */}
-                <div className="qf-section">
-                  <div className="qf-section__label">⑥ Quiz Mode</div>
-                  <button
-                    type="button"
-                    onClick={() => setQuestForm((f) => ({ ...f, is_quiz: !f.is_quiz, requires_proof: false }))}
-                    className={`qf-proof-toggle${questForm.is_quiz ? " qf-proof-toggle--on" : ""}`}
-                  >
-                    <span className="qf-proof-toggle__icon">{questForm.is_quiz ? "❓" : "⚡"}</span>
-                    <div className="qf-proof-toggle__text">
-                      <strong>{questForm.is_quiz ? "Quiz Quest" : "Standard Quest"}</strong>
-                      <span>{questForm.is_quiz
-                        ? "Attendees must type the correct answer to claim XP."
-                        : "Click to turn this quest into a quiz."}</span>
+                    {/* Screenshot Proof */}
+                    <div
+                      className={`qf-mode-card${questForm.requires_proof ? " qf-mode-card--active" : ""}`}
+                      onClick={() => setQuestForm((f) => ({ ...f, requires_proof: true, is_quiz: false, passcode: "" }))}
+                    >
+                      <span className="qf-mode-card__icon">📷</span>
+                      <div className="qf-mode-card__info">
+                        <span className="qf-mode-card__title">Screenshot Proof</span>
+                        <span className="qf-mode-card__desc">Upload photo proof for admin verification.</span>
+                      </div>
                     </div>
-                    <div className={`qf-proof-toggle__switch${questForm.is_quiz ? " qf-proof-toggle__switch--on" : ""}`}>
-                      <div className="qf-proof-toggle__knob" />
+
+                    {/* Quiz Answer */}
+                    <div
+                      className={`qf-mode-card${questForm.is_quiz ? " qf-mode-card--active" : ""}`}
+                      onClick={() => setQuestForm((f) => ({ ...f, is_quiz: true, requires_proof: false, passcode: "", category: "quiz" }))}
+                    >
+                      <span className="qf-mode-card__icon">❓</span>
+                      <div className="qf-mode-card__info">
+                        <span className="qf-mode-card__title">Quiz Question</span>
+                        <span className="qf-mode-card__desc">Type exact answer string to claim XP.</span>
+                      </div>
                     </div>
-                  </button>
+
+                    {/* Passcode / PIN */}
+                    <div
+                      className={`qf-mode-card${!questForm.requires_proof && !questForm.is_quiz && !!questForm.passcode ? " qf-mode-card--active" : ""}`}
+                      onClick={() => setQuestForm((f) => ({ ...f, requires_proof: false, is_quiz: false, passcode: f.passcode || "CODE" }))}
+                    >
+                      <span className="qf-mode-card__icon">🔑</span>
+                      <div className="qf-mode-card__info">
+                        <span className="qf-mode-card__title">Secret Passcode</span>
+                        <span className="qf-mode-card__desc">Enter PIN from speaker or booth.</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mode-Specific Input Fields */}
                   {questForm.is_quiz && (
-                    <div className="qf-form-group" style={{ marginTop: "16px" }}>
-                      <label className="qf-label">Correct Answer</label>
-                      <input
-                        type="password"
-                        placeholder={editingQuest ? "Enter new answer (or leave blank to keep current)" : "e.g. satoshi"}
-                        value={questForm.quiz_answer ?? ""}
-                        onChange={(e) => setQuestForm((f) => ({ ...f, quiz_answer: e.target.value }))}
-                        className="qf-input"
-                      />
-                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "6px" }}>
-                        The answer is case-insensitive. It will be hidden from users.
-                      </p>
+                    <div style={{ background: "rgba(168, 85, 247, 0.08)", border: "1px solid rgba(168, 85, 247, 0.3)", borderRadius: 12, padding: 14 }}>
+                      <label className="qf-label">
+                        ❓ Correct Quiz Answer *
+                        <input
+                          type="text"
+                          placeholder={editingQuest ? "Enter new answer (or leave blank to keep current)" : "e.g. satoshi"}
+                          value={questForm.quiz_answer ?? ""}
+                          onChange={(e) => setQuestForm((f) => ({ ...f, quiz_answer: e.target.value }))}
+                          className="qf-input"
+                          style={{ marginTop: 6 }}
+                        />
+                        <small>Case-insensitive · Hidden from players until they answer correctly</small>
+                      </label>
                     </div>
                   )}
+
+                  {questForm.passcode !== undefined && questForm.passcode !== "" && !questForm.is_quiz && !questForm.requires_proof && (
+                    <div style={{ background: "rgba(245, 158, 11, 0.08)", border: "1px solid rgba(245, 158, 11, 0.3)", borderRadius: 12, padding: 14 }}>
+                      <label className="qf-label">
+                        🔑 Secret Passcode *
+                        <input
+                          type="text"
+                          placeholder="e.g. BOOTH-07 or FIESTA2026"
+                          value={questForm.passcode ?? ""}
+                          onChange={(e) => setQuestForm((f) => ({ ...f, passcode: e.target.value.toUpperCase() }))}
+                          className="qf-input"
+                          style={{ marginTop: 6, textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.08em" }}
+                        />
+                        <small>Share this secret code with attendees visiting your booth or stage</small>
+                      </label>
+                    </div>
+                  )}
+                </div>
+
+                {/* ⑤ Advanced Rules (Expiration & Prerequisite) */}
+                <div className="qf-section">
+                  <div className="qf-section__label">⑤ Optional Rules & Locking</div>
+                  
+                  <div className="admin-form-row" style={{ marginBottom: 12 }}>
+                    <label className="qf-label">
+                      ⏱️ Expiration Time <span style={{ fontWeight: 400, color: "#64748b" }}>(Flash Quest)</span>
+                      <input
+                        type="datetime-local"
+                        value={questForm.expires_at ? new Date(questForm.expires_at).toISOString().slice(0, 16) : ""}
+                        onChange={(e) => setQuestForm((f) => ({ ...f, expires_at: e.target.value ? new Date(e.target.value).toISOString() : "" }))}
+                        className="qf-input"
+                      />
+                    </label>
+
+                    <label className="qf-label">
+                      🔒 Prerequisite Quest <span style={{ fontWeight: 400, color: "#64748b" }}>(Quest Chain)</span>
+                      <select
+                        value={questForm.depends_on_quest_id ?? ""}
+                        onChange={(e) => setQuestForm((f) => ({ ...f, depends_on_quest_id: e.target.value }))}
+                        className="qf-input"
+                        style={{ cursor: "pointer" }}
+                      >
+                        <option value="">None (Unlocked immediately)</option>
+                        {quests
+                          .filter((q) => q.id !== questForm.id)
+                          .map((q) => (
+                            <option key={q.id} value={q.id}>
+                              Requires: {q.title}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                  </div>
                 </div>
 
                 {questError && <p className="admin-error-msg">{questError}</p>}
@@ -2795,7 +2997,7 @@ export default function AdminPage() {
 
               {/* RIGHT: Live Preview */}
               <div className="quest-preview-panel">
-                <div className="quest-preview-panel__label">👁 Live Preview</div>
+                <div className="quest-preview-panel__label">👁 Live Mobile Preview</div>
                 <div className="quest-preview-card">
                   <div className="quest-preview-card__top">
                     <div className="quest-preview-card__badges">
@@ -2805,6 +3007,12 @@ export default function AdminPage() {
                       </span>
                       {questForm.requires_proof && (
                         <span className="quest-preview-badge quest-preview-badge--proof">📷 Proof</span>
+                      )}
+                      {questForm.is_quiz && (
+                        <span className="quest-preview-badge" style={{ background: "rgba(168, 85, 247, 0.2)", color: "#c084fc", border: "1px solid rgba(168, 85, 247, 0.4)" }}>❓ Quiz</span>
+                      )}
+                      {questForm.passcode && (
+                        <span className="quest-preview-badge" style={{ background: "rgba(245, 158, 11, 0.2)", color: "#fbbf24", border: "1px solid rgba(245, 158, 11, 0.4)" }}>🔑 Passcode</span>
                       )}
                     </div>
                     <span className={`quest-preview-status quest-preview-status--${(questForm.status || "draft").toLowerCase()}`}>
@@ -2823,6 +3031,18 @@ export default function AdminPage() {
                     <div className="quest-preview-card__desc" style={{ whiteSpace: "pre-wrap" }}>{questForm.description}</div>
                   )}
 
+                  {questForm.expires_at && (
+                    <div style={{ fontSize: "0.72rem", color: "#f87171", margin: "6px 0", fontWeight: 700 }}>
+                      ⏱️ Flash Quest: Ends {new Date(questForm.expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  )}
+
+                  {questForm.depends_on_quest_id && (
+                    <div style={{ fontSize: "0.72rem", color: "#94a3b8", margin: "6px 0" }}>
+                      🔒 Locked until prerequisite is completed
+                    </div>
+                  )}
+
                   <div className="quest-preview-card__footer">
                     <div className="quest-preview-xp">
                       <span>⚡</span>
@@ -2832,7 +3052,7 @@ export default function AdminPage() {
                       <button className="quest-preview-action-btn" disabled>{questForm.action_label}</button>
                     ) : (
                       <button className={`quest-preview-claim-btn${questForm.requires_proof ? " quest-preview-claim-btn--proof" : ""}`} disabled>
-                        {questForm.requires_proof ? "📷 Upload Proof" : "⚡ Claim XP"}
+                        {questForm.requires_proof ? "📷 Upload Proof" : questForm.is_quiz ? "❓ Answer Quiz" : questForm.passcode ? "🔑 Enter Code" : "⚡ Claim XP"}
                       </button>
                     )}
                   </div>

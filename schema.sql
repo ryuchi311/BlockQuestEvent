@@ -64,10 +64,22 @@ CREATE TABLE IF NOT EXISTS public.fiesta_event_quests (
   requires_proof BOOLEAN NOT NULL DEFAULT FALSE,
   is_quiz BOOLEAN NOT NULL DEFAULT FALSE,
   quiz_answer TEXT,
+  quiz_options JSONB,
+  correct_option_index INTEGER,
+  passcode TEXT,
+  expires_at TIMESTAMPTZ,
+  depends_on_quest_id TEXT,
   sort_order INTEGER NOT NULL DEFAULT 99,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Migration statements for newly added quest attributes
+ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS quiz_options JSONB;
+ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS correct_option_index INTEGER;
+ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS passcode TEXT;
+ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS depends_on_quest_id TEXT;
 
 -- Quest Verifications table for user proof submissions & admin review
 CREATE TABLE IF NOT EXISTS public.quest_verifications (
