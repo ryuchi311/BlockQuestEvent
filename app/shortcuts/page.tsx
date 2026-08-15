@@ -290,6 +290,82 @@ export default function ShortcutsPage() {
             </Link>
           </div>
 
+          {/* Card 4: Platform Manual & Presentation Guide */}
+          <div style={{
+            background: "rgba(15, 16, 28, 0.85)",
+            border: "1px solid rgba(16, 185, 129, 0.3)",
+            borderRadius: 20,
+            padding: "24px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+            position: "relative",
+            overflow: "hidden"
+          }}>
+            <div style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 4,
+              background: "linear-gradient(90deg, #10b981, #34d399)"
+            }} />
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+                <div style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  background: "rgba(16, 185, 129, 0.15)",
+                  border: "1px solid rgba(16, 185, 129, 0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "1.4rem"
+                }}>
+                  📖
+                </div>
+                <span style={{
+                  background: "rgba(16, 185, 129, 0.15)",
+                  color: "#34d399",
+                  border: "1px solid rgba(16, 185, 129, 0.4)",
+                  padding: "4px 10px",
+                  borderRadius: 20,
+                  fontSize: "0.72rem",
+                  fontWeight: 800
+                }}>
+                  Documentation & Slides
+                </span>
+              </div>
+              <h2 style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fff", marginBottom: 8 }}>
+                Platform Manual & Presentation
+              </h2>
+              <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 20 }}>
+                Interactive visual documentation guide. Includes full system architecture, operational workflows, quest configuration examples, and team playbooks.
+              </p>
+            </div>
+            <a
+              href="/manual-presentation.html"
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: "block",
+                textAlign: "center",
+                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                color: "#fff",
+                padding: "12px 18px",
+                borderRadius: 12,
+                fontWeight: 800,
+                fontSize: "0.9rem",
+                textDecoration: "none",
+                boxShadow: "0 0 20px rgba(16, 185, 129, 0.3)"
+              }}
+            >
+              Open Manual & Presentation 📖 ↗
+            </a>
+          </div>
+
         </div>
 
         {/* Secondary Utility Links (Stress Test, Game, Registration, Manual) */}
@@ -304,6 +380,29 @@ export default function ShortcutsPage() {
           </h3>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+            <a
+              href="/manual-presentation.html"
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                background: "rgba(16, 185, 129, 0.08)",
+                border: "1px solid rgba(16, 185, 129, 0.3)",
+                padding: "14px 16px",
+                borderRadius: 12,
+                textDecoration: "none",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                transition: "all 0.2s"
+              }}
+            >
+              <span style={{ fontSize: "1.4rem" }}>📖</span>
+              <div>
+                <strong style={{ color: "#34d399", fontSize: "0.9rem", display: "block" }}>Platform Presentation</strong>
+                <span style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>/manual-presentation.html ↗</span>
+              </div>
+            </a>
+
             <Link
               href="/register"
               style={{
