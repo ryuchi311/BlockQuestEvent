@@ -25,10 +25,12 @@ interface Quest {
   description: string | null;
   xp: number;
   status: "Live" | "Soon" | "Done" | "Draft";
-  category: "onboarding" | "social" | "daily";
+  category: "onboarding" | "social" | "daily" | "quiz";
   action_label: string | null;
   action_url: string | null;
   requires_proof?: boolean;
+  is_quiz?: boolean;
+  quiz_answer?: string;
   sort_order: number;
   created_by?: string;
   updated_by?: string;
@@ -60,7 +62,7 @@ const ADMIN_TABS = ["scanner", "attendees", "quests", "verifications", "socials"
 type AdminTab = (typeof ADMIN_TABS)[number];
 
 const STATUS_OPTIONS: Quest["status"][] = ["Live", "Soon", "Done", "Draft"];
-const CATEGORY_OPTIONS: Quest["category"][] = ["onboarding", "social", "daily"];
+const CATEGORY_OPTIONS: Quest["category"][] = ["onboarding", "social", "daily", "quiz"];
 
 const EMPTY_QUEST: Omit<Quest, "created_at" | "updated_at"> = {
   id: "",
@@ -72,6 +74,8 @@ const EMPTY_QUEST: Omit<Quest, "created_at" | "updated_at"> = {
   action_label: "",
   action_url: "",
   requires_proof: false,
+  is_quiz: false,
+  quiz_answer: "",
   sort_order: 99,
 };
 
@@ -1370,6 +1374,7 @@ export default function AdminPage() {
                 <option value="onboarding">🚀 Onboarding</option>
                 <option value="social">📣 Social</option>
                 <option value="daily">📅 Daily</option>
+                <option value="quiz">❓ Quiz</option>
               </select>
 
               <span className="admin-toolbar__count" style={{ marginLeft: "auto" }}>
@@ -2585,12 +2590,12 @@ export default function AdminPage() {
                   <label className="qf-label">
                     Category
                     <div className="qf-pill-group">
-                      {(["onboarding", "social", "daily"] as Quest["category"][]).map((c) => (
+                      {(["onboarding", "social", "daily", "quiz"] as Quest["category"][]).map((c) => (
                         <button key={c} type="button"
                           onClick={() => setQuestForm((f) => ({ ...f, category: c }))}
                           className={`qf-pill${questForm.category === c ? " qf-pill--active" : ""}`}
                         >
-                          {c === "onboarding" ? "🚀" : c === "social" ? "📣" : "📅"} {c.charAt(0).toUpperCase() + c.slice(1)}
+                          {c === "onboarding" ? "🚀" : c === "social" ? "📣" : c === "daily" ? "📅" : "❓"} {c.charAt(0).toUpperCase() + c.slice(1)}
                         </button>
                       ))}
                     </div>
@@ -2613,7 +2618,7 @@ export default function AdminPage() {
                         onChange={(e) => setQuestForm((f) => ({ ...f, action_url: e.target.value }))}
                         placeholder="/register or https://x.com" className="qf-input" />
                     </label>
-                  </div>
+                    </div>
                 </div>
 
                 {/* ⑤ Verification */}
@@ -2621,7 +2626,7 @@ export default function AdminPage() {
                   <div className="qf-section__label">⑤ Verification Mode</div>
                   <button
                     type="button"
-                    onClick={() => setQuestForm((f) => ({ ...f, requires_proof: !f.requires_proof }))}
+                    onClick={() => setQuestForm((f) => ({ ...f, requires_proof: !f.requires_proof, is_quiz: false }))}
                     className={`qf-proof-toggle${questForm.requires_proof ? " qf-proof-toggle--on" : ""}`}
                   >
                     <span className="qf-proof-toggle__icon">{questForm.requires_proof ? "📷" : "⚡"}</span>
@@ -2635,6 +2640,42 @@ export default function AdminPage() {
                       <div className="qf-proof-toggle__knob" />
                     </div>
                   </button>
+                </div>
+
+                {/* ⑥ Quiz Configuration */}
+                <div className="qf-section">
+                  <div className="qf-section__label">⑥ Quiz Mode</div>
+                  <button
+                    type="button"
+                    onClick={() => setQuestForm((f) => ({ ...f, is_quiz: !f.is_quiz, requires_proof: false }))}
+                    className={`qf-proof-toggle${questForm.is_quiz ? " qf-proof-toggle--on" : ""}`}
+                  >
+                    <span className="qf-proof-toggle__icon">{questForm.is_quiz ? "❓" : "⚡"}</span>
+                    <div className="qf-proof-toggle__text">
+                      <strong>{questForm.is_quiz ? "Quiz Quest" : "Standard Quest"}</strong>
+                      <span>{questForm.is_quiz
+                        ? "Attendees must type the correct answer to claim XP."
+                        : "Click to turn this quest into a quiz."}</span>
+                    </div>
+                    <div className={`qf-proof-toggle__switch${questForm.is_quiz ? " qf-proof-toggle__switch--on" : ""}`}>
+                      <div className="qf-proof-toggle__knob" />
+                    </div>
+                  </button>
+                  {questForm.is_quiz && (
+                    <div className="qf-form-group" style={{ marginTop: "16px" }}>
+                      <label className="qf-label">Correct Answer</label>
+                      <input
+                        type="password"
+                        placeholder={editingQuest ? "Enter new answer (or leave blank to keep current)" : "e.g. satoshi"}
+                        value={questForm.quiz_answer ?? ""}
+                        onChange={(e) => setQuestForm((f) => ({ ...f, quiz_answer: e.target.value }))}
+                        className="qf-input"
+                      />
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "6px" }}>
+                        The answer is case-insensitive. It will be hidden from users.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {questError && <p className="admin-error-msg">{questError}</p>}
@@ -2667,7 +2708,7 @@ export default function AdminPage() {
                   <div className="quest-preview-card__top">
                     <div className="quest-preview-card__badges">
                       <span className={`quest-preview-badge quest-preview-badge--${questForm.category || "onboarding"}`}>
-                        {questForm.category === "social" ? "📣" : questForm.category === "daily" ? "📅" : "🚀"}
+                        {questForm.category === "social" ? "📣" : questForm.category === "daily" ? "📅" : questForm.category === "quiz" ? "❓" : "🚀"}
                         {" "}{(questForm.category || "onboarding").charAt(0).toUpperCase() + (questForm.category || "onboarding").slice(1)}
                       </span>
                       {questForm.requires_proof && (

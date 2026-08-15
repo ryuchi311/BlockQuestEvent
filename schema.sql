@@ -61,6 +61,8 @@ CREATE TABLE IF NOT EXISTS public.fiesta_event_quests (
   action_label TEXT,
   action_url TEXT,
   requires_proof BOOLEAN NOT NULL DEFAULT FALSE,
+  is_quiz BOOLEAN NOT NULL DEFAULT FALSE,
+  quiz_answer TEXT,
   sort_order INTEGER NOT NULL DEFAULT 99,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

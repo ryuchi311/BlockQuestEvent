@@ -18,7 +18,7 @@ export async function GET() {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("fiesta_event_quests")
-      .select("*")
+      .select("id, title, description, xp, status, category, action_label, action_url, requires_proof, is_quiz, sort_order, created_by, updated_by, created_at, updated_at")
       .order("sort_order", { ascending: true });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -32,7 +32,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id, title, description, xp, status, category, action_label, action_url, requires_proof, sort_order, admin_email } = body;
+    const { id, title, description, xp, status, category, action_label, action_url, requires_proof, is_quiz, quiz_answer, sort_order, admin_email } = body;
 
     if (!id || !title) {
       return NextResponse.json({ error: "id and title are required." }, { status: 400 });
@@ -51,6 +51,8 @@ export async function POST(request: Request) {
         action_label,
         action_url,
         requires_proof: !!requires_proof,
+        is_quiz: !!is_quiz,
+        quiz_answer: quiz_answer || null,
         sort_order: sort_order ?? 99,
         created_by: admin_email || "System",
         updated_by: admin_email || "System",

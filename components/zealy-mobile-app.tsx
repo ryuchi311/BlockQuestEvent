@@ -9,10 +9,11 @@ interface Quest {
   description: string;
   xp: number;
   status: "Live" | "Soon" | "Done" | "Pending Verification" | "Approved" | "Rejected";
-  category: "onboarding" | "social" | "daily";
+  category: "onboarding" | "social" | "daily" | "quiz";
   actionLabel?: string;
   actionUrl?: string;
   requiresProof?: boolean;
+  is_quiz?: boolean;
 }
 
 const initialQuests: Quest[] = [
@@ -118,6 +119,7 @@ export default function ZealyMobileApp() {
   const [claiming, setClaiming] = useState(false);
   const [proofImage, setProofImage] = useState<string | null>(null);
   const [proofSubmitting, setProofSubmitting] = useState(false);
+  const [quizAnswer, setQuizAnswer] = useState("");
   const [visitedActions, setVisitedActions] = useState<Record<string, boolean>>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("bq_visited");
@@ -325,6 +327,7 @@ export default function ZealyMobileApp() {
           actionLabel: q.action_label || undefined,
           actionUrl: q.action_url || undefined,
           requiresProof: !!q.requires_proof,
+          is_quiz: !!q.is_quiz,
         }));
 
         // Detect if new quests were published by admin
@@ -542,6 +545,7 @@ export default function ZealyMobileApp() {
           quest_id: selectedQuest.id,
           user_email: email,
           xp: selectedQuest.xp,
+          answer: selectedQuest.is_quiz ? quizAnswer : undefined,
         }),
       });
 
@@ -555,8 +559,8 @@ export default function ZealyMobileApp() {
       if (selectedQuest.id === "register" || selectedQuest.id === "checkin") {
         setUserRank(6);
       }
-    } catch {
-      alert("Claim error. Please try again.");
+    } catch (err: any) {
+      alert(err.message || "Claim error. Please try again.");
     } finally {
       setClaiming(false);
       setSelectedQuest(null);
@@ -1649,6 +1653,35 @@ export default function ZealyMobileApp() {
                                   : !isActionCompleted
                                   ? "🔒 Complete Task First"
                                   : "📷 Select Screenshot Above"}
+                              </button>
+                            </div>
+                          ) : selectedQuest.is_quiz ? (
+                            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+                              <input
+                                type="text"
+                                placeholder="Enter quiz answer..."
+                                value={quizAnswer}
+                                onChange={(e) => setQuizAnswer(e.target.value)}
+                                style={{
+                                  padding: "14px",
+                                  borderRadius: 12,
+                                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                                  background: "rgba(0, 0, 0, 0.4)",
+                                  color: "#fff",
+                                  fontSize: "1rem"
+                                }}
+                              />
+                              <button
+                                onClick={handleClaimXp}
+                                disabled={claiming || !quizAnswer.trim() || !isActionCompleted}
+                                className="modal-claim-btn"
+                                style={{
+                                  opacity: (quizAnswer.trim() && isActionCompleted) ? 1 : 0.5,
+                                  cursor: (quizAnswer.trim() && isActionCompleted) ? "pointer" : "not-allowed",
+                                  background: (quizAnswer.trim() && isActionCompleted) ? "linear-gradient(135deg, #ffd166 0%, #f5a623 100%)" : "rgba(255,255,255,0.1)"
+                                }}
+                              >
+                                {claiming ? "Claiming..." : isActionCompleted ? "Submit Answer & Claim XP" : "🔒 Complete Task First"}
                               </button>
                             </div>
                           ) : (

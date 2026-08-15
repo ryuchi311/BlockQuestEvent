@@ -2094,6 +2094,12 @@ a {
   border: 1px solid rgba(139, 92, 246, 0.3);
 }
 
+.category-badge--quiz {
+  background: rgba(236, 72, 153, 0.15);
+  color: #f472b6;
+  border: 1px solid rgba(236, 72, 153, 0.3);
+}
+
 .xp-badge {
   font-size: 0.75rem;
   font-weight: 900;
@@ -3022,6 +3028,11 @@ a {
   color: #6ee7b7;
   border: 1px solid rgba(16,185,129,0.25);
 }
+.admin-category-badge--quiz {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
 
 .admin-xp-badge {
   font-size: 0.82rem;
@@ -3543,6 +3554,7 @@ a {
 }
 .quest-preview-badge--social { background: rgba(59,130,246,0.12); color: #93c5fd; border-color: rgba(59,130,246,0.2); }
 .quest-preview-badge--daily  { background: rgba(139,92,246,0.12); color: #c4b5fd; border-color: rgba(139,92,246,0.2); }
+.quest-preview-badge--quiz   { background: rgba(236,72,153,0.12); color: #f472b6; border-color: rgba(236,72,153,0.2); }
 .quest-preview-badge--proof  { background: rgba(245,166,35,0.08); color: #fbbf24; border-color: rgba(245,166,35,0.2); font-size: 0.66rem; }
 
 .quest-preview-status {

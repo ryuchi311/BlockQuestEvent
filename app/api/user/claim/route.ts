@@ -19,7 +19,7 @@ let memoryUsersXp: Record<string, number> = {};
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { quest_id, user_email, xp } = body;
+    const { quest_id, user_email, xp, answer } = body;
 
     if (!quest_id || !user_email || xp === undefined) {
       return NextResponse.json({ error: "quest_id, user_email, and xp are required." }, { status: 400 });
@@ -48,6 +48,26 @@ export async function POST(request: Request) {
             { error: "Physical check-in required at entrance gate before claiming this XP reward." },
             { status: 400 }
           );
+        }
+      }
+
+      // Check if quest is a quiz and validate answer
+      if (quest_id !== "checkin" && quest_id !== "register") {
+        const { data: quest, error: questError } = await supabase
+          .from("fiesta_event_quests")
+          .select("is_quiz, quiz_answer")
+          .eq("id", quest_id)
+          .single();
+
+        if (questError) {
+          console.warn("Could not find quest:", questError);
+        } else if (quest?.is_quiz) {
+          if (!answer) {
+            return NextResponse.json({ error: "This is a quiz quest. Please provide an answer." }, { status: 400 });
+          }
+          if (!quest.quiz_answer || answer.trim().toLowerCase() !== quest.quiz_answer.trim().toLowerCase()) {
+            return NextResponse.json({ error: "Incorrect answer. Try again!" }, { status: 400 });
+          }
         }
       }
 
