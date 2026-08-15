@@ -177,11 +177,17 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // ── Attendee search & filter ──
+  // ── Attendee search & filter & pagination ──
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "checked" | "pending">("all");
+  const [attendeePage, setAttendeePage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [checkingInId, setCheckingInId] = useState<number | null>(null);
+
+  useEffect(() => {
+    setAttendeePage(1);
+  }, [search, statusFilter, pageSize]);
 
   // ── Quest search & filter ──
   const [questSearch, setQuestSearch] = useState("");
@@ -444,6 +450,14 @@ export default function AdminPage() {
     if (statusFilter === "pending") return !a.checked_in;
     return true;
   });
+
+  const totalAttendeePages = Math.ceil(filteredAttendees.length / pageSize) || 1;
+  const safeAttendeePage = Math.min(attendeePage, totalAttendeePages);
+  const attendeeStartIndex = (safeAttendeePage - 1) * pageSize;
+  const paginatedAttendees = filteredAttendees.slice(
+    attendeeStartIndex,
+    attendeeStartIndex + pageSize
+  );
 
   // ─── Quest helpers ───────────────────────────────────────────────────────
   const filteredQuests = quests.filter((q) => {
@@ -1247,9 +1261,9 @@ export default function AdminPage() {
                       </td>
                     </tr>
                   ) : (
-                    filteredAttendees.map((a, i) => (
+                    paginatedAttendees.map((a, i) => (
                       <tr key={a.id} className="admin-table__row">
-                        <td className="admin-table__num">{i + 1}</td>
+                        <td className="admin-table__num">{attendeeStartIndex + i + 1}</td>
                         <td className="admin-table__name">{a.full_name}</td>
                         <td className="admin-table__email">{a.email}</td>
                         <td>{a.phone}</td>
@@ -1323,6 +1337,61 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Attendees Pagination Bar */}
+            {filteredAttendees.length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginTop: 16, padding: "8px 4px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                  <span>Rows per page:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => setPageSize(Number(e.target.value))}
+                    className="admin-search-input"
+                    style={{ width: "auto", padding: "4px 10px", fontSize: "0.85rem", cursor: "pointer" }}
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                  <span style={{ marginLeft: 8 }}>
+                    Showing <strong>{filteredAttendees.length > 0 ? attendeeStartIndex + 1 : 0}</strong>–<strong>{Math.min(attendeeStartIndex + pageSize, filteredAttendees.length)}</strong> of <strong>{filteredAttendees.length}</strong>
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <button
+                    className="admin-refresh-btn"
+                    onClick={() => setAttendeePage((p) => Math.max(1, p - 1))}
+                    disabled={safeAttendeePage <= 1}
+                    style={{
+                      opacity: safeAttendeePage <= 1 ? 0.4 : 1,
+                      cursor: safeAttendeePage <= 1 ? "not-allowed" : "pointer",
+                      padding: "6px 14px"
+                    }}
+                  >
+                    ← Prev
+                  </button>
+
+                  <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--gold-light)", padding: "0 8px" }}>
+                    Page {safeAttendeePage} of {totalAttendeePages}
+                  </span>
+
+                  <button
+                    className="admin-refresh-btn"
+                    onClick={() => setAttendeePage((p) => Math.min(totalAttendeePages, p + 1))}
+                    disabled={safeAttendeePage >= totalAttendeePages}
+                    style={{
+                      opacity: safeAttendeePage >= totalAttendeePages ? 0.4 : 1,
+                      cursor: safeAttendeePage >= totalAttendeePages ? "not-allowed" : "pointer",
+                      padding: "6px 14px"
+                    }}
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Check-in Confirmation Modal */}
             {checkInConfirmAttendee && (
@@ -1458,19 +1527,17 @@ export default function AdminPage() {
                             {q.status}
                           </button>
                         </td>
-                        <td style={{ fontSize: "0.75rem", lineHeight: "1.4" }}>
-                          <div style={{ color: "var(--text-secondary)" }}>
-                            <span style={{ color: "rgba(255,255,255,0.4)" }}>Created:</span><br/>
-                            {q.created_by || "System"}<br/>
-                            <span style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>
-                              {new Date(q.created_at).toLocaleDateString("en-PH", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        <td style={{ fontSize: "0.72rem", lineHeight: "1.3" }}>
+                          <div>
+                            <span style={{ color: "rgba(255,255,255,0.4)" }}>Created:</span> {q.created_by || "System"}{" "}
+                            <span style={{ color: "var(--text-muted)", fontSize: "0.68rem" }}>
+                              ({new Date(q.created_at).toLocaleDateString("en-PH", { month: "short", day: "numeric" })})
                             </span>
                           </div>
-                          <div style={{ color: "var(--text-secondary)", marginTop: 4 }}>
-                            <span style={{ color: "rgba(255,255,255,0.4)" }}>Edited:</span><br/>
-                            {q.updated_by || "System"}<br/>
-                            <span style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>
-                              {q.updated_at ? new Date(q.updated_at).toLocaleDateString("en-PH", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
+                          <div style={{ marginTop: 2 }}>
+                            <span style={{ color: "rgba(255,255,255,0.4)" }}>Edited:</span> {q.updated_by || "System"}{" "}
+                            <span style={{ color: "var(--text-muted)", fontSize: "0.68rem" }}>
+                              {q.updated_at ? `(${new Date(q.updated_at).toLocaleDateString("en-PH", { month: "short", day: "numeric" })})` : "—"}
                             </span>
                           </div>
                         </td>

@@ -2912,6 +2912,10 @@ a {
   overflow-x: auto;
   border-radius: 16px;
   border: 1px solid rgba(255,255,255,0.07);
+  scrollbar-width: none; /* Hide scrollbar for Firefox */
+}
+.admin-table-wrapper::-webkit-scrollbar {
+  display: none; /* Hide scrollbar for Chrome/Safari */
 }
 
 .admin-table {
@@ -2921,7 +2925,7 @@ a {
 }
 
 .admin-table thead th {
-  padding: 14px 16px;
+  padding: 10px 12px;
   text-align: left;
   font-size: 0.72rem;
   font-weight: 800;
@@ -2941,9 +2945,10 @@ a {
 .admin-table__row:hover { background: rgba(255,255,255,0.03); }
 
 .admin-table td {
-  padding: 14px 16px;
+  padding: 8px 12px;
   color: var(--text-secondary);
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .admin-table__num {
