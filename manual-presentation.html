@@ -694,7 +694,7 @@
               The journey begins at the <strong>Home Portal</strong> where your event attendees sign up.
             </p>
             <ul style="color: var(--text-muted); line-height: 1.8; padding-left: 20px; display: flex; flex-direction: column; gap: 8px;">
-              <li><strong>Sign Up:</strong> Attendees click "Register" and fill out a quick, mobile-friendly form with their Full Name, Email, and Phone Number.</li>
+              <li><strong>Sign Up:</strong> Attendees click "Register" and fill out a quick, mobile-friendly form with their Full Name, Email, and Phone Number. They must explicitly agree to the Data Privacy Policy and Marketing Data Gathering via dual checkboxes.</li>
               <li><strong>Social Media Gate:</strong> To boost your event's online presence, attendees must complete mandatory "Social Missions" (like following your Facebook page or joining a Telegram group).</li>
               <li><strong>Verification Countdown:</strong> When they click a social link, a smart 10-second countdown runs before they are verified.</li>
               <li><strong>QR Pass Generation:</strong> Once verified, the system generates a unique, secure QR Code ticket (e.g., <code>BQF-A72J9</code>) that they can screenshot and show at the event!</li>
@@ -713,8 +713,9 @@
             </p>
             <ul style="color: var(--text-muted); line-height: 1.8; padding-left: 20px; display: flex; flex-direction: column; gap: 8px;">
               <li><strong>Secure Login:</strong> Admins log in via a hidden portal using their secure credentials. The system automatically recognizes their role (Superadmin, Verifier, Viewer, etc.).</li>
-              <li><strong>Quest Builder:</strong> Navigate to the <strong>"⚡ Fiesta Event Quests"</strong> tab and click <strong>"+ Add Quest"</strong> to open the builder.</li>
+              <li><strong>Quest Builder:</strong> Navigate to the <strong>"⚡ Fiesta Event Quests"</strong> tab and click <strong>"+ Add Quest"</strong> to open the builder. Select categories like Onboarding, Social, Daily, or the new <strong>Quiz</strong> category.</li>
               <li><strong>Live Preview:</strong> As you type the Quest Title, Description, and XP Reward, a visual card on the right updates instantly to show exactly what attendees will see.</li>
+              <li><strong>Quiz Mode:</strong> If you select "Quiz Mode", you can configure a secret answer. Attendees must type the exact answer on their app to automatically claim their XP without admin verification!</li>
               <li><strong>Publishing:</strong> Save it as a "Draft" to hide it temporarily, or set it to "Live" to immediately broadcast it to all attendee phones at the venue!</li>
               <li><strong>Tracking:</strong> The system automatically logs exactly <em>which admin</em> created or edited the quest for full accountability.</li>
             </ul>
@@ -786,6 +787,12 @@
               <span class="feature-bullet" style="color: var(--blue);">✦</span>
               <div>
                 <strong>International Dial Selector:</strong> Includes custom country code selector (default +63 Philippines) with automatic digit sanitization.
+              </div>
+            </li>
+            <li class="feature-item">
+              <span class="feature-bullet" style="color: var(--blue);">✦</span>
+              <div>
+                <strong>Dual-Consent Architecture:</strong> Enforces distinct compliance checkboxes for both RA 10173 Data Privacy and explicit Marketing/Analytics consent before allowing registration.
               </div>
             </li>
             <li class="feature-item">

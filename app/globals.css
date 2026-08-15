@@ -2812,6 +2812,30 @@ a {
   padding: 20px 32px;
 }
 
+@media (max-width: 900px) {
+  .admin-tab-text {
+    display: none;
+  }
+  .admin-tab-icon {
+    font-size: 1.25rem;
+  }
+  .admin-tab-btn {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .admin-tabs {
+    gap: 8px;
+    overflow-x: auto;
+    padding: 16px 16px 0;
+    scrollbar-width: none; /* Hide scrollbar for Firefox */
+  }
+  .admin-tabs::-webkit-scrollbar {
+    display: none; /* Hide scrollbar for Chrome/Safari */
+  }
+}
+
 .admin-loading {
   color: var(--text-muted);
   padding: 40px;

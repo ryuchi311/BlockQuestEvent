@@ -34,6 +34,8 @@ interface Quest {
   sort_order: number;
   created_by?: string;
   updated_by?: string;
+  created_at: string;
+  updated_at?: string;
 }
 
 interface QuestVerification {
@@ -1122,19 +1124,36 @@ export default function AdminPage() {
             className={`admin-tab-btn${tab === t ? " admin-tab-btn--active" : ""}`}
             onClick={() => setTab(t)}
           >
-            {t === "scanner"
-              ? "📷 QR Scanner"
-              : t === "attendees"
-              ? "🎫 Event Pass Attendees"
-              : t === "quests"
-              ? "⚡ Fiesta Event Quests"
-              : t === "booths"
-              ? "🏪 Booth Stations"
-              : t === "staff"
-              ? "🛡️ Staff / Admins"
-              : t === "socials"
-              ? "📣 Social Missions"
-              : `🔍 Quest Verifications (${verifications.filter((v) => v.status === "Pending").length})`}
+            <span className="admin-tab-icon">
+              {t === "scanner"
+                ? "📷"
+                : t === "attendees"
+                ? "🎫"
+                : t === "quests"
+                ? "⚡"
+                : t === "booths"
+                ? "🏪"
+                : t === "staff"
+                ? "🛡️"
+                : t === "socials"
+                ? "📣"
+                : "🔍"}
+            </span>
+            <span className="admin-tab-text">
+              {t === "scanner"
+                ? " QR Scanner"
+                : t === "attendees"
+                ? " Event Pass Attendees"
+                : t === "quests"
+                ? " Fiesta Event Quests"
+                : t === "booths"
+                ? " Booth Stations"
+                : t === "staff"
+                ? " Staff / Admins"
+                : t === "socials"
+                ? " Social Missions"
+                : ` Quest Verifications (${verifications.filter((v) => v.status === "Pending").length})`}
+            </span>
           </button>
         ))}
       </div>
@@ -1442,11 +1461,17 @@ export default function AdminPage() {
                         <td style={{ fontSize: "0.75rem", lineHeight: "1.4" }}>
                           <div style={{ color: "var(--text-secondary)" }}>
                             <span style={{ color: "rgba(255,255,255,0.4)" }}>Created:</span><br/>
-                            {q.created_by || "System"}
+                            {q.created_by || "System"}<br/>
+                            <span style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>
+                              {new Date(q.created_at).toLocaleDateString("en-PH", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                            </span>
                           </div>
                           <div style={{ color: "var(--text-secondary)", marginTop: 4 }}>
                             <span style={{ color: "rgba(255,255,255,0.4)" }}>Edited:</span><br/>
-                            {q.updated_by || "System"}
+                            {q.updated_by || "System"}<br/>
+                            <span style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>
+                              {q.updated_at ? new Date(q.updated_at).toLocaleDateString("en-PH", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
+                            </span>
                           </div>
                         </td>
                         <td>
