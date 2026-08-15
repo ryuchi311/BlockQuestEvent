@@ -11,6 +11,7 @@ type RegistrationPayload = {
   organization?: string;
   password?: string;
   terms?: boolean;
+  dataGathering?: boolean;
 };
 
 export async function POST(request: Request) {
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
   const organization = payload.organization?.trim() || null;
   const password = payload.password ?? "";
 
-  if (!fullName || !email || !phone || !password || payload.terms !== true) {
+  if (!fullName || !email || !phone || !password || payload.terms !== true || payload.dataGathering !== true) {
     return NextResponse.json(
       { error: "Missing required registration details." },
       { status: 400 },
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
     organization,
     password_hash: hashPassword(password),
     agreed_to_terms: true,
+    agreed_to_data_gathering: true,
     agreed_at: new Date().toISOString(),
   });
 

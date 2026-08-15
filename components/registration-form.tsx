@@ -165,8 +165,9 @@ export default function RegistrationForm() {
     const phone = countryCode + mobileNum;
     const password = "blockquest2026";
     const terms = data.get("terms") === "on";
+    const dataGathering = data.get("data_gathering") === "on";
 
-    if (!fullName || !email || !mobileNum || !terms) {
+    if (!fullName || !email || !mobileNum || !terms || !dataGathering) {
       setStatus({
         type: "error",
         message: "Please complete all required fields correctly.",
@@ -190,6 +191,7 @@ export default function RegistrationForm() {
           organization,
           password,
           terms,
+          dataGathering,
         }),
       });
 
@@ -360,9 +362,16 @@ export default function RegistrationForm() {
 
 
         <label className="form__checkbox form__checkbox--privacy" suppressHydrationWarning>
+          <input name="data_gathering" type="checkbox" required className="form__checkbox-input" />
+          <span className="form__checkbox-text" suppressHydrationWarning>
+            I consent to the use of my data for event analytics, and agree to receive marketing updates and communications.
+          </span>
+        </label>
+
+        <label className="form__checkbox form__checkbox--privacy" suppressHydrationWarning style={{ marginTop: "12px", marginBottom: "16px" }}>
           <input name="terms" type="checkbox" required className="form__checkbox-input" />
           <span className="form__checkbox-text" suppressHydrationWarning>
-            I agree to the collection & processing of my personal data in accordance with the <strong>Data Privacy Act of 2012 (RA 10173)</strong> and the{" "}
+            I have read and agree to the <strong>Terms & Conditions</strong> and the{" "}
             <button
               type="button"
               onClick={(e) => {
@@ -371,7 +380,7 @@ export default function RegistrationForm() {
               }}
               className="privacy-modal-btn"
             >
-              Data Privacy Policy
+              Data Privacy Policy (RA 10173)
             </button>.
           </span>
         </label>

@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS public.registrations (
   organization TEXT,
   password_hash TEXT NOT NULL,
   agreed_to_terms BOOLEAN NOT NULL DEFAULT FALSE,
+  agreed_to_data_gathering BOOLEAN NOT NULL DEFAULT FALSE,
   agreed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
