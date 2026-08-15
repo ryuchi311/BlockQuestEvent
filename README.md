@@ -1,8 +1,8 @@
 # ⚡ BlockQuest Fiesta PH — Web Platform & Event Suite
 
-A full-stack, responsive event management and interactive gaming portal built for **BlockQuest Fiesta PH** (Manila's premier Web3 developer summit). 
+A full-stack, responsive event management, verification, and interactive gaming portal built for **BlockQuest Fiesta PH** (Manila's premier Web3 developer summit). 
 
-The suite provides end-to-end event operations—from attendee registration and instant QR entry pass generation to camera-based check-in scanners, admin analytics, and a gamified community questing experience.
+The suite provides end-to-end event operations—from attendee registration with legal compliance and instant QR pass generation, to high-speed entrance scanners, sponsor booth engagement stations, proof verification queues, and a mobile-first gamified questing experience.
 
 ---
 
@@ -10,81 +10,85 @@ The suite provides end-to-end event operations—from attendee registration and 
 
 | Portal | Route | Description |
 | :--- | :--- | :--- |
-| **🏠 Hero Portal** | `/` | Glassmorphic launchpad with dynamic interactive choice cards leading to tickets or game. |
-| **🎫 Ticket Desk** | `/register` | User registration form with instant QR entry pass (`BQF-XXXXXX`) generation and downloadable pass. |
-| **⚡ BlockQuest Game** | `/zealy` | Mobile-first gamified questing app featuring daily quests, XP levelling, rewards, and leaderboard. |
-| **📷 QR Scanner** | `/scan` | Live camera QR scanner (`html5-qrcode`) for event organizers & staff to check in attendees on-site. |
-| **⚙️ Admin Console** | `/admin` | Real-time attendee dashboard, compact stat metrics, search/filter, live check-in stats, and quest management. |
+| **🏠 Hero Portal** | `/` | Glassmorphic launchpad with interactive choice cards leading to tickets or game. |
+| **🎫 Ticket Desk** | `/register` | Mobile-friendly registration form with dual-consent privacy compliance, social media gating, and instant QR entry pass (`BQF-XXXXXX`) generation. |
+| **🎮 BlockQuest Game** | `/zealy` | Mobile-first gamified app featuring daily missions, trivia quizzes, passcodes, flash countdowns, locked quest chains, milestone badges, and live leaderboards. |
+| **📷 Gate Entrance Scanner** | `/scan` | Live camera QR scanner (`html5-qrcode`) for gate staff to validate passes and check in attendees in milliseconds. |
+| **🏪 Vendor Booth Scanner** | `/booth-scan` | Dedicated scanner for sponsor booths to award fixed XP (+150 XP) to attendees visiting stations with duplicate prevention. |
+| **⚙️ Admin Dashboard** | `/admin` | Complete operational control center: metrics, paginated attendees, quest builder, verifier queue, booth scanner logs, and staff provisioning. |
+| **🧭 Shortcut Hub** | `/shortcuts` | Central launcher bookmark for organizers, gate staff, and sponsors during live event operations. |
+| **📖 Interactive Manual** | `/manual-presentation.html` | Rich visual presentation guide, operational playbooks, architecture diagrams, and real-world configuration examples. |
 
 ---
 
-## 🔥 Latest Updates & Highlights
+## 🔥 Key Highlights & Recent Upgrades
 
-- **🚀 Upgraded to Next.js 16 (Turbopack)**: Powered by Next.js 16.3, React 19, and the new `proxy.ts` request routing architecture.
-- **📊 Compact Admin Dashboard (`/admin`)**: Sleek, single-row high-density stat cards display live stats (Total Attendees, Live Quests, Total XP Pool, Total Quests, and Checked In). Includes real-time status filtering (All / Checked In / Pending), 10s auto-refresh polling, manual one-click check-in overrides, and instant CSV data export (`blockquest_attendees.csv`).
-- **✨ Dark-Mode Glassmorphism Design System**: Modern visual hierarchy with glowing hover effects, HSL color tokens, custom typography, and responsive layouts across all viewports.
-- **📷 Camera QR Scanner (`/scan`)**: Integrated `html5-qrcode` engine with live camera feed switching, audio/visual check-in feedback, and instantaneous Supabase verification.
-- **🔒 Supabase SSR & Automatic Ticket Triggers**: Secure server-side authentication (`@supabase/ssr`), environment isolation, and automated database trigger (`trigger_set_ticket_code`) for generating collision-free `BQF-******` ticket codes upon registration.
-- **📷 Quest Proof Upload & Admin Verification**: Quests can optionally require screenshot proof (`requires_proof`). Players on `/zealy` upload image proof for tasks (e.g. social follows), and admins verify/approve them via the **🔍 Quest Verifications** queue in `/admin`.
-- **🚀 One-Click Windows Launcher**: Added `start-project.bat` and `create-shortcut.vbs` for single-click execution that auto-launches the Next.js dev server and opens the browser.
+### 1. 🎯 Next-Gen Quest Engine
+- **4 Verification Modes**:
+  - **⚡ Instant Claim**: 1-click XP points without verification.
+  - **📷 Screenshot Proof**: Attendees upload photos/screenshots; routed to the Verifier Queue for 1-click admin approval/rejection.
+  - **❓ Trivia Quiz Question**: Attendees enter secret answers (case-insensitive) to claim XP automatically.
+  - **🔑 Secret Passcode**: Attendees type a 4-to-8 character PIN revealed at sponsor booths or stage presentations.
+- **⏱️ Time-Limited Flash Quests**: Configurable expiration timestamp (`expires_at`) with a live ticking countdown timer on mobile (`⏳ 14m 30s remaining`).
+- **🔒 Prerequisite Quest Chains**: Quests can require completion of earlier quests (`depends_on_quest_id`) before unlocking.
+- **🏆 Milestone Achievement Badges**: Unlocks dynamic tier badges in user profiles as XP grows (🥉 Rookie, 🥈 Explorer, 🥇 Master, 👑 Fiesta Legend).
+- **✍️ 1-Click Quest Builder**: Includes 5 quick preset templates (Social Follow, Booth Passcode, Trivia Quiz, Stage Selfie, Instant Check-in), smart auto-slug ID generator, and a real-time live mobile preview.
+
+### 2. 🛡️ Role-Based Access Control (RBAC)
+Dedicated permissions across 6 operational staff roles:
+- **👑 Superadmin**: Full system access, staff provisioning, quest editing, attendee management, and data exports.
+- **💼 Event Manager**: Attendee check-in, quest management, and metric monitoring.
+- **📷 Gate Scanner**: Access restricted to entrance QR scanning and manual search fallback.
+- **🏪 Booth Staff**: Access restricted to `/booth-scan` station for logging attendee booth visits.
+- **🔍 Quest Verifier**: Access restricted to the Quest Verifications queue to review and approve photo proof.
+- **👁️ Viewer**: Read-only access to analytics and attendee lists.
+
+### 3. 📋 Data Privacy & Dual-Consent Architecture
+- Complies with Republic Act 10173 (Philippine Data Privacy Act).
+- Explicit dual-consent checkboxes on registration:
+  1. *Marketing & Sponsor Data Gathering Consent*
+  2. *Terms of Service & RA 10173 Privacy Policy Consent*
+- Both consent timestamps and boolean flags are persisted directly to PostgreSQL.
+
+### 4. 📱 Mobile-First Operations & High-Density UI
+- **Admin Mobile Tabs**: Compact, icon-first navigation designed for tablets and mobile devices on-site.
+- **Attendees Pagination**: Smooth paginated table with 10, 20, 50, or 100 rows per page to prevent lag with thousands of attendees.
+- **Compact Table Density**: Streamlined creator/editor timestamp tracking (`created_at`, `updated_at`).
 
 ---
 
 ## 🛠️ Tech Stack
 
 - **Framework**: Next.js 16 (App Router + Turbopack), React 19, TypeScript 5.9
-- **Request Routing**: Next.js 16 `proxy.ts` architecture
 - **Backend & Database**: Supabase (PostgreSQL, Row Level Security, `@supabase/ssr`, `@supabase/supabase-js`)
 - **QR Code Engine**: `qrcode` (Generation) & `html5-qrcode` (Live Camera Scanning)
 - **Styling**: Custom Glassmorphic Vanilla CSS Design System with dark mode primitives & micro-animations
-
----
-
-## 📋 System Requirements for Smooth Execution
-
-To ensure optimal performance, build reliability, and full camera/hardware API compatibility:
-
-| Requirement | Recommended Version / Specification | Notes |
-| :--- | :--- | :--- |
-| **Node.js** | `v20.x` or `v22.x` (LTS) | Next.js 16 requires Node 18.18+ (Node 20+ recommended). |
-| **npm** | `v10.x` or higher | Standard package manager shipped with Node LTS. |
-| **Browser** | Chrome, Edge, Brave, Safari, Firefox | Modern evergreen browser with WebRTC & MediaDevices support. |
-| **Camera Access** | HTTPS or `http://localhost` | Browser camera permission APIs for `/scan` require secure context. |
-| **Database** | Supabase PostgreSQL | Active project with RLS & Service Role Key configured in `.env.local`. |
+- **Request Routing**: Next.js 16 `proxy.ts` architecture
 
 ---
 
 ## 🚀 Installation & Setup Guide
 
 ### Step 1: Verify Prerequisites
-
-Check your local Node.js and npm versions:
 ```bash
 node -v   # Should output v20.x.x or v22.x.x
 npm -v    # Should output 10.x.x or higher
 ```
 
 ### Step 2: Clone & Install Dependencies
-
 ```bash
-# Clone the repository
 git clone <repository-url>
 cd BlockQuestEvent
-
-# Install node dependencies
 npm install
 ```
 
 ### Step 3: Configure Environment Variables
-
-Create your local environment file from the provided template:
-
+Create `.env.local` from the template:
 ```bash
 cp .env.example .env.local
 ```
 
-Open `.env.local` and fill in your Supabase project credentials:
-
+Fill in your Supabase credentials:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
@@ -92,32 +96,20 @@ SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 ```
 
-> **⚠️ Security Warning**: `SUPABASE_SERVICE_ROLE_KEY` has administrative privileges and bypasses RLS policies. Never commit this key or expose it to client-side bundles.
-
 ### Step 4: Setup Database Schema
-
-Log in to your [Supabase Dashboard](https://database.new) and execute the SQL script in `schema.sql` inside the **SQL Editor**:
-
-- Creates the `registrations` table.
-- Sets up automatic ticket code generation (`BQF-******`).
-- Installs indices for fast ticket and attendee search queries.
+Execute the SQL script in `schema.sql` inside your [Supabase SQL Editor](https://database.new).
 
 ### Step 5: Run the Application
 
-#### Development Mode:
 ```bash
+# Development Mode
 npm run dev
-```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-#### Production Build:
-```bash
+# Production Build
 npm run build
 npm start
 ```
-
-#### Option B: One-Click Windows Launcher
-On Windows, double-click `start-project.bat` in the root folder. It will start the server and open the web portal automatically in your default browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
@@ -125,25 +117,27 @@ On Windows, double-click `start-project.bat` in the root folder. It will start t
 
 ```
 BlockQuestEvent/
-├── app/                      # Next.js App Router Pages & API Endpoints
-│   ├── page.tsx              # Home / Portal Selection Screen
-│   ├── register/             # Attendee Registration & Ticket Pass Page
-│   ├── scan/                 # Live Camera QR Check-in Scanner
-│   ├── admin/                # Event Admin Dashboard
-│   ├── zealy/                # BlockQuest Mobile Game Page
-│   └── api/                  # Server-side API Routes (Auth, QR Check-in, Admin)
-├── components/               # Reusable React UI Components
-│   ├── registration-form.tsx # Interactive Registration & Ticket Pass UI
-│   ├── qr-scanner.tsx        # Camera scanning implementation
-│   ├── zealy-mobile-app.tsx  # Gamified Quests & Leaderboard component
-│   └── client-body-cleanup.tsx
-├── public/                   # Static assets & brand logos
-├── proxy.ts                  # Next.js 16 Request Proxy & Session Handler
-├── schema.sql                # PostgreSQL database schema & trigger functions
-├── start-project.bat         # One-click Windows startup script
-├── create-shortcut.vbs       # Windows desktop shortcut generator script
-├── .env.example              # Environment variables template
-└── README.md                 # Project documentation
+├── app/                        # Next.js App Router Pages & API Endpoints
+│   ├── page.tsx                # Home / Portal Selection Screen
+│   ├── register/               # Attendee Registration & Ticket Pass Page
+│   ├── scan/                   # Live Camera QR Gate Check-in Scanner
+│   ├── booth-scan/             # Sponsor Vendor Booth XP Scanner
+│   ├── admin/                  # Event Admin Dashboard (6 modules)
+│   ├── shortcuts/              # Event Operations Shortcut Hub
+│   ├── zealy/                  # BlockQuest Gamified Web App
+│   ├── stress-test/            # QA Load & Stress Testing Simulator
+│   └── api/                    # Server-side API Endpoints (Auth, Quests, Scan, Admin)
+├── components/                 # Reusable React UI Components
+│   ├── registration-form.tsx   # Dual-Consent Registration Form & QR Pass UI
+│   ├── qr-scanner.tsx          # Camera QR Scanner Engine
+│   └── zealy-mobile-app.tsx    # Mobile Quest App, Leaderboard & Badges
+├── public/                     # Static assets, brand logos, and presentation guides
+│   ├── manual-presentation.html# Interactive Presentation Manual
+│   └── assets/images/          # UI Screenshots & Assets
+├── manual-presentation.html    # Master Platform Presentation & Playbook
+├── schema.sql                  # PostgreSQL Schema, Triggers, & RLS Policies
+├── start-project.bat           # 1-Click Windows Server Startup Script
+└── README.md                   # Repository Documentation
 ```
 
 ---
