@@ -210,6 +210,10 @@ export async function PATCH(request: Request) {
         .eq("id", id)
         .single();
         
+      if (currentVerif && currentVerif.status !== "Pending") {
+        return NextResponse.json({ error: `Verification has already been processed by another admin (Status: ${currentVerif.status}).` }, { status: 409 });
+      }
+        
       // 2. Update the verification status
       const { data, error } = await supabase
         .from("quest_verifications")
@@ -247,6 +251,11 @@ export async function PATCH(request: Request) {
       }
     } catch {
       // Fallback
+    }
+
+    const existingMemoryItem = memoryVerifications.find((item) => item.id === id);
+    if (existingMemoryItem && existingMemoryItem.status !== "Pending") {
+      return NextResponse.json({ error: `Verification has already been processed by another admin (Status: ${existingMemoryItem.status}).` }, { status: 409 });
     }
 
     memoryVerifications = memoryVerifications.map((item) =>
