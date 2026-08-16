@@ -67,7 +67,7 @@ interface AdminUser {
 }
 
 
-const ADMIN_TABS = ["scanner", "attendees", "quests", "verifications", "messages", "socials", "booths", "staff"] as const;
+const ADMIN_TABS = ["scanner", "attendees", "quests", "verifications", "messages", "questlog", "socials", "booths", "staff"] as const;
 type AdminTab = (typeof ADMIN_TABS)[number];
 
 const STATUS_OPTIONS: Quest["status"][] = ["Live", "Soon", "Done", "Draft"];
@@ -215,6 +215,22 @@ export default function AdminPage() {
   const [messageNotes, setMessageNotes] = useState<QuestVerification[]>([]);
   const [messageSearch, setMessageSearch] = useState("");
   const [messageStatusFilter, setMessageStatusFilter] = useState<"all" | QuestVerification["status"]>("all");
+
+  // ── Quest Log customizable reporting table state ──
+  const [questLogSearch, setQuestLogSearch] = useState("");
+  const [questLogStatusFilter, setQuestLogStatusFilter] = useState<string>("all");
+  const [questLogCategoryFilter, setQuestLogCategoryFilter] = useState<string>("all");
+  const [visibleColumns, setVisibleColumns] = useState({
+    quester: true,
+    email: true,
+    ticket: true,
+    quest: true,
+    category: true,
+    xp: true,
+    type: true,
+    status: true,
+    date: true,
+  });
 
   // ── Quest modal ──
   const DRAFT_KEY = "blockquest_quest_draft";
@@ -1245,10 +1261,10 @@ export default function AdminPage() {
         {ADMIN_TABS.filter((t) => {
           const role = adminUser?.role;
           if (role === "superadmin") return true;
-          if (role === "verifier") return t === "verifications" || t === "messages";
-          if (role === "manage_attendees" || role === "manage_quester") return t === "scanner" || t === "attendees";
-          if (role === "admin") return t === "scanner" || t === "attendees" || t === "quests" || t === "verifications" || t === "messages" || t === "booths";
-          if (role === "viewer") return t === "scanner" || t === "attendees" || t === "quests" || t === "verifications" || t === "messages";
+          if (role === "verifier") return t === "verifications" || t === "messages" || t === "questlog";
+          if (role === "manage_attendees" || role === "manage_quester") return t === "scanner" || t === "attendees" || t === "questlog";
+          if (role === "admin") return t === "scanner" || t === "attendees" || t === "quests" || t === "verifications" || t === "messages" || t === "questlog" || t === "booths";
+          if (role === "viewer") return t === "scanner" || t === "attendees" || t === "quests" || t === "verifications" || t === "messages" || t === "questlog";
           return false;
         }).map((t) => (
           <button
@@ -1265,6 +1281,8 @@ export default function AdminPage() {
                 ? "⚡"
                 : t === "messages"
                 ? "💬"
+                : t === "questlog"
+                ? "📊"
                 : t === "booths"
                 ? "🏪"
                 : t === "staff"
@@ -1282,6 +1300,8 @@ export default function AdminPage() {
                 ? " Fiesta Event Quests"
                 : t === "messages"
                 ? ` Message Notes (${messageNotes.filter((v) => v.status === "Pending").length})`
+                : t === "questlog"
+                ? " Quest Log"
                 : t === "booths"
                 ? " Booth Stations"
                 : t === "staff"
@@ -2126,6 +2146,196 @@ export default function AdminPage() {
             </div>
           </>
         )}
+
+        {/* ─── QUEST LOG (CUSTOMIZABLE REPORTING TABLE) TAB ─── */}
+        {tab === "questlog" && !loading && (() => {
+          // Combine verifications and message notes into a single master audit log
+          const allLogs = [
+            ...verifications.map((v) => ({ ...v, logType: "Screenshot Proof" })),
+            ...messageNotes.map((m) => ({ ...m, logType: "Messagebox Note" })),
+          ];
+
+          const filteredLogs = allLogs.filter((item) => {
+            const query = questLogSearch.toLowerCase();
+            const matchesQuery =
+              !query ||
+              (item.user_name || "").toLowerCase().includes(query) ||
+              (item.user_email || "").toLowerCase().includes(query) ||
+              (item.quest_title || "").toLowerCase().includes(query) ||
+              (item.ticket_code || "").toLowerCase().includes(query);
+
+            if (!matchesQuery) return false;
+            if (questLogStatusFilter !== "all" && item.status !== questLogStatusFilter) return false;
+            return true;
+          });
+
+          const exportToCSV = () => {
+            const headers = ["Quester Name", "Email", "Ticket Code", "Quest Title", "XP", "Type", "Status", "Date"];
+            const rows = filteredLogs.map((item) => [
+              `"${item.user_name || ""}"`,
+              `"${item.user_email || ""}"`,
+              `"${item.ticket_code || ""}"`,
+              `"${item.quest_title || ""}"`,
+              item.xp || 0,
+              `"${item.logType}"`,
+              `"${item.status}"`,
+              `"${new Date(item.created_at).toLocaleString()}"`,
+            ]);
+            const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Quest_Audit_Report_${new Date().toISOString().slice(0, 10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          };
+
+          return (
+            <>
+              <div className="admin-toolbar" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <input
+                    type="text"
+                    placeholder="Search Quest Log (Name, Email, Title)..."
+                    value={questLogSearch}
+                    onChange={(e) => setQuestLogSearch(e.target.value)}
+                    className="admin-search-input"
+                    style={{ minWidth: 260 }}
+                  />
+                  <select
+                    value={questLogStatusFilter}
+                    onChange={(e) => setQuestLogStatusFilter(e.target.value)}
+                    className="admin-select-filter"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="Pending">Pending Review</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
+                </div>
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <button
+                    onClick={exportToCSV}
+                    className="admin-action-btn"
+                    style={{
+                      background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                      color: "#fff",
+                      fontWeight: 800,
+                      padding: "8px 16px",
+                      borderRadius: 10,
+                      border: "none",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6
+                    }}
+                  >
+                    📥 Export Report (CSV)
+                  </button>
+                  <button
+                    onClick={() => {
+                      fetchVerifications();
+                      fetchMessageNotes();
+                    }}
+                    className="admin-refresh-btn"
+                  >
+                    ↻ Refresh
+                  </button>
+                </div>
+              </div>
+
+              {/* Column Customizer Panel */}
+              <div style={{
+                background: "rgba(15, 23, 42, 0.7)",
+                border: "1px solid rgba(245, 166, 35, 0.25)",
+                borderRadius: 12,
+                padding: "12px 16px",
+                marginBottom: 16,
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
+                flexWrap: "wrap"
+              }}>
+                <span style={{ fontSize: "0.82rem", fontWeight: 800, color: "var(--gold-light)" }}>
+                  ⚙️ Customizable Columns:
+                </span>
+                {Object.keys(visibleColumns).map((col) => (
+                  <label key={col} style={{ fontSize: "0.8rem", color: "#fff", display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={(visibleColumns as any)[col]}
+                      onChange={(e) => setVisibleColumns({ ...visibleColumns, [col]: e.target.checked })}
+                    />
+                    {col.toUpperCase()}
+                  </label>
+                ))}
+              </div>
+
+              {/* Master Audit Table */}
+              <div className="admin-table-wrapper">
+                <div className="admin-table-header" style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <h2 style={{ fontSize: "1.15rem", margin: 0, color: "var(--gold-light)", display: "flex", alignItems: "center", gap: 8 }}>
+                    <span>📊</span> Master Quest Audit & Activity Log ({filteredLogs.length})
+                  </h2>
+                </div>
+
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      {visibleColumns.quester && <th>👤 Quester Name</th>}
+                      {visibleColumns.email && <th>📧 Email</th>}
+                      {visibleColumns.ticket && <th>🎫 Ticket</th>}
+                      {visibleColumns.quest && <th>⚡ Quest Title</th>}
+                      {visibleColumns.xp && <th>⭐ XP</th>}
+                      {visibleColumns.type && <th>🏷️ Type</th>}
+                      {visibleColumns.status && <th>📌 Status</th>}
+                      {visibleColumns.date && <th>📅 Date Submitted</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="admin-table__empty">
+                          📊 No log entries found matching criteria.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredLogs.map((item) => (
+                        <tr key={`${item.logType}-${item.id}`}>
+                          {visibleColumns.quester && <td style={{ fontWeight: 700, color: "#fff" }}>{item.user_name}</td>}
+                          {visibleColumns.email && <td style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>{item.user_email}</td>}
+                          {visibleColumns.ticket && <td style={{ color: "var(--gold-light)", fontSize: "0.82rem" }}>{item.ticket_code || "N/A"}</td>}
+                          {visibleColumns.quest && <td style={{ fontWeight: 700, color: "#c084fc" }}>{item.quest_title}</td>}
+                          {visibleColumns.xp && <td><span className="admin-xp-badge">+{item.xp} XP</span></td>}
+                          {visibleColumns.type && (
+                            <td>
+                              <span style={{ fontSize: "0.75rem", padding: "3px 8px", borderRadius: 8, background: "rgba(255,255,255,0.08)", color: "#e2e8f0" }}>
+                                {item.logType}
+                              </span>
+                            </td>
+                          )}
+                          {visibleColumns.status && (
+                            <td>
+                              <span className={`admin-status-badge ${item.status === "Approved" ? "admin-status-badge--live" : item.status === "Rejected" ? "admin-status-badge--done" : "admin-status-badge--soon"}`}>
+                                {item.status}
+                              </span>
+                            </td>
+                          )}
+                          {visibleColumns.date && (
+                            <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                              {new Date(item.created_at).toLocaleString()}
+                            </td>
+                          )}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          );
+        })()}
 
         {/* ─── STAFF TAB ─── */}
         {tab === "staff" && adminUser?.role === "superadmin" && !loading && (
