@@ -254,6 +254,10 @@ export default function AdminPage() {
   const [isCreatingMission, setIsCreatingMission] = useState(false);
   const [showAddMissionModal, setShowAddMissionModal] = useState(false);
 
+  const [editingSocialMission, setEditingSocialMission] = useState<any | null>(null);
+  const [editSocialMissionForm, setEditSocialMissionForm] = useState({ id: 0, platform: "facebook", title: "", description: "", url: "", button_text: "", button_color: "#1877f2", sort_order: 0 });
+  const [isUpdatingMission, setIsUpdatingMission] = useState(false);
+
   // ── Copy tooltip ──
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
@@ -987,6 +991,43 @@ export default function AdminPage() {
       setSocialMissions(prev => prev.filter(m => m.id !== id));
     } catch (err: any) {
       alert("Error: " + err.message);
+    }
+  }
+
+  function handleOpenEditSocialMission(mission: any) {
+    setEditingSocialMission(mission);
+    setEditSocialMissionForm({
+      id: mission.id,
+      platform: mission.platform || "facebook",
+      title: mission.title || "",
+      description: mission.description || "",
+      url: mission.url || "",
+      button_text: mission.button_text || "",
+      button_color: mission.button_color || "#1877f2",
+      sort_order: mission.sort_order || 0,
+    });
+  }
+
+  async function handleUpdateSocialMission(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingSocialMission) return;
+    setIsUpdatingMission(true);
+    try {
+      const res = await fetch("/api/admin/social-missions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editSocialMissionForm),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to update mission");
+
+      setSocialMissions(prev => prev.map(m => m.id === editSocialMissionForm.id ? (json.mission || editSocialMissionForm) : m));
+      setEditingSocialMission(null);
+      alert("Social mission updated successfully!");
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setIsUpdatingMission(false);
     }
   }
 
@@ -1969,7 +2010,13 @@ export default function AdminPage() {
                           <a href={mission.url} target="_blank" rel="noreferrer" style={{ color: "var(--gold-light)", textDecoration: "underline" }}>View Link</a>
                         </td>
                         <td>{mission.sort_order}</td>
-                        <td>
+                        <td style={{ display: "flex", gap: 6 }}>
+                          <button 
+                            className="admin-edit-btn" 
+                            onClick={() => handleOpenEditSocialMission(mission)}
+                          >
+                            Edit
+                          </button>
                           <button 
                             className="admin-delete-btn" 
                             onClick={() => handleDeleteSocialMission(mission.id)}
@@ -1987,115 +2034,277 @@ export default function AdminPage() {
             {/* Add Mission Form (Modal) */}
             {showAddMissionModal && (
               <div className="admin-modal-overlay" onClick={() => setShowAddMissionModal(false)}>
-                <div className="admin-modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
-                  <div className="admin-modal-header">
-                    <h2>Add Social Mission</h2>
-                    <button className="admin-modal-close" onClick={() => setShowAddMissionModal(false)}>✕</button>
+                <div className="admin-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+                  <div className="admin-modal__header" style={{ padding: "20px 24px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <h2 style={{ fontSize: "1.15rem", margin: 0, color: "#fff", display: "flex", alignItems: "center", gap: 8 }}>
+                      <span>📣</span> Add Social Mission
+                    </h2>
+                    <button className="admin-modal__close" onClick={() => setShowAddMissionModal(false)}>✕</button>
                   </div>
                   
-                  <div className="admin-modal-body">
-                    <form onSubmit={handleCreateSocialMission} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <form onSubmit={handleCreateSocialMission} style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+                    <label className="qf-label">
+                      Platform Type *
+                      <select 
+                        className="qf-input" 
+                        value={newSocialMissionForm.platform}
+                        onChange={(e) => setNewSocialMissionForm(f => ({ ...f, platform: e.target.value }))}
+                        style={{ padding: "12px", cursor: "pointer", background: "#0e131f", color: "#fff" }}
+                      >
+                        <option value="facebook">Facebook</option>
+                        <option value="telegram">Telegram</option>
+                        <option value="twitter">Twitter / X</option>
+                        <option value="discord">Discord</option>
+                        <option value="globe">Website / Other</option>
+                      </select>
+                    </label>
+
+                    <label className="qf-label">
+                      Mission Title *
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Follow BlockQuest on Facebook"
+                        className="qf-input"
+                        value={newSocialMissionForm.title}
+                        onChange={(e) => setNewSocialMissionForm(f => ({ ...f, title: e.target.value }))}
+                      />
+                    </label>
+
+                    <label className="qf-label">
+                      Description *
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Follow our official page for updates"
+                        className="qf-input"
+                        value={newSocialMissionForm.description}
+                        onChange={(e) => setNewSocialMissionForm(f => ({ ...f, description: e.target.value }))}
+                      />
+                    </label>
+
+                    <label className="qf-label">
+                      Target URL *
+                      <input
+                        type="url"
+                        required
+                        placeholder="https://facebook.com/..."
+                        className="qf-input"
+                        value={newSocialMissionForm.url}
+                        onChange={(e) => setNewSocialMissionForm(f => ({ ...f, url: e.target.value }))}
+                      />
+                    </label>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <label className="qf-label">
-                        Platform Type
-                        <select 
-                          className="admin-login-input" 
-                          value={newSocialMissionForm.platform}
-                          onChange={(e) => setNewSocialMissionForm(f => ({ ...f, platform: e.target.value }))}
-                          style={{ padding: "12px", cursor: "pointer" }}
-                        >
-                          <option value="facebook">Facebook</option>
-                          <option value="telegram">Telegram</option>
-                          <option value="twitter">Twitter / X</option>
-                          <option value="discord">Discord</option>
-                          <option value="globe">Website / Other</option>
-                        </select>
-                      </label>
-                      <label className="qf-label">
-                        Title
-                        <input
-                          type="text"
-                          required
-                          placeholder="e.g. Facebook Page"
-                          className="admin-login-input"
-                          value={newSocialMissionForm.title}
-                          onChange={(e) => setNewSocialMissionForm(f => ({ ...f, title: e.target.value }))}
-                        />
-                      </label>
-                      <label className="qf-label">
-                        Description
-                        <input
-                          type="text"
-                          required
-                          placeholder="e.g. Follow BRGY Tamago"
-                          className="admin-login-input"
-                          value={newSocialMissionForm.description}
-                          onChange={(e) => setNewSocialMissionForm(f => ({ ...f, description: e.target.value }))}
-                        />
-                      </label>
-                      <label className="qf-label">
-                        Target URL
-                        <input
-                          type="url"
-                          required
-                          placeholder="https://..."
-                          className="admin-login-input"
-                          value={newSocialMissionForm.url}
-                          onChange={(e) => setNewSocialMissionForm(f => ({ ...f, url: e.target.value }))}
-                        />
-                      </label>
-                      <label className="qf-label">
-                        Button Text
+                        Button Text *
                         <input
                           type="text"
                           required
                           placeholder="e.g. Follow FB →"
-                          className="admin-login-input"
+                          className="qf-input"
                           value={newSocialMissionForm.button_text}
                           onChange={(e) => setNewSocialMissionForm(f => ({ ...f, button_text: e.target.value }))}
                         />
                       </label>
+
                       <label className="qf-label">
-                        Button Color (Hex)
+                        Button Color (Hex) *
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+                          <span style={{ 
+                            width: 28, 
+                            height: 28, 
+                            borderRadius: "50%", 
+                            backgroundColor: newSocialMissionForm.button_color || "#1877f2",
+                            border: "2px solid rgba(255,255,255,0.2)",
+                            flexShrink: 0 
+                          }} />
+                          <input
+                            type="text"
+                            required
+                            placeholder="#1877f2"
+                            className="qf-input"
+                            style={{ flex: 1 }}
+                            value={newSocialMissionForm.button_color}
+                            onChange={(e) => setNewSocialMissionForm(f => ({ ...f, button_color: e.target.value }))}
+                          />
+                        </div>
+                      </label>
+                    </div>
+
+                    <label className="qf-label">
+                      Sort Order
+                      <input
+                        type="number"
+                        required
+                        className="qf-input"
+                        value={newSocialMissionForm.sort_order}
+                        onChange={(e) => setNewSocialMissionForm(f => ({ ...f, sort_order: parseInt(e.target.value) || 0 }))}
+                      />
+                    </label>
+
+                    <div className="admin-modal__footer" style={{ marginTop: 10, display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                      <button type="button" className="admin-cancel-btn" onClick={() => setShowAddMissionModal(false)}>
+                        Cancel
+                      </button>
+                      <button 
+                        type="submit" 
+                        className="admin-save-btn" 
+                        style={{
+                          background: "linear-gradient(135deg, #1877f2, #0056b3)",
+                          color: "#fff",
+                          border: "none",
+                          padding: "10px 20px",
+                          borderRadius: 8,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          transition: "all 0.2s ease"
+                        }}
+                        disabled={isCreatingMission}
+                      >
+                        {isCreatingMission ? "Creating..." : "Save Mission"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* Edit Mission Form (Modal) */}
+            {editingSocialMission && (
+              <div className="admin-modal-overlay" onClick={() => setEditingSocialMission(null)}>
+                <div className="admin-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+                  <div className="admin-modal__header" style={{ padding: "20px 24px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <h2 style={{ fontSize: "1.15rem", margin: 0, color: "#fff", display: "flex", alignItems: "center", gap: 8 }}>
+                      <span>✏️</span> Edit Social Mission
+                    </h2>
+                    <button className="admin-modal__close" onClick={() => setEditingSocialMission(null)}>✕</button>
+                  </div>
+                  
+                  <form onSubmit={handleUpdateSocialMission} style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+                    <label className="qf-label">
+                      Platform Type *
+                      <select 
+                        className="qf-input" 
+                        value={editSocialMissionForm.platform}
+                        onChange={(e) => setEditSocialMissionForm(f => ({ ...f, platform: e.target.value }))}
+                        style={{ padding: "12px", cursor: "pointer", background: "#0e131f", color: "#fff" }}
+                      >
+                        <option value="facebook">Facebook</option>
+                        <option value="telegram">Telegram</option>
+                        <option value="twitter">Twitter / X</option>
+                        <option value="discord">Discord</option>
+                        <option value="globe">Website / Other</option>
+                      </select>
+                    </label>
+
+                    <label className="qf-label">
+                      Mission Title *
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Follow BlockQuest on Facebook"
+                        className="qf-input"
+                        value={editSocialMissionForm.title}
+                        onChange={(e) => setEditSocialMissionForm(f => ({ ...f, title: e.target.value }))}
+                      />
+                    </label>
+
+                    <label className="qf-label">
+                      Description *
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Follow our official page for updates"
+                        className="qf-input"
+                        value={editSocialMissionForm.description}
+                        onChange={(e) => setEditSocialMissionForm(f => ({ ...f, description: e.target.value }))}
+                      />
+                    </label>
+
+                    <label className="qf-label">
+                      Target URL *
+                      <input
+                        type="url"
+                        required
+                        placeholder="https://facebook.com/..."
+                        className="qf-input"
+                        value={editSocialMissionForm.url}
+                        onChange={(e) => setEditSocialMissionForm(f => ({ ...f, url: e.target.value }))}
+                      />
+                    </label>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <label className="qf-label">
+                        Button Text *
                         <input
                           type="text"
                           required
-                          placeholder="#1877f2"
-                          className="admin-login-input"
-                          value={newSocialMissionForm.button_color}
-                          onChange={(e) => setNewSocialMissionForm(f => ({ ...f, button_color: e.target.value }))}
+                          placeholder="e.g. Follow FB →"
+                          className="qf-input"
+                          value={editSocialMissionForm.button_text}
+                          onChange={(e) => setEditSocialMissionForm(f => ({ ...f, button_text: e.target.value }))}
                         />
                       </label>
+
                       <label className="qf-label">
-                        Sort Order
-                        <input
-                          type="number"
-                          required
-                          className="admin-login-input"
-                          value={newSocialMissionForm.sort_order}
-                          onChange={(e) => setNewSocialMissionForm(f => ({ ...f, sort_order: parseInt(e.target.value) || 0 }))}
-                        />
+                        Button Color (Hex) *
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+                          <span style={{ 
+                            width: 28, 
+                            height: 28, 
+                            borderRadius: "50%", 
+                            backgroundColor: editSocialMissionForm.button_color || "#1877f2",
+                            border: "2px solid rgba(255,255,255,0.2)",
+                            flexShrink: 0 
+                          }} />
+                          <input
+                            type="text"
+                            required
+                            placeholder="#1877f2"
+                            className="qf-input"
+                            style={{ flex: 1 }}
+                            value={editSocialMissionForm.button_color}
+                            onChange={(e) => setEditSocialMissionForm(f => ({ ...f, button_color: e.target.value }))}
+                          />
+                        </div>
                       </label>
-                    </form>
-                  </div>
-                  
-                  <div className="admin-modal-footer">
-                    <button className="admin-modal-cancel" onClick={() => setShowAddMissionModal(false)}>
-                      Cancel
-                    </button>
-                    <button className="admin-modal-save" onClick={(e) => {
-                      // Trigger form submission
-                      const form = e.currentTarget.parentElement?.previousElementSibling?.querySelector('form');
-                      if (form) {
-                        if (form.checkValidity()) {
-                          form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-                        } else {
-                          form.reportValidity();
-                        }
-                      }
-                    }} disabled={isCreatingMission}>
-                      {isCreatingMission ? "Creating..." : "Save Mission"}
-                    </button>
-                  </div>
+                    </div>
+
+                    <label className="qf-label">
+                      Sort Order
+                      <input
+                        type="number"
+                        required
+                        className="qf-input"
+                        value={editSocialMissionForm.sort_order}
+                        onChange={(e) => setEditSocialMissionForm(f => ({ ...f, sort_order: parseInt(e.target.value) || 0 }))}
+                      />
+                    </label>
+
+                    <div className="admin-modal__footer" style={{ marginTop: 10, display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                      <button type="button" className="admin-cancel-btn" onClick={() => setEditingSocialMission(null)}>
+                        Cancel
+                      </button>
+                      <button 
+                        type="submit" 
+                        className="admin-save-btn" 
+                        style={{
+                          background: "linear-gradient(135deg, #f5a623, #d97706)",
+                          color: "#000",
+                          border: "none",
+                          padding: "10px 20px",
+                          borderRadius: 8,
+                          fontWeight: 800,
+                          cursor: "pointer",
+                          transition: "all 0.2s ease"
+                        }}
+                        disabled={isUpdatingMission}
+                      >
+                        {isUpdatingMission ? "Saving..." : "Update Mission"}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
             )}

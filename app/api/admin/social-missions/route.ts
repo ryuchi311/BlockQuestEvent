@@ -55,3 +55,37 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
+// PATCH - Update an existing social mission
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, platform, title, description, url, button_text, button_color, sort_order } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: "Mission ID is required" }, { status: 400 });
+    }
+
+    const updatePayload: Record<string, any> = {};
+    if (platform !== undefined) updatePayload.platform = platform;
+    if (title !== undefined) updatePayload.title = title;
+    if (description !== undefined) updatePayload.description = description;
+    if (url !== undefined) updatePayload.url = url;
+    if (button_text !== undefined) updatePayload.button_text = button_text;
+    if (button_color !== undefined) updatePayload.button_color = button_color;
+    if (sort_order !== undefined) updatePayload.sort_order = sort_order;
+
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from("social_missions")
+      .update(updatePayload)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return NextResponse.json({ mission: data });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
