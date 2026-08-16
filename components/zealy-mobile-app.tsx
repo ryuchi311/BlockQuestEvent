@@ -336,6 +336,7 @@ export default function ZealyMobileApp() {
           actionUrl: q.action_url || undefined,
           requiresProof: !!q.requires_proof,
           requiresMessage: !!q.requires_message,
+          passcode: q.passcode || undefined,
           is_quiz: !!q.is_quiz,
         }));
 
