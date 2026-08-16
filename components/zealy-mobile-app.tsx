@@ -1526,8 +1526,8 @@ export default function ZealyMobileApp() {
           </nav>
           {selectedQuest && (
             <div className="modal-overlay">
-              <div className="modal-content">
-                <div className="modal-header">
+              <div className="modal-content" style={{ maxHeight: "85vh", overflowY: "auto", overscrollBehavior: "contain" }}>
+                <div className="modal-header" style={{ position: "sticky", top: 0, background: "rgba(22, 22, 40, 0.95)", backdropFilter: "blur(8px)", zIndex: 10, paddingTop: 4, paddingBottom: 6, marginTop: -6 }}>
                   <h2>{selectedQuest.title}</h2>
                   <button
                     className="modal-close-btn"
