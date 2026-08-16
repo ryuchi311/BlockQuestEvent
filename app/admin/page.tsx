@@ -29,6 +29,7 @@ interface Quest {
   action_label: string | null;
   action_url: string | null;
   requires_proof?: boolean;
+  requires_message?: boolean;
   is_quiz?: boolean;
   quiz_answer?: string;
   quiz_options?: string[];
@@ -52,6 +53,7 @@ interface QuestVerification {
   ticket_code: string | null;
   xp: number;
   proof_url: string;
+  user_message?: string | null;
   status: "Pending" | "Approved" | "Rejected";
   rejection_reason?: string | null;
   created_at: string;
@@ -65,7 +67,7 @@ interface AdminUser {
 }
 
 
-const ADMIN_TABS = ["scanner", "attendees", "quests", "verifications", "socials", "booths", "staff"] as const;
+const ADMIN_TABS = ["scanner", "attendees", "quests", "verifications", "messages", "socials", "booths", "staff"] as const;
 type AdminTab = (typeof ADMIN_TABS)[number];
 
 const STATUS_OPTIONS: Quest["status"][] = ["Live", "Soon", "Done", "Draft"];
@@ -81,6 +83,7 @@ const EMPTY_QUEST: Omit<Quest, "created_at" | "updated_at"> = {
   action_label: "",
   action_url: "",
   requires_proof: false,
+  requires_message: false,
   is_quiz: false,
   quiz_answer: "",
   quiz_options: [],
@@ -207,6 +210,11 @@ export default function AdminPage() {
   // ── Verification search & filter ──
   const [verificationSearch, setVerificationSearch] = useState("");
   const [verificationStatusFilter, setVerificationStatusFilter] = useState<"all" | QuestVerification["status"]>("all");
+
+  // ── Message Notes state & search filter ──
+  const [messageNotes, setMessageNotes] = useState<QuestVerification[]>([]);
+  const [messageSearch, setMessageSearch] = useState("");
+  const [messageStatusFilter, setMessageStatusFilter] = useState<"all" | QuestVerification["status"]>("all");
 
   // ── Quest modal ──
   const DRAFT_KEY = "blockquest_quest_draft";
@@ -364,6 +372,21 @@ export default function AdminPage() {
     }
   }, []);
 
+  const fetchMessageNotes = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/messages");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to load message notes.");
+      setMessageNotes(json.messages ?? []);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const fetchAdminUsers = useCallback(async () => {
     if (adminUser?.role !== "superadmin" && adminUser?.role !== "admin") return;
     setLoading(true);
@@ -402,7 +425,8 @@ export default function AdminPage() {
     fetchAttendees();
     fetchQuests();
     fetchVerifications();
-  }, [authed, fetchAttendees, fetchQuests, fetchVerifications]);
+    fetchMessageNotes();
+  }, [authed, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes]);
 
   // Refresh current tab data when switching tabs
   useEffect(() => {
@@ -432,7 +456,7 @@ export default function AdminPage() {
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
-  async function handleVerifyQuest(id: number, newStatus: "Approved" | "Rejected", reason?: string) {
+  async function handleVerifyQuest(id: number, newStatus: "Approved" | "Rejected" | "Pending", reason?: string) {
     try {
       const res = await fetch("/api/admin/verifications", {
         method: "PATCH",
@@ -446,6 +470,23 @@ export default function AdminPage() {
       );
     } catch (err: any) {
       alert("Verification Error: " + err.message);
+    }
+  }
+
+  async function handleVerifyMessage(id: number, newStatus: "Approved" | "Rejected" | "Pending", reason?: string) {
+    try {
+      const res = await fetch("/api/admin/messages", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: newStatus, rejection_reason: reason }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to update message note.");
+      setMessageNotes((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, status: newStatus, rejection_reason: reason || null } : item))
+      );
+    } catch (err: any) {
+      alert("Message Note Verification Error: " + err.message);
     }
   }
 
@@ -489,8 +530,11 @@ export default function AdminPage() {
     return true;
   });
 
-  // ─── Verification helpers ────────────────────────────────────────────────
+  // ─── Verification helpers (Screenshot proofs ONLY) ─────────────────────────
   const filteredVerifications = verifications.filter((v) => {
+    // Strictly exclude any items with a user_message from the Quest Verifications tab
+    if (v.user_message) return false;
+
     const query = verificationSearch.toLowerCase();
     const matchesQuery =
       !query ||
@@ -502,6 +546,22 @@ export default function AdminPage() {
 
     if (!matchesQuery) return false;
     if (verificationStatusFilter !== "all" && v.status !== verificationStatusFilter) return false;
+    return true;
+  });
+
+  // ─── Message Notes helpers (Text Notes ONLY) ───────────────────────────────
+  const filteredMessageVerifications = messageNotes.filter((v) => {
+    const query = messageSearch.toLowerCase();
+    const matchesQuery =
+      !query ||
+      v.user_name.toLowerCase().includes(query) ||
+      v.user_email.toLowerCase().includes(query) ||
+      v.quest_title.toLowerCase().includes(query) ||
+      (v.user_message ?? "").toLowerCase().includes(query) ||
+      (v.ticket_code ?? "").toLowerCase().includes(query);
+
+    if (!matchesQuery) return false;
+    if (messageStatusFilter !== "all" && v.status !== messageStatusFilter) return false;
     return true;
   });
 
@@ -628,6 +688,7 @@ export default function AdminPage() {
       action_label: q.action_label ?? "",
       action_url: q.action_url ?? "",
       requires_proof: q.requires_proof ?? false,
+      requires_message: q.requires_message ?? false,
       is_quiz: q.is_quiz ?? false,
       quiz_answer: q.quiz_answer ?? "",
       passcode: q.passcode ?? "",
@@ -1184,10 +1245,10 @@ export default function AdminPage() {
         {ADMIN_TABS.filter((t) => {
           const role = adminUser?.role;
           if (role === "superadmin") return true;
-          if (role === "verifier") return t === "verifications";
+          if (role === "verifier") return t === "verifications" || t === "messages";
           if (role === "manage_attendees" || role === "manage_quester") return t === "scanner" || t === "attendees";
-          if (role === "admin") return t === "scanner" || t === "attendees" || t === "quests" || t === "verifications" || t === "booths";
-          if (role === "viewer") return t === "scanner" || t === "attendees" || t === "quests" || t === "verifications";
+          if (role === "admin") return t === "scanner" || t === "attendees" || t === "quests" || t === "verifications" || t === "messages" || t === "booths";
+          if (role === "viewer") return t === "scanner" || t === "attendees" || t === "quests" || t === "verifications" || t === "messages";
           return false;
         }).map((t) => (
           <button
@@ -1202,6 +1263,8 @@ export default function AdminPage() {
                 ? "🎫"
                 : t === "quests"
                 ? "⚡"
+                : t === "messages"
+                ? "💬"
                 : t === "booths"
                 ? "🏪"
                 : t === "staff"
@@ -1217,13 +1280,15 @@ export default function AdminPage() {
                 ? " Event Pass Attendees"
                 : t === "quests"
                 ? " Fiesta Event Quests"
+                : t === "messages"
+                ? ` Message Notes (${messageNotes.filter((v) => v.status === "Pending").length})`
                 : t === "booths"
                 ? " Booth Stations"
                 : t === "staff"
                 ? " Staff / Admins"
                 : t === "socials"
                 ? " Social Missions"
-                : ` Quest Verifications (${verifications.filter((v) => v.status === "Pending").length})`}
+                : ` Quest Verifications (${verifications.filter((v) => !v.user_message && v.status === "Pending").length})`}
             </span>
           </button>
         ))}
@@ -1755,7 +1820,7 @@ export default function AdminPage() {
                           <span className="admin-xp-badge">+{v.xp} XP</span>
                         </td>
                         <td>
-                          {v.proof_url ? (
+                          {v.proof_url && v.proof_url !== "Text Submission" ? (
                             <div
                               onClick={() => setSelectedProofImage(v.proof_url)}
                               style={{ cursor: "pointer", display: "inline-block" }}
@@ -1774,7 +1839,22 @@ export default function AdminPage() {
                               />
                             </div>
                           ) : (
-                            <span className="admin-table__muted">No image</span>
+                            <span className="admin-table__muted" style={{ fontSize: "0.75rem" }}>💬 Text Only</span>
+                          )}
+                          {v.user_message && (
+                            <div style={{
+                              marginTop: 6,
+                              padding: "6px 10px",
+                              background: "rgba(245, 166, 35, 0.12)",
+                              border: "1px solid rgba(245, 166, 35, 0.35)",
+                              borderRadius: 8,
+                              fontSize: "0.8rem",
+                              color: "#fff",
+                              maxWidth: 240,
+                              wordBreak: "break-word"
+                            }}>
+                              💬 <strong>Message:</strong> "{v.user_message}"
+                            </div>
                           )}
                         </td>
                         <td className="admin-table__muted">
@@ -1804,32 +1884,238 @@ export default function AdminPage() {
                           )}
                         </td>
                         <td>
-                          {v.status === "Pending" ? (
-                            adminUser?.role === "viewer" ? (
-                              <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>Read-only</span>
-                            ) : (
-                              <div style={{ display: "flex", gap: 8 }}>
-                                <button
-                                  className="admin-edit-btn"
-                                  onClick={() => handleVerifyQuest(v.id, "Approved")}
-                                  style={{ background: "rgba(16, 185, 129, 0.2)", borderColor: "rgba(16, 185, 129, 0.4)", color: "#34d399" }}
-                                >
-                                  ✓ Verify
-                                </button>
-                                <button
-                                  className="admin-delete-btn"
-                                  onClick={() => {
-                                    setRejectingItem(v);
-                                    setRejectionReasonInput("");
-                                  }}
-                                  style={{ background: "rgba(239, 68, 68, 0.2)", borderColor: "rgba(239, 68, 68, 0.4)", color: "#ef4444" }}
-                                >
-                                  ✕ Reject
-                                </button>
-                              </div>
-                            )
+                          {adminUser?.role === "viewer" ? (
+                            <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>Read-only</span>
                           ) : (
-                            <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>Reviewed</span>
+                            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                              <button
+                                className="admin-edit-btn"
+                                onClick={() => handleVerifyQuest(v.id, "Approved")}
+                                style={{
+                                  background: v.status === "Approved" ? "rgba(16, 185, 129, 0.35)" : "rgba(16, 185, 129, 0.15)",
+                                  borderColor: "rgba(16, 185, 129, 0.4)",
+                                  color: "#34d399",
+                                  padding: "6px 12px",
+                                  fontSize: "0.78rem",
+                                  cursor: "pointer"
+                                }}
+                              >
+                                {v.status === "Approved" ? "✓ Approved (Re-approve)" : "✓ Approve"}
+                              </button>
+                              <button
+                                className="admin-delete-btn"
+                                onClick={() => {
+                                  setRejectingItem(v);
+                                  setRejectionReasonInput(v.rejection_reason || "");
+                                }}
+                                style={{
+                                  background: v.status === "Rejected" ? "rgba(239, 68, 68, 0.35)" : "rgba(239, 68, 68, 0.15)",
+                                  borderColor: "rgba(239, 68, 68, 0.4)",
+                                  color: "#ef4444",
+                                  padding: "6px 12px",
+                                  fontSize: "0.78rem",
+                                  cursor: "pointer"
+                                }}
+                              >
+                                {v.status === "Rejected" ? "✕ Rejected" : "✕ Reject"}
+                              </button>
+                              {v.status !== "Pending" && (
+                                <button
+                                  className="admin-refresh-btn"
+                                  onClick={() => handleVerifyQuest(v.id, "Pending")}
+                                  title="Reset status back to Pending"
+                                  style={{ padding: "6px 10px", fontSize: "0.75rem" }}
+                                >
+                                  🔄 Reset to Pending
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        {/* ─── MESSAGES TAB ─── */}
+        {tab === "messages" && !loading && (
+          <>
+            <div className="admin-toolbar" style={{ flexWrap: "wrap", gap: 10 }}>
+              <input
+                type="search"
+                placeholder="Search messages by text, quester name, email or quest title..."
+                value={messageSearch}
+                onChange={(e) => setMessageSearch(e.target.value)}
+                className="admin-search-input"
+                style={{ flex: 1, minWidth: 260 }}
+              />
+
+              <select
+                className="admin-filter-select"
+                value={messageStatusFilter}
+                onChange={(e) => setMessageStatusFilter(e.target.value as any)}
+              >
+                <option value="all">All Message Statuses</option>
+                <option value="Pending">⏳ Pending Only</option>
+                <option value="Approved">✓ Approved Only</option>
+                <option value="Rejected">✕ Rejected Only</option>
+              </select>
+
+              <button className="admin-refresh-btn" onClick={fetchVerifications} title="Refresh Messages">
+                ↻ Refresh
+              </button>
+            </div>
+
+            <div className="admin-table-wrapper">
+              <div className="admin-table-header" style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <h2 style={{ fontSize: "1.15rem", margin: 0, color: "var(--gold-light)", display: "flex", alignItems: "center", gap: 8 }}>
+                  <span>💬</span> Attendee Message Notes ({filteredMessageVerifications.length})
+                </h2>
+                <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                  Showing text notes submitted by questers
+                </span>
+              </div>
+
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>👤 Quester</th>
+                    <th>⚡ Quest</th>
+                    <th>💬 Messagebox Note</th>
+                    <th>📅 Submitted</th>
+                    <th>🏷️ Status</th>
+                    <th>⚙️ Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredMessageVerifications.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="admin-table__empty">
+                        💬 No attendee message notes found.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredMessageVerifications.map((v) => (
+                      <tr key={v.id}>
+                        <td>
+                          <div style={{ fontWeight: 700, color: "#fff", fontSize: "0.95rem" }}>{v.user_name}</div>
+                          <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>{v.user_email}</div>
+                          {v.ticket_code && (
+                            <div style={{ fontSize: "0.72rem", color: "var(--gold-light)", marginTop: 2 }}>
+                              🎫 {v.ticket_code}
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 700, color: "#c084fc", fontSize: "0.9rem" }}>⚡ {v.quest_title}</div>
+                          <span className="admin-xp-badge" style={{ marginTop: 4, display: "inline-block" }}>+{v.xp} XP</span>
+                        </td>
+                        <td>
+                          <div style={{
+                            background: "radial-gradient(ellipse at 50% 0%, rgba(245, 166, 35, 0.14) 0%, rgba(14, 19, 31, 0.95) 100%)",
+                            border: "1px solid rgba(245, 166, 35, 0.4)",
+                            borderRadius: 10,
+                            padding: "10px 14px",
+                            color: "#f8fafc",
+                            fontSize: "0.88rem",
+                            lineHeight: 1.5,
+                            maxWidth: 380,
+                            wordBreak: "break-word",
+                            boxShadow: "0 4px 14px rgba(0,0,0,0.3)"
+                          }}>
+                            💬 "{v.user_message}"
+                          </div>
+                          {v.proof_url && (v.proof_url.startsWith("http") || v.proof_url.startsWith("data:image/")) && (
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+                              <img
+                                src={v.proof_url}
+                                alt="Attached screenshot"
+                                style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(255,255,255,0.2)" }}
+                                onClick={() => setSelectedProofImage(v.proof_url)}
+                              />
+                              <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                                📷 Photo Attached
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="admin-table__muted" style={{ fontSize: "0.8rem", whiteSpace: "nowrap" }}>
+                          {new Date(v.created_at).toLocaleString("en-PH", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </td>
+                        <td>
+                          {v.status === "Approved" ? (
+                            <span className="admin-status-badge admin-status-badge--live">✓ Approved</span>
+                          ) : v.status === "Rejected" ? (
+                            <div>
+                              <span className="admin-status-badge admin-status-badge--done" style={{ background: "rgba(239, 68, 68, 0.15)", color: "#ef4444" }}>
+                                ✕ Rejected
+                              </span>
+                              {v.rejection_reason && (
+                                <div style={{ fontSize: "0.72rem", color: "#f87171", marginTop: 4, maxWidth: 160 }}>
+                                  Reason: <em>"{v.rejection_reason}"</em>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="admin-status-badge admin-status-badge--soon">⏳ Pending</span>
+                          )}
+                        </td>
+                        <td>
+                          {adminUser?.role === "viewer" ? (
+                            <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>Read-only</span>
+                          ) : (
+                            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                              <button
+                                className="admin-edit-btn"
+                                onClick={() => handleVerifyMessage(v.id, "Approved")}
+                                style={{
+                                  background: v.status === "Approved" ? "rgba(16, 185, 129, 0.35)" : "rgba(16, 185, 129, 0.15)",
+                                  borderColor: "rgba(16, 185, 129, 0.4)",
+                                  color: "#34d399",
+                                  padding: "6px 12px",
+                                  fontSize: "0.78rem",
+                                  cursor: "pointer"
+                                }}
+                              >
+                                {v.status === "Approved" ? "✓ Approved" : "✓ Approve"}
+                              </button>
+                              <button
+                                className="admin-delete-btn"
+                                onClick={() => {
+                                  setRejectingItem(v);
+                                  setRejectionReasonInput(v.rejection_reason || "");
+                                }}
+                                style={{
+                                  background: v.status === "Rejected" ? "rgba(239, 68, 68, 0.35)" : "rgba(239, 68, 68, 0.15)",
+                                  borderColor: "rgba(239, 68, 68, 0.4)",
+                                  color: "#ef4444",
+                                  padding: "6px 12px",
+                                  fontSize: "0.78rem",
+                                  cursor: "pointer"
+                                }}
+                              >
+                                {v.status === "Rejected" ? "✕ Rejected" : "✕ Reject"}
+                              </button>
+                              {v.status !== "Pending" && (
+                                <button
+                                  className="admin-refresh-btn"
+                                  onClick={() => handleVerifyMessage(v.id, "Pending")}
+                                  title="Reset status back to Pending"
+                                  style={{ padding: "6px 10px", fontSize: "0.75rem" }}
+                                >
+                                  🔄 Reset
+                                </button>
+                              )}
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -3063,8 +3349,8 @@ export default function AdminPage() {
                   <div className="qf-mode-grid" style={{ marginBottom: 14 }}>
                     {/* Instant Claim */}
                     <div
-                      className={`qf-mode-card${!questForm.requires_proof && !questForm.is_quiz && !questForm.passcode ? " qf-mode-card--active" : ""}`}
-                      onClick={() => setQuestForm((f) => ({ ...f, requires_proof: false, is_quiz: false, passcode: "" }))}
+                      className={`qf-mode-card${!questForm.requires_proof && !questForm.requires_message && !questForm.is_quiz && !questForm.passcode ? " qf-mode-card--active" : ""}`}
+                      onClick={() => setQuestForm((f) => ({ ...f, requires_proof: false, requires_message: false, is_quiz: false, passcode: "" }))}
                     >
                       <span className="qf-mode-card__icon">⚡</span>
                       <div className="qf-mode-card__info">
@@ -3075,8 +3361,8 @@ export default function AdminPage() {
 
                     {/* Screenshot Proof */}
                     <div
-                      className={`qf-mode-card${questForm.requires_proof ? " qf-mode-card--active" : ""}`}
-                      onClick={() => setQuestForm((f) => ({ ...f, requires_proof: true, is_quiz: false, passcode: "" }))}
+                      className={`qf-mode-card${questForm.requires_proof && !questForm.requires_message ? " qf-mode-card--active" : ""}`}
+                      onClick={() => setQuestForm((f) => ({ ...f, requires_proof: true, requires_message: false, is_quiz: false, passcode: "" }))}
                     >
                       <span className="qf-mode-card__icon">📷</span>
                       <div className="qf-mode-card__info">
@@ -3088,7 +3374,7 @@ export default function AdminPage() {
                     {/* Quiz Answer */}
                     <div
                       className={`qf-mode-card${questForm.is_quiz ? " qf-mode-card--active" : ""}`}
-                      onClick={() => setQuestForm((f) => ({ ...f, is_quiz: true, requires_proof: false, passcode: "", category: "quiz" }))}
+                      onClick={() => setQuestForm((f) => ({ ...f, is_quiz: true, requires_proof: false, requires_message: false, passcode: "", category: "quiz" }))}
                     >
                       <span className="qf-mode-card__icon">❓</span>
                       <div className="qf-mode-card__info">
@@ -3099,13 +3385,25 @@ export default function AdminPage() {
 
                     {/* Passcode / PIN */}
                     <div
-                      className={`qf-mode-card${!questForm.requires_proof && !questForm.is_quiz && !!questForm.passcode ? " qf-mode-card--active" : ""}`}
-                      onClick={() => setQuestForm((f) => ({ ...f, requires_proof: false, is_quiz: false, passcode: f.passcode || "CODE" }))}
+                      className={`qf-mode-card${!questForm.requires_proof && !questForm.requires_message && !questForm.is_quiz && !!questForm.passcode ? " qf-mode-card--active" : ""}`}
+                      onClick={() => setQuestForm((f) => ({ ...f, requires_proof: false, requires_message: false, is_quiz: false, passcode: f.passcode || "CODE" }))}
                     >
                       <span className="qf-mode-card__icon">🔑</span>
                       <div className="qf-mode-card__info">
                         <span className="qf-mode-card__title">Secret Passcode</span>
                         <span className="qf-mode-card__desc">Enter PIN from speaker or booth.</span>
+                      </div>
+                    </div>
+
+                    {/* Messagebox Note */}
+                    <div
+                      className={`qf-mode-card${questForm.requires_message && !questForm.requires_proof ? " qf-mode-card--active" : ""}`}
+                      onClick={() => setQuestForm((f) => ({ ...f, requires_message: true, requires_proof: false, is_quiz: false, passcode: "" }))}
+                    >
+                      <span className="qf-mode-card__icon">💬</span>
+                      <div className="qf-mode-card__info">
+                        <span className="qf-mode-card__title">Messagebox Note</span>
+                        <span className="qf-mode-card__desc">Quester submits a text message for admin review.</span>
                       </div>
                     </div>
                   </div>

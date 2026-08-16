@@ -93,17 +93,17 @@ export async function GET(request: Request) {
   }
 }
 
-// POST — user submits proof screenshot
+// POST — user submits proof screenshot or text message
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { quest_id, quest_title, user_name, user_email, ticket_code, xp, proof_url } = body;
+    const { quest_id, quest_title, user_name, user_email, ticket_code, xp, proof_url, user_message } = body;
 
-    if (!quest_id || !proof_url) {
-      return NextResponse.json({ error: "quest_id and proof_url are required." }, { status: 400 });
+    if (!quest_id || (!proof_url && !user_message)) {
+      return NextResponse.json({ error: "quest_id and proof_url or user_message are required." }, { status: 400 });
     }
 
-    let finalProofUrl = proof_url;
+    let finalProofUrl = proof_url || "Text Submission";
 
     // Upload Base64 image to Supabase Storage bucket if provided
     if (proof_url && proof_url.startsWith("data:image/")) {
@@ -149,6 +149,7 @@ export async function POST(request: Request) {
       ticket_code: ticket_code || "BQF-GUEST",
       xp: Number(xp) || 100,
       proof_url: finalProofUrl,
+      user_message: user_message || null,
       status: "Pending",
       created_at: new Date().toISOString(),
     };
@@ -165,6 +166,7 @@ export async function POST(request: Request) {
           ticket_code: newRecord.ticket_code,
           xp: newRecord.xp,
           proof_url: finalProofUrl,
+          user_message: user_message || null,
           status: "Pending",
         })
         .select()
@@ -210,8 +212,8 @@ export async function PATCH(request: Request) {
         .eq("id", id)
         .single();
         
-      if (currentVerif && currentVerif.status !== "Pending") {
-        return NextResponse.json({ error: `Verification has already been processed by another admin (Status: ${currentVerif.status}).` }, { status: 409 });
+      if (currentVerif && currentVerif.status === status) {
+        return NextResponse.json({ verification: currentVerif });
       }
         
       // 2. Update the verification status
@@ -223,8 +225,8 @@ export async function PATCH(request: Request) {
         .single();
 
       if (!error && data) {
-        // 3. If just approved, award the XP to the user in registrations
-        if (status === "Approved" && currentVerif && currentVerif.status !== "Approved") {
+        // 3. If transitioning to Approved, award XP & record completion in database
+        if (status === "Approved" && currentVerif) {
           const { data: user } = await supabase
             .from("registrations")
             .select("id, total_xp")
@@ -232,30 +234,52 @@ export async function PATCH(request: Request) {
             .single();
             
           if (user) {
-            await supabase
-              .from("registrations")
-              .update({ total_xp: (user.total_xp || 0) + (currentVerif.xp || 0) })
-              .eq("id", user.id);
+            // Only increment XP if it was not already Approved
+            if (currentVerif.status !== "Approved") {
+              await supabase
+                .from("registrations")
+                .update({ total_xp: (user.total_xp || 0) + (currentVerif.xp || 0) })
+                .eq("id", user.id);
+            }
               
-            // Also insert into quest_completions to mark it done
-            await supabase
+            // Ensure record is inserted into quest_completions DB table
+            const { error: compErr } = await supabase
               .from("quest_completions")
               .insert({
                 quest_id: currentVerif.quest_id,
                 registration_id: user.id,
                 xp_awarded: currentVerif.xp
               });
+
+            if (compErr && compErr.code !== "23505") { // Ignore 23505 duplicate key if already present
+              console.warn("quest_completions insert notice:", compErr.message);
+            }
+          }
+        } else if ((status === "Rejected" || status === "Pending") && currentVerif && currentVerif.status === "Approved") {
+          // If revoked from Approved -> Rejected/Pending, deduct XP & remove completion
+          const { data: user } = await supabase
+            .from("registrations")
+            .select("id, total_xp")
+            .eq("email", currentVerif.user_email)
+            .single();
+
+          if (user) {
+            await supabase
+              .from("registrations")
+              .update({ total_xp: Math.max(0, (user.total_xp || 0) - (currentVerif.xp || 0)) })
+              .eq("id", user.id);
+
+            await supabase
+              .from("quest_completions")
+              .delete()
+              .eq("quest_id", currentVerif.quest_id)
+              .eq("registration_id", user.id);
           }
         }
         return NextResponse.json({ verification: data });
       }
     } catch {
       // Fallback
-    }
-
-    const existingMemoryItem = memoryVerifications.find((item) => item.id === id);
-    if (existingMemoryItem && existingMemoryItem.status !== "Pending") {
-      return NextResponse.json({ error: `Verification has already been processed by another admin (Status: ${existingMemoryItem.status}).` }, { status: 409 });
     }
 
     memoryVerifications = memoryVerifications.map((item) =>

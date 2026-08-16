@@ -80,6 +80,7 @@ ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS correct_option_i
 ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS passcode TEXT;
 ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
 ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS depends_on_quest_id TEXT;
+ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS requires_message BOOLEAN DEFAULT FALSE;
 
 -- Quest Verifications table for user proof submissions & admin review
 CREATE TABLE IF NOT EXISTS public.quest_verifications (
@@ -91,6 +92,7 @@ CREATE TABLE IF NOT EXISTS public.quest_verifications (
   ticket_code TEXT,
   xp INTEGER NOT NULL DEFAULT 0,
   proof_url TEXT NOT NULL,
+  user_message TEXT,
   status TEXT NOT NULL DEFAULT 'Pending', -- 'Pending', 'Approved', 'Rejected'
   rejection_reason TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -112,6 +114,7 @@ GRANT ALL ON TABLE public.quest_verifications TO postgres, service_role, anon, a
 
 -- Optional migration statement if table was created in an earlier version:
 ALTER TABLE public.quest_verifications ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+ALTER TABLE public.quest_verifications ADD COLUMN IF NOT EXISTS user_message TEXT;
 
 
 -- Quest Completions table to track claimed XP
@@ -140,3 +143,21 @@ CREATE TABLE IF NOT EXISTS public.social_missions (
 );
 
 GRANT ALL ON TABLE public.social_missions TO postgres, service_role, anon, authenticated;
+
+-- Quest Message Notes table for attendee Messagebox submissions & admin review
+CREATE TABLE IF NOT EXISTS public.quest_message_notes (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  quest_id TEXT NOT NULL,
+  quest_title TEXT NOT NULL,
+  user_name TEXT NOT NULL,
+  user_email TEXT NOT NULL,
+  ticket_code TEXT,
+  xp INTEGER NOT NULL DEFAULT 0,
+  user_message TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'Pending', -- 'Pending', 'Approved', 'Rejected'
+  rejection_reason TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+GRANT ALL ON TABLE public.quest_message_notes TO postgres, service_role, anon, authenticated;
+

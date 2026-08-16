@@ -51,19 +51,29 @@ export async function GET(request: Request) {
       }
     }
 
-    // 3. Fetch quest verifications (proof submissions)
-    const { data: verifData } = await supabase
-      .from("quest_verifications")
-      .select("id, quest_id, status, xp, rejection_reason, created_at")
-      .ilike("user_email", email)
-      .order("created_at", { ascending: false });
+    // 3. Fetch quest verifications & message notes
+    const [verifRes, msgRes] = await Promise.all([
+      supabase
+        .from("quest_verifications")
+        .select("id, quest_id, status, xp, rejection_reason, user_message, created_at")
+        .ilike("user_email", email)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("quest_message_notes")
+        .select("id, quest_id, status, xp, rejection_reason, user_message, created_at")
+        .ilike("user_email", email)
+        .order("created_at", { ascending: false })
+    ]);
 
-    if (verifData) {
-      verifications = verifData;
-      verifXp = verifData
-        .filter((v) => v.status === "Approved")
-        .reduce((sum, v) => sum + (v.xp || 0), 0);
-    }
+    const combinedVerifs = [
+      ...(verifRes.data || []),
+      ...(msgRes.data || [])
+    ];
+
+    verifications = combinedVerifs;
+    verifXp = combinedVerifs
+      .filter((v) => v.status === "Approved")
+      .reduce((sum, v) => sum + (v.xp || 0), 0);
 
     const exactTotalXp = compXp + verifXp;
 

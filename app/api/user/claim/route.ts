@@ -51,22 +51,31 @@ export async function POST(request: Request) {
         }
       }
 
-      // Check if quest is a quiz and validate answer
+      // Check if quest requires admin review (requires_proof or requires_message) or is a quiz
       if (quest_id !== "checkin" && quest_id !== "register") {
         const { data: quest, error: questError } = await supabase
           .from("fiesta_event_quests")
-          .select("is_quiz, quiz_answer")
+          .select("requires_proof, requires_message, is_quiz, quiz_answer")
           .eq("id", quest_id)
           .single();
 
         if (questError) {
           console.warn("Could not find quest:", questError);
-        } else if (quest?.is_quiz) {
-          if (!answer) {
-            return NextResponse.json({ error: "This is a quiz quest. Please provide an answer." }, { status: 400 });
+        } else {
+          if (quest?.requires_proof || quest?.requires_message) {
+            return NextResponse.json(
+              { error: "This quest requires admin review before XP can be awarded. Please submit your verification for admin approval." },
+              { status: 400 }
+            );
           }
-          if (!quest.quiz_answer || answer.trim().toLowerCase() !== quest.quiz_answer.trim().toLowerCase()) {
-            return NextResponse.json({ error: "Incorrect answer. Try again!" }, { status: 400 });
+
+          if (quest?.is_quiz) {
+            if (!answer) {
+              return NextResponse.json({ error: "This is a quiz quest. Please provide an answer." }, { status: 400 });
+            }
+            if (!quest.quiz_answer || answer.trim().toLowerCase() !== quest.quiz_answer.trim().toLowerCase()) {
+              return NextResponse.json({ error: "Incorrect answer. Try again!" }, { status: 400 });
+            }
           }
         }
       }
