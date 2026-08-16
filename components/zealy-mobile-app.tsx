@@ -325,20 +325,22 @@ export default function ZealyMobileApp() {
       const res = await fetch("/api/admin/quests");
       const json = await res.json();
       if (res.ok && Array.isArray(json.quests)) {
-        const mappedQuests: Quest[] = json.quests.map((q: any) => ({
-          id: q.id,
-          title: q.title,
-          description: q.description || "",
-          xp: q.xp || 100,
-          status: q.status || "Soon",
-          category: q.category || "onboarding",
-          actionLabel: q.action_label || undefined,
-          actionUrl: q.action_url || undefined,
-          requiresProof: !!q.requires_proof,
-          requiresMessage: !!q.requires_message,
-          passcode: q.passcode || undefined,
-          is_quiz: !!q.is_quiz,
-        }));
+        const mappedQuests: Quest[] = json.quests
+          .filter((q: any) => String(q.status || "").toLowerCase() !== "draft")
+          .map((q: any) => ({
+            id: q.id,
+            title: q.title,
+            description: q.description || "",
+            xp: q.xp || 100,
+            status: q.status || "Soon",
+            category: q.category || "onboarding",
+            actionLabel: q.action_label || undefined,
+            actionUrl: q.action_url || undefined,
+            requiresProof: !!q.requires_proof,
+            requiresMessage: !!q.requires_message,
+            passcode: q.passcode || undefined,
+            is_quiz: !!q.is_quiz,
+          }));
 
         // Detect if new quests were published by admin
         if (previousQuestsCountRef.current !== null && mappedQuests.length > previousQuestsCountRef.current) {
