@@ -1373,7 +1373,7 @@ export default function ZealyMobileApp() {
                       No quest proof submissions yet. Complete proof-required quests to track verification status here!
                     </p>
                   ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: "240px", overflowY: "auto", paddingRight: 4 }}>
                       {userVerifications.map((v) => (
                         <div
                           key={v.id}
