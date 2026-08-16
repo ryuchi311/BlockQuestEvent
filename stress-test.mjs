@@ -8,7 +8,7 @@
  *   node stress-test.mjs [options]
  *
  * Options:
- *   --url=<baseUrl>       Target Base URL (default: http://localhost:3000)
+ *   --url=<baseUrl>       Target Base URL (default: http://localhost:3010)
  *   --concurrency=<num>   Number of concurrent worker threads (default: 20)
  *   --requests=<num>      Total requests per test suite (default: 100)
  *   --suite=<all|register|checkin|booth|zealy|admin> Target suite (default: all)
@@ -26,7 +26,7 @@ const args = process.argv.slice(2).reduce((acc, arg) => {
   return acc;
 }, {});
 
-const BASE_URL = (args.url || 'http://localhost:3000').replace(/\/$/, '');
+const BASE_URL = (args.url || 'http://localhost:3010').replace(/\/$/, '');
 const CONCURRENCY = parseInt(args.concurrency || '20', 10);
 const TOTAL_REQUESTS = parseInt(args.requests || '100', 10);
 const TARGET_SUITE = args.suite || 'all';
