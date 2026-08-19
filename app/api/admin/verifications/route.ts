@@ -73,7 +73,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ verifications: combined });
     }
 
-    // Admin view: fetch all proof verifications
+    // Admin view: fetch strictly from quest_verifications table
     const { data, error } = await supabase
       .from("quest_verifications")
       .select("*")
@@ -156,33 +156,62 @@ export async function POST(request: Request) {
 
     try {
       const supabase = getSupabase();
-      const { data, error } = await supabase
+
+      // Check for existing record to reuse / update (prevents DB unique constraint errors)
+      const { data: existingRecords } = await supabase
         .from("quest_verifications")
-        .insert({
-          quest_id,
-          quest_title: newRecord.quest_title,
-          user_name: newRecord.user_name,
-          user_email: newRecord.user_email,
-          ticket_code: newRecord.ticket_code,
-          xp: newRecord.xp,
-          proof_url: finalProofUrl,
-          user_message: user_message || null,
-          status: "Pending",
-        })
-        .select()
-        .single();
+        .select("id")
+        .eq("quest_id", quest_id)
+        .ilike("user_email", newRecord.user_email)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      let data, error;
+      if (existingRecords && existingRecords.length > 0) {
+        const res = await supabase
+          .from("quest_verifications")
+          .update({
+            proof_url: finalProofUrl,
+            user_message: user_message || null,
+            status: "Pending",
+            rejection_reason: null,
+            created_at: new Date().toISOString(),
+          })
+          .eq("id", existingRecords[0].id)
+          .select()
+          .single();
+        data = res.data;
+        error = res.error;
+      } else {
+        const res = await supabase
+          .from("quest_verifications")
+          .insert({
+            quest_id,
+            quest_title: newRecord.quest_title,
+            user_name: newRecord.user_name,
+            user_email: newRecord.user_email,
+            ticket_code: newRecord.ticket_code,
+            xp: newRecord.xp,
+            proof_url: finalProofUrl,
+            user_message: user_message || null,
+            status: "Pending",
+          })
+          .select()
+          .single();
+        data = res.data;
+        error = res.error;
+      }
 
       if (error) {
-        console.warn("quest_verifications insert error:", error);
+        console.error("quest_verifications insert error:", error);
+        return NextResponse.json({ error: error.message || "Database insert failed" }, { status: 500 });
       } else if (data) {
         return NextResponse.json({ verification: data }, { status: 201 });
       }
     } catch (err: any) {
-      console.warn("Falling back to in-memory verifications. DB Error:", err.message);
+      console.error("Database connection error:", err.message);
+      return NextResponse.json({ error: err.message }, { status: 500 });
     }
-
-    memoryVerifications.unshift(newRecord);
-    return NextResponse.json({ verification: newRecord }, { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
@@ -204,18 +233,18 @@ export async function PATCH(request: Request) {
 
     try {
       const supabase = getSupabase();
-      
+
       // 1. Fetch current verification to know the XP and User
       const { data: currentVerif } = await supabase
         .from("quest_verifications")
         .select("user_email, xp, status, quest_id")
         .eq("id", id)
         .single();
-        
+
       if (currentVerif && currentVerif.status === status) {
         return NextResponse.json({ verification: currentVerif });
       }
-        
+
       // 2. Update the verification status
       const { data, error } = await supabase
         .from("quest_verifications")
@@ -232,7 +261,7 @@ export async function PATCH(request: Request) {
             .select("id, total_xp")
             .eq("email", currentVerif.user_email)
             .single();
-            
+
           if (user) {
             // Only increment XP if it was not already Approved
             if (currentVerif.status !== "Approved") {
@@ -241,7 +270,7 @@ export async function PATCH(request: Request) {
                 .update({ total_xp: (user.total_xp || 0) + (currentVerif.xp || 0) })
                 .eq("id", user.id);
             }
-              
+
             // Ensure record is inserted into quest_completions DB table
             const { error: compErr } = await supabase
               .from("quest_completions")

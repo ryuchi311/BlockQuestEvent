@@ -381,7 +381,7 @@ export default function ZealyMobileApp() {
       ]);
       const verifJson = await verifRes.json();
       const msgJson = await msgRes.json();
-      
+
       const vList = verifRes.ok && Array.isArray(verifJson.verifications) ? verifJson.verifications : [];
       const mList = msgRes.ok && Array.isArray(msgJson.messages) ? msgJson.messages : [];
       setUserVerifications([...vList, ...mList]);
@@ -564,8 +564,8 @@ export default function ZealyMobileApp() {
 
     setProofSubmitting(true);
     try {
-      const endpoint = selectedQuest.requiresMessage ? "/api/admin/messages" : "/api/admin/verifications";
-      await fetch(endpoint, {
+      const endpoint = selectedQuest.requiresProof ? "/api/admin/verifications" : "/api/admin/messages";
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -579,6 +579,11 @@ export default function ZealyMobileApp() {
           user_message: userMessageInput.trim() || null,
         }),
       });
+      const json = await res.json();
+      if (!res.ok) {
+        alert("❌ Submission Failed: " + (json.error || "Could not save to database."));
+        return;
+      }
       setQuests((prev) =>
         prev.map((q) => (q.id === selectedQuest.id ? { ...q, status: "Pending Verification" } : q))
       );
@@ -922,10 +927,10 @@ export default function ZealyMobileApp() {
                           q.status === "Approved"
                             ? { border: "1px solid rgba(16, 185, 129, 0.5)", background: "linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(20, 20, 30, 0.9) 100%)" }
                             : q.status === "Rejected"
-                            ? { border: "1px solid rgba(239, 68, 68, 0.5)", background: "linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(20, 20, 30, 0.9) 100%)" }
-                            : q.status === "Pending Verification"
-                            ? { border: "1px solid rgba(245, 158, 11, 0.4)", background: "linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(20, 20, 30, 0.9) 100%)" }
-                            : undefined
+                              ? { border: "1px solid rgba(239, 68, 68, 0.5)", background: "linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(20, 20, 30, 0.9) 100%)" }
+                              : q.status === "Pending Verification"
+                                ? { border: "1px solid rgba(245, 158, 11, 0.4)", background: "linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(20, 20, 30, 0.9) 100%)" }
+                                : undefined
                         }
                       >
                         <div className="quest-card__body">
@@ -1094,11 +1099,11 @@ export default function ZealyMobileApp() {
                         style={
                           isCurrentUser
                             ? {
-                                border: "1.5px solid var(--gold-light)",
-                                background: "linear-gradient(135deg, rgba(245, 166, 35, 0.25) 0%, rgba(20, 20, 30, 0.95) 100%)",
-                                boxShadow: "0 0 15px rgba(245, 166, 35, 0.35)",
-                                transform: "scale(1.01)",
-                              }
+                              border: "1.5px solid var(--gold-light)",
+                              background: "linear-gradient(135deg, rgba(245, 166, 35, 0.25) 0%, rgba(20, 20, 30, 0.95) 100%)",
+                              boxShadow: "0 0 15px rgba(245, 166, 35, 0.35)",
+                              transform: "scale(1.01)",
+                            }
                             : undefined
                         }
                       >
@@ -1402,20 +1407,20 @@ export default function ZealyMobileApp() {
                                   v.status === "Approved"
                                     ? "rgba(16, 185, 129, 0.18)"
                                     : v.status === "Rejected"
-                                    ? "rgba(239, 68, 68, 0.18)"
-                                    : "rgba(245, 158, 11, 0.18)",
+                                      ? "rgba(239, 68, 68, 0.18)"
+                                      : "rgba(245, 158, 11, 0.18)",
                                 color:
                                   v.status === "Approved"
                                     ? "#34d399"
                                     : v.status === "Rejected"
-                                    ? "#f87171"
-                                    : "#fbbf24",
+                                      ? "#f87171"
+                                      : "#fbbf24",
                                 border:
                                   v.status === "Approved"
                                     ? "1px solid rgba(16, 185, 129, 0.3)"
                                     : v.status === "Rejected"
-                                    ? "1px solid rgba(239, 68, 68, 0.3)"
-                                    : "1px solid rgba(245, 158, 11, 0.3)",
+                                      ? "1px solid rgba(239, 68, 68, 0.3)"
+                                      : "1px solid rgba(245, 158, 11, 0.3)",
                               }}
                             >
                               {v.status === "Approved" ? "✓ Approved" : v.status === "Rejected" ? "✕ Rejected" : "⏳ Pending Review"}
@@ -1583,382 +1588,382 @@ export default function ZealyMobileApp() {
                   }
 
                   return (
-                  <>
-                    {(() => {
-                      const hasAction = !!selectedQuest.actionUrl;
-                      const isActionCompleted = !hasAction || !!visitedActions[selectedQuest.id];
-                      return (
-                        <>
-                          {selectedQuest.actionUrl && (
-                            <Link
-                              href={selectedQuest.actionUrl}
-                              target={selectedQuest.actionUrl.startsWith("http") ? "_blank" : undefined}
-                              className="modal-action-btn"
-                              style={{
-                                textAlign: "center",
-                                marginBottom: 12,
-                                background: isActionCompleted
-                                  ? "rgba(16, 185, 129, 0.2)"
-                                  : "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
-                                borderColor: isActionCompleted ? "rgba(16, 185, 129, 0.4)" : undefined,
-                                color: isActionCompleted ? "#34d399" : "#100b02",
-                                fontWeight: 800,
-                              }}
-                              onClick={() => {
-                                setVisitedActions((prev) => ({ ...prev, [selectedQuest.id]: true }));
-                                if (selectedQuest.id === "register") {
-                                  setSelectedQuest(null);
-                                  setActiveTab("profile");
-                                }
-                              }}
-                            >
-                              {isActionCompleted
-                                ? `✓ Task Visited (${selectedQuest.actionLabel ?? "Done"})`
-                                : `⚡ ${selectedQuest.actionLabel ?? "Complete Task"} →`}
-                            </Link>
-                          )}
+                    <>
+                      {(() => {
+                        const hasAction = !!selectedQuest.actionUrl;
+                        const isActionCompleted = !hasAction || !!visitedActions[selectedQuest.id];
+                        return (
+                          <>
+                            {selectedQuest.actionUrl && (
+                              <Link
+                                href={selectedQuest.actionUrl}
+                                target={selectedQuest.actionUrl.startsWith("http") ? "_blank" : undefined}
+                                className="modal-action-btn"
+                                style={{
+                                  textAlign: "center",
+                                  marginBottom: 12,
+                                  background: isActionCompleted
+                                    ? "rgba(16, 185, 129, 0.2)"
+                                    : "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                                  borderColor: isActionCompleted ? "rgba(16, 185, 129, 0.4)" : undefined,
+                                  color: isActionCompleted ? "#34d399" : "#100b02",
+                                  fontWeight: 800,
+                                }}
+                                onClick={() => {
+                                  setVisitedActions((prev) => ({ ...prev, [selectedQuest.id]: true }));
+                                  if (selectedQuest.id === "register") {
+                                    setSelectedQuest(null);
+                                    setActiveTab("profile");
+                                  }
+                                }}
+                              >
+                                {isActionCompleted
+                                  ? `✓ Task Visited (${selectedQuest.actionLabel ?? "Done"})`
+                                  : `⚡ ${selectedQuest.actionLabel ?? "Complete Task"} →`}
+                              </Link>
+                            )}
 
-                          {hasAction && !isActionCompleted && (
-                            <div style={{
-                              background: "rgba(245, 158, 11, 0.12)",
-                              border: "1px solid rgba(245, 158, 11, 0.3)",
-                              padding: "10px 14px",
-                              borderRadius: 12,
-                              color: "#fbbf24",
-                              fontSize: "0.8rem",
-                              marginBottom: 12,
-                              fontWeight: 700,
-                              textAlign: "center"
-                            }}>
-                              ⚠️ Complete Task: Click the action button above to perform the task before claiming.
-                            </div>
-                          )}
-
-                          {liveQuest.status === "Rejected" && (() => {
-                            const lastVerif = userVerifications.find((v) => v.quest_id === liveQuest.id);
-                            return (
+                            {hasAction && !isActionCompleted && (
                               <div style={{
-                                background: "rgba(239, 68, 68, 0.15)",
-                                border: "1px solid rgba(239, 68, 68, 0.35)",
-                                padding: "14px 16px",
-                                borderRadius: 14,
-                                marginBottom: 16
+                                background: "rgba(245, 158, 11, 0.12)",
+                                border: "1px solid rgba(245, 158, 11, 0.3)",
+                                padding: "10px 14px",
+                                borderRadius: 12,
+                                color: "#fbbf24",
+                                fontSize: "0.8rem",
+                                marginBottom: 12,
+                                fontWeight: 700,
+                                textAlign: "center"
                               }}>
-                                <div style={{ color: "#f87171", fontWeight: 800, fontSize: "0.92rem", display: "flex", alignItems: "center", gap: 6 }}>
-                                  <span>✕</span> Submission Rejected by Admin
-                                </div>
-                                {lastVerif?.rejection_reason && (
-                                  <div style={{ color: "#fca5a5", fontSize: "0.82rem", marginTop: 6, lineHeight: 1.4 }}>
-                                    💬 <strong>Reason:</strong> "{lastVerif.rejection_reason}"
-                                  </div>
-                                )}
-                                <div style={{ color: "var(--text-muted)", fontSize: "0.78rem", marginTop: 6 }}>
-                                  Please update your note/screenshot below and resubmit for admin review.
-                                </div>
+                                ⚠️ Complete Task: Click the action button above to perform the task before claiming.
                               </div>
-                            );
-                          })()}
+                            )}
 
-                          {(selectedQuest.requiresProof || selectedQuest.requiresMessage) && selectedQuest.status !== "Approved" ? (
-                            <div style={{
-                              marginTop: 12,
-                              marginBottom: 16,
-                              background: "rgba(18, 19, 32, 0.85)",
-                              padding: "18px 16px",
-                              borderRadius: 16,
-                              border: "1px solid rgba(245, 166, 35, 0.25)",
-                              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)"
-                            }}>
-                              {/* Messagebox Input Note */}
-                              {selectedQuest.requiresMessage && (
-                                <div style={{ marginBottom: selectedQuest.requiresProof ? 14 : 0 }}>
-                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                      <span style={{ fontSize: "1.1rem" }}>💬</span>
-                                      <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--gold-light)" }}>
-                                        Messagebox (Required)
+                            {liveQuest.status === "Rejected" && (() => {
+                              const lastVerif = userVerifications.find((v) => v.quest_id === liveQuest.id);
+                              return (
+                                <div style={{
+                                  background: "rgba(239, 68, 68, 0.15)",
+                                  border: "1px solid rgba(239, 68, 68, 0.35)",
+                                  padding: "14px 16px",
+                                  borderRadius: 14,
+                                  marginBottom: 16
+                                }}>
+                                  <div style={{ color: "#f87171", fontWeight: 800, fontSize: "0.92rem", display: "flex", alignItems: "center", gap: 6 }}>
+                                    <span>✕</span> Submission Rejected by Admin
+                                  </div>
+                                  {lastVerif?.rejection_reason && (
+                                    <div style={{ color: "#fca5a5", fontSize: "0.82rem", marginTop: 6, lineHeight: 1.4 }}>
+                                      💬 <strong>Reason:</strong> "{lastVerif.rejection_reason}"
+                                    </div>
+                                  )}
+                                  <div style={{ color: "var(--text-muted)", fontSize: "0.78rem", marginTop: 6 }}>
+                                    Please update your note/screenshot below and resubmit for admin review.
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {(selectedQuest.requiresProof || selectedQuest.requiresMessage) && selectedQuest.status !== "Approved" ? (
+                              <div style={{
+                                marginTop: 12,
+                                marginBottom: 16,
+                                background: "rgba(18, 19, 32, 0.85)",
+                                padding: "18px 16px",
+                                borderRadius: 16,
+                                border: "1px solid rgba(245, 166, 35, 0.25)",
+                                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)"
+                              }}>
+                                {/* Messagebox Input Note */}
+                                {selectedQuest.requiresMessage && (
+                                  <div style={{ marginBottom: selectedQuest.requiresProof ? 14 : 0 }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                        <span style={{ fontSize: "1.1rem" }}>💬</span>
+                                        <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--gold-light)" }}>
+                                          Messagebox (Required)
+                                        </span>
+                                      </div>
+                                      <span style={{ fontSize: "0.72rem", color: userMessageInput.length >= 50 ? "#ef4444" : "var(--text-muted)", fontWeight: 700 }}>
+                                        {userMessageInput.length}/50
                                       </span>
                                     </div>
-                                    <span style={{ fontSize: "0.72rem", color: userMessageInput.length >= 50 ? "#ef4444" : "var(--text-muted)", fontWeight: 700 }}>
-                                      {userMessageInput.length}/50
-                                    </span>
-                                  </div>
-                                  <textarea
-                                    rows={2}
-                                    maxLength={50}
-                                    value={userMessageInput}
-                                    onChange={(e) => setUserMessageInput(e.target.value.slice(0, 50))}
-                                    placeholder="Type your note for the admin (max 50 chars)..."
-                                    style={{
-                                      width: "100%",
-                                      padding: "10px 14px",
-                                      borderRadius: 12,
-                                      background: "rgba(11, 15, 25, 0.85)",
-                                      border: userMessageInput.length >= 50 ? "1px solid #ef4444" : "1px solid rgba(245, 166, 35, 0.3)",
-                                      color: "#fff",
-                                      fontSize: "0.85rem",
-                                      outline: "none",
-                                      resize: "vertical",
-                                      boxSizing: "border-box"
-                                    }}
-                                  />
-                                </div>
-                              )}
-
-                              {selectedQuest.requiresProof && (
-                                <>
-                                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                                    <span style={{ fontSize: "1.1rem" }}>📷</span>
-                                    <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--gold-light)" }}>
-                                      Upload Proof Screenshot Required
-                                    </span>
-                                  </div>
-
-                                  {/* Hidden Native File Input */}
-                                  <input
-                                    id="proof-screenshot-upload"
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleProofImageChange}
-                                    disabled={!isActionCompleted}
-                                    style={{ display: "none" }}
-                                  />
-
-                                  {/* Custom Dropzone / Upload Trigger Button */}
-                                  {!proofImage ? (
-                                    <label
-                                      htmlFor="proof-screenshot-upload"
+                                    <textarea
+                                      rows={2}
+                                      maxLength={50}
+                                      value={userMessageInput}
+                                      onChange={(e) => setUserMessageInput(e.target.value.slice(0, 50))}
+                                      placeholder="Type your note for the admin (max 50 chars)..."
                                       style={{
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        gap: 8,
-                                        padding: "20px 16px",
-                                        borderRadius: 14,
-                                        border: isActionCompleted ? "2px dashed rgba(245, 166, 35, 0.4)" : "2px dashed rgba(255, 255, 255, 0.1)",
-                                        background: isActionCompleted
-                                          ? "radial-gradient(ellipse at 50% 50%, rgba(245, 166, 35, 0.08) 0%, rgba(168, 85, 247, 0.04) 100%)"
-                                          : "rgba(0, 0, 0, 0.3)",
-                                        cursor: isActionCompleted ? "pointer" : "not-allowed",
-                                        opacity: isActionCompleted ? 1 : 0.6,
-                                        transition: "all 0.25s ease"
+                                        width: "100%",
+                                        padding: "10px 14px",
+                                        borderRadius: 12,
+                                        background: "rgba(11, 15, 25, 0.85)",
+                                        border: userMessageInput.length >= 50 ? "1px solid #ef4444" : "1px solid rgba(245, 166, 35, 0.3)",
+                                        color: "#fff",
+                                        fontSize: "0.85rem",
+                                        outline: "none",
+                                        resize: "vertical",
+                                        boxSizing: "border-box"
                                       }}
-                                    >
-                                      <div style={{
-                                        width: 48,
-                                        height: 48,
-                                        borderRadius: 14,
-                                        background: isActionCompleted ? "rgba(245, 166, 35, 0.15)" : "rgba(255,255,255,0.05)",
-                                        border: isActionCompleted ? "1px solid rgba(245, 166, 35, 0.3)" : "1px solid rgba(255,255,255,0.1)",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        fontSize: "1.5rem"
-                                      }}>
-                                        {isActionCompleted ? "📸" : "🔒"}
-                                      </div>
-                                      <div style={{ textAlign: "center" }}>
-                                        <strong style={{ fontSize: "0.88rem", color: isActionCompleted ? "#fff" : "var(--text-muted)", display: "block" }}>
-                                          {isActionCompleted ? "Tap to Choose Screenshot" : "Complete Task Above First"}
-                                        </strong>
-                                        <span style={{ fontSize: "0.74rem", color: "var(--text-muted)", display: "block", marginTop: 2 }}>
-                                          {isActionCompleted ? "Supports PNG, JPG, WEBP photos" : "Click action button above to unlock proof upload"}
-                                        </span>
-                                      </div>
-                                    </label>
-                                  ) : (
-                                    /* Screenshot Selected Preview Box */
-                                    <div style={{
-                                      background: "rgba(0, 0, 0, 0.4)",
-                                      border: "1px solid rgba(168, 85, 247, 0.4)",
-                                      borderRadius: 14,
-                                      padding: 14,
-                                      textAlign: "center"
-                                    }}>
-                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                                        <span style={{ fontSize: "0.76rem", fontWeight: 800, color: "#c084fc", display: "flex", alignItems: "center", gap: 6 }}>
-                                          <span>✅</span> Screenshot Loaded
-                                        </span>
-                                        <button
-                                          type="button"
-                                          onClick={() => setProofImage(null)}
-                                          style={{
-                                            background: "rgba(239, 68, 68, 0.15)",
-                                            border: "1px solid rgba(239, 68, 68, 0.3)",
-                                            color: "#f87171",
-                                            fontSize: "0.72rem",
-                                            fontWeight: 700,
-                                            padding: "4px 8px",
-                                            borderRadius: 6,
-                                            cursor: "pointer"
-                                          }}
-                                        >
-                                          ✕ Remove
-                                        </button>
-                                      </div>
+                                    />
+                                  </div>
+                                )}
 
-                                      <div style={{ position: "relative", display: "inline-block" }}>
-                                        <img
-                                          src={proofImage}
-                                          alt="Screenshot Proof Preview"
-                                          style={{
-                                            maxHeight: 180,
-                                            maxWidth: "100%",
-                                            borderRadius: 10,
-                                            border: "2px solid rgba(168, 85, 247, 0.5)",
-                                            boxShadow: "0 8px 24px rgba(0,0,0,0.5)"
-                                          }}
-                                        />
-                                      </div>
+                                {selectedQuest.requiresProof && (
+                                  <>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                                      <span style={{ fontSize: "1.1rem" }}>📷</span>
+                                      <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--gold-light)" }}>
+                                        Upload Proof Screenshot Required
+                                      </span>
+                                    </div>
 
+                                    {/* Hidden Native File Input */}
+                                    <input
+                                      id="proof-screenshot-upload"
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={handleProofImageChange}
+                                      disabled={!isActionCompleted}
+                                      style={{ display: "none" }}
+                                    />
+
+                                    {/* Custom Dropzone / Upload Trigger Button */}
+                                    {!proofImage ? (
                                       <label
                                         htmlFor="proof-screenshot-upload"
                                         style={{
-                                          display: "block",
-                                          marginTop: 10,
-                                          fontSize: "0.75rem",
-                                          color: "#60a5fa",
-                                          fontWeight: 700,
-                                          textDecoration: "underline",
-                                          cursor: "pointer"
+                                          display: "flex",
+                                          flexDirection: "column",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          gap: 8,
+                                          padding: "20px 16px",
+                                          borderRadius: 14,
+                                          border: isActionCompleted ? "2px dashed rgba(245, 166, 35, 0.4)" : "2px dashed rgba(255, 255, 255, 0.1)",
+                                          background: isActionCompleted
+                                            ? "radial-gradient(ellipse at 50% 50%, rgba(245, 166, 35, 0.08) 0%, rgba(168, 85, 247, 0.04) 100%)"
+                                            : "rgba(0, 0, 0, 0.3)",
+                                          cursor: isActionCompleted ? "pointer" : "not-allowed",
+                                          opacity: isActionCompleted ? 1 : 0.6,
+                                          transition: "all 0.25s ease"
                                         }}
                                       >
-                                        🔄 Choose Different Image
+                                        <div style={{
+                                          width: 48,
+                                          height: 48,
+                                          borderRadius: 14,
+                                          background: isActionCompleted ? "rgba(245, 166, 35, 0.15)" : "rgba(255,255,255,0.05)",
+                                          border: isActionCompleted ? "1px solid rgba(245, 166, 35, 0.3)" : "1px solid rgba(255,255,255,0.1)",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          fontSize: "1.5rem"
+                                        }}>
+                                          {isActionCompleted ? "📸" : "🔒"}
+                                        </div>
+                                        <div style={{ textAlign: "center" }}>
+                                          <strong style={{ fontSize: "0.88rem", color: isActionCompleted ? "#fff" : "var(--text-muted)", display: "block" }}>
+                                            {isActionCompleted ? "Tap to Choose Screenshot" : "Complete Task Above First"}
+                                          </strong>
+                                          <span style={{ fontSize: "0.74rem", color: "var(--text-muted)", display: "block", marginTop: 2 }}>
+                                            {isActionCompleted ? "Supports PNG, JPG, WEBP photos" : "Click action button above to unlock proof upload"}
+                                          </span>
+                                        </div>
                                       </label>
-                                    </div>
-                                  )}
-                                </>
-                              )}
+                                    ) : (
+                                      /* Screenshot Selected Preview Box */
+                                      <div style={{
+                                        background: "rgba(0, 0, 0, 0.4)",
+                                        border: "1px solid rgba(168, 85, 247, 0.4)",
+                                        borderRadius: 14,
+                                        padding: 14,
+                                        textAlign: "center"
+                                      }}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                                          <span style={{ fontSize: "0.76rem", fontWeight: 800, color: "#c084fc", display: "flex", alignItems: "center", gap: 6 }}>
+                                            <span>✅</span> Screenshot Loaded
+                                          </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => setProofImage(null)}
+                                            style={{
+                                              background: "rgba(239, 68, 68, 0.15)",
+                                              border: "1px solid rgba(239, 68, 68, 0.3)",
+                                              color: "#f87171",
+                                              fontSize: "0.72rem",
+                                              fontWeight: 700,
+                                              padding: "4px 8px",
+                                              borderRadius: 6,
+                                              cursor: "pointer"
+                                            }}
+                                          >
+                                            ✕ Remove
+                                          </button>
+                                        </div>
 
-                              {/* Submit Proof / Message Button */}
-                              {(() => {
-                                const isReady = isActionCompleted && (
-                                  (selectedQuest.requiresProof ? !!proofImage : true) &&
-                                  (selectedQuest.requiresMessage ? !!userMessageInput.trim() : (!!proofImage || !!userMessageInput.trim()))
-                                );
+                                        <div style={{ position: "relative", display: "inline-block" }}>
+                                          <img
+                                            src={proofImage}
+                                            alt="Screenshot Proof Preview"
+                                            style={{
+                                              maxHeight: 180,
+                                              maxWidth: "100%",
+                                              borderRadius: 10,
+                                              border: "2px solid rgba(168, 85, 247, 0.5)",
+                                              boxShadow: "0 8px 24px rgba(0,0,0,0.5)"
+                                            }}
+                                          />
+                                        </div>
 
-                                return (
-                                  <button
-                                    onClick={handleSubmitProof}
-                                    disabled={proofSubmitting || !isReady}
-                                    className="modal-claim-btn"
-                                    style={{
-                                      marginTop: 16,
-                                      width: "100%",
-                                      padding: "14px",
-                                      borderRadius: 12,
-                                      fontWeight: 800,
-                                      fontSize: "0.9rem",
-                                      border: "none",
-                                      background: isReady
-                                        ? "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)"
-                                        : "rgba(255, 255, 255, 0.08)",
-                                      color: isReady ? "#fff" : "rgba(255, 255, 255, 0.4)",
-                                      boxShadow: isReady ? "0 0 25px rgba(168, 85, 247, 0.4)" : "none",
-                                      opacity: isReady ? 1 : 0.6,
-                                      cursor: isReady ? "pointer" : "not-allowed",
-                                      transition: "all 0.25s ease"
-                                    }}
-                                  >
-                                    {proofSubmitting
-                                      ? "⏳ Submitting for Verification..."
-                                      : isReady
-                                      ? selectedQuest.status === "Rejected" ? "📤 Resubmit for Verification →" : "📤 Submit Verification →"
-                                      : !isActionCompleted
-                                      ? "🔒 Complete Task First"
-                                      : selectedQuest.requiresMessage && !userMessageInput.trim()
-                                      ? "💬 Please Enter Your Message Above"
-                                      : "📷 Select Screenshot / Fill Message"}
-                                  </button>
-                                );
-                              })()}
-                            </div>
-                          ) : selectedQuest.is_quiz ? (
-                            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-                              <input
-                                type="text"
-                                placeholder="Enter quiz answer..."
-                                value={quizAnswer}
-                                onChange={(e) => setQuizAnswer(e.target.value)}
-                                style={{
-                                  padding: "14px",
-                                  borderRadius: 12,
-                                  border: "1px solid rgba(255, 255, 255, 0.15)",
-                                  background: "rgba(0, 0, 0, 0.4)",
-                                  color: "#fff",
-                                  fontSize: "1rem"
-                                }}
-                              />
-                              <button
-                                onClick={handleClaimXp}
-                                disabled={claiming || !quizAnswer.trim() || !isActionCompleted}
-                                className="modal-claim-btn"
-                                style={{
-                                  opacity: (quizAnswer.trim() && isActionCompleted) ? 1 : 0.5,
-                                  cursor: (quizAnswer.trim() && isActionCompleted) ? "pointer" : "not-allowed",
-                                  background: (quizAnswer.trim() && isActionCompleted) ? "linear-gradient(135deg, #ffd166 0%, #f5a623 100%)" : "rgba(255,255,255,0.1)"
-                                }}
-                              >
-                                {claiming ? "Claiming..." : isActionCompleted ? "Submit Answer & Claim XP" : "🔒 Complete Task First"}
-                              </button>
-                            </div>
-                          ) : selectedQuest.passcode ? (
-                            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-                              <div style={{ background: "rgba(245, 158, 11, 0.12)", border: "1px solid rgba(245, 158, 11, 0.3)", borderRadius: 10, padding: 10, fontSize: "0.82rem", color: "#fbbf24" }}>
-                                🔑 <strong>Passcode Required:</strong> Ask the booth staff or stage presenter for the secret code.
+                                        <label
+                                          htmlFor="proof-screenshot-upload"
+                                          style={{
+                                            display: "block",
+                                            marginTop: 10,
+                                            fontSize: "0.75rem",
+                                            color: "#60a5fa",
+                                            fontWeight: 700,
+                                            textDecoration: "underline",
+                                            cursor: "pointer"
+                                          }}
+                                        >
+                                          🔄 Choose Different Image
+                                        </label>
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+
+                                {/* Submit Proof / Message Button */}
+                                {(() => {
+                                  const isReady = isActionCompleted && (
+                                    (selectedQuest.requiresProof ? !!proofImage : true) &&
+                                    (selectedQuest.requiresMessage ? !!userMessageInput.trim() : (!!proofImage || !!userMessageInput.trim()))
+                                  );
+
+                                  return (
+                                    <button
+                                      onClick={handleSubmitProof}
+                                      disabled={proofSubmitting || !isReady}
+                                      className="modal-claim-btn"
+                                      style={{
+                                        marginTop: 16,
+                                        width: "100%",
+                                        padding: "14px",
+                                        borderRadius: 12,
+                                        fontWeight: 800,
+                                        fontSize: "0.9rem",
+                                        border: "none",
+                                        background: isReady
+                                          ? "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)"
+                                          : "rgba(255, 255, 255, 0.08)",
+                                        color: isReady ? "#fff" : "rgba(255, 255, 255, 0.4)",
+                                        boxShadow: isReady ? "0 0 25px rgba(168, 85, 247, 0.4)" : "none",
+                                        opacity: isReady ? 1 : 0.6,
+                                        cursor: isReady ? "pointer" : "not-allowed",
+                                        transition: "all 0.25s ease"
+                                      }}
+                                    >
+                                      {proofSubmitting
+                                        ? "⏳ Submitting for Verification..."
+                                        : isReady
+                                          ? selectedQuest.status === "Rejected" ? "📤 Resubmit for Verification →" : "📤 Submit Verification →"
+                                          : !isActionCompleted
+                                            ? "🔒 Complete Task First"
+                                            : selectedQuest.requiresMessage && !userMessageInput.trim()
+                                              ? "💬 Please Enter Your Message Above"
+                                              : "📷 Select Screenshot / Fill Message"}
+                                    </button>
+                                  );
+                                })()}
                               </div>
-                              <input
-                                type="text"
-                                placeholder="ENTER SECRET PASSCODE (e.g. BOOTH-07)..."
-                                value={passcodeAnswer}
-                                onChange={(e) => setPasscodeAnswer(e.target.value.toUpperCase())}
-                                style={{
-                                  padding: "14px",
-                                  borderRadius: 12,
-                                  border: "1px solid rgba(245, 158, 11, 0.4)",
-                                  background: "rgba(0, 0, 0, 0.5)",
-                                  color: "#fbbf24",
-                                  fontSize: "1.05rem",
-                                  fontWeight: 800,
-                                  letterSpacing: "0.08em",
-                                  textTransform: "uppercase",
-                                }}
-                              />
+                            ) : selectedQuest.is_quiz ? (
+                              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+                                <input
+                                  type="text"
+                                  placeholder="Enter quiz answer..."
+                                  value={quizAnswer}
+                                  onChange={(e) => setQuizAnswer(e.target.value)}
+                                  style={{
+                                    padding: "14px",
+                                    borderRadius: 12,
+                                    border: "1px solid rgba(255, 255, 255, 0.15)",
+                                    background: "rgba(0, 0, 0, 0.4)",
+                                    color: "#fff",
+                                    fontSize: "1rem"
+                                  }}
+                                />
+                                <button
+                                  onClick={handleClaimXp}
+                                  disabled={claiming || !quizAnswer.trim() || !isActionCompleted}
+                                  className="modal-claim-btn"
+                                  style={{
+                                    opacity: (quizAnswer.trim() && isActionCompleted) ? 1 : 0.5,
+                                    cursor: (quizAnswer.trim() && isActionCompleted) ? "pointer" : "not-allowed",
+                                    background: (quizAnswer.trim() && isActionCompleted) ? "linear-gradient(135deg, #ffd166 0%, #f5a623 100%)" : "rgba(255,255,255,0.1)"
+                                  }}
+                                >
+                                  {claiming ? "Claiming..." : isActionCompleted ? "Submit Answer & Claim XP" : "🔒 Complete Task First"}
+                                </button>
+                              </div>
+                            ) : selectedQuest.passcode ? (
+                              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+                                <div style={{ background: "rgba(245, 158, 11, 0.12)", border: "1px solid rgba(245, 158, 11, 0.3)", borderRadius: 10, padding: 10, fontSize: "0.82rem", color: "#fbbf24" }}>
+                                  🔑 <strong>Passcode Required:</strong> Ask the booth staff or stage presenter for the secret code.
+                                </div>
+                                <input
+                                  type="text"
+                                  placeholder="ENTER SECRET PASSCODE (e.g. BOOTH-07)..."
+                                  value={passcodeAnswer}
+                                  onChange={(e) => setPasscodeAnswer(e.target.value.toUpperCase())}
+                                  style={{
+                                    padding: "14px",
+                                    borderRadius: 12,
+                                    border: "1px solid rgba(245, 158, 11, 0.4)",
+                                    background: "rgba(0, 0, 0, 0.5)",
+                                    color: "#fbbf24",
+                                    fontSize: "1.05rem",
+                                    fontWeight: 800,
+                                    letterSpacing: "0.08em",
+                                    textTransform: "uppercase",
+                                  }}
+                                />
+                                <button
+                                  onClick={handleClaimXp}
+                                  disabled={claiming || !passcodeAnswer.trim() || !isActionCompleted}
+                                  className="modal-claim-btn"
+                                  style={{
+                                    opacity: (passcodeAnswer.trim() && isActionCompleted) ? 1 : 0.5,
+                                    cursor: (passcodeAnswer.trim() && isActionCompleted) ? "pointer" : "not-allowed",
+                                    background: (passcodeAnswer.trim() && isActionCompleted) ? "linear-gradient(135deg, #ffd166 0%, #f5a623 100%)" : "rgba(255,255,255,0.1)"
+                                  }}
+                                >
+                                  {claiming ? "Claiming..." : isActionCompleted ? "Unlock Passcode & Claim XP" : "🔒 Complete Task First"}
+                                </button>
+                              </div>
+                            ) : (
                               <button
                                 onClick={handleClaimXp}
-                                disabled={claiming || !passcodeAnswer.trim() || !isActionCompleted}
+                                disabled={claiming || !isActionCompleted}
                                 className="modal-claim-btn"
                                 style={{
-                                  opacity: (passcodeAnswer.trim() && isActionCompleted) ? 1 : 0.5,
-                                  cursor: (passcodeAnswer.trim() && isActionCompleted) ? "pointer" : "not-allowed",
-                                  background: (passcodeAnswer.trim() && isActionCompleted) ? "linear-gradient(135deg, #ffd166 0%, #f5a623 100%)" : "rgba(255,255,255,0.1)"
+                                  opacity: isActionCompleted ? 1 : 0.5,
+                                  cursor: isActionCompleted ? "pointer" : "not-allowed",
+                                  background: isActionCompleted ? "linear-gradient(135deg, #ffd166 0%, #f5a623 100%)" : "rgba(255,255,255,0.1)"
                                 }}
                               >
-                                {claiming ? "Claiming..." : isActionCompleted ? "Unlock Passcode & Claim XP" : "🔒 Complete Task First"}
+                                {claiming ? "Claiming..." : isActionCompleted ? "Claim XP Reward" : "🔒 Complete Task First"}
                               </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={handleClaimXp}
-                              disabled={claiming || !isActionCompleted}
-                              className="modal-claim-btn"
-                              style={{
-                                opacity: isActionCompleted ? 1 : 0.5,
-                                cursor: isActionCompleted ? "pointer" : "not-allowed",
-                                background: isActionCompleted ? "linear-gradient(135deg, #ffd166 0%, #f5a623 100%)" : "rgba(255,255,255,0.1)"
-                              }}
-                            >
-                              {claiming ? "Claiming..." : isActionCompleted ? "Claim XP Reward" : "🔒 Complete Task First"}
-                            </button>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </>
-                );
-              })()}
-            </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </>
+                  );
+                })()}
+              </div>
             </div>
           )}
           {inactivityWarning && (

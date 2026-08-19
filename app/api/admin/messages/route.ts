@@ -33,21 +33,6 @@ export async function GET(request: Request) {
       if (!error && data) {
         return NextResponse.json({ messages: data });
       }
-
-      // Fallback query to quest_verifications if quest_message_notes table isn't created yet
-      let verifQuery = supabase
-        .from("quest_verifications")
-        .select("*")
-        .not("user_message", "is", null)
-        .order("created_at", { ascending: false });
-
-      if (email) {
-        verifQuery = verifQuery.ilike("user_email", email);
-      }
-      const { data: verifData } = await verifQuery;
-      if (verifData) {
-        return NextResponse.json({ messages: verifData });
-      }
     } catch (dbErr: any) {
       console.warn("DB query warning for quest_message_notes:", dbErr.message);
     }
@@ -88,36 +73,52 @@ export async function POST(request: Request) {
 
     try {
       const supabase = getSupabase();
-      const { data, error } = await supabase
-        .from("quest_message_notes")
-        .insert(newRecord)
-        .select()
-        .single();
 
-      if (!error && data) {
+      // Check for existing record for this quest+user, update if found
+      const { data: existing } = await supabase
+        .from("quest_message_notes")
+        .select("id")
+        .eq("quest_id", quest_id)
+        .ilike("user_email", newRecord.user_email)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      let data, error;
+      if (existing && existing.length > 0) {
+        const res = await supabase
+          .from("quest_message_notes")
+          .update({
+            user_message: trimmedMsg,
+            status: "Pending",
+            rejection_reason: null,
+            created_at: new Date().toISOString(),
+          })
+          .eq("id", existing[0].id)
+          .select()
+          .single();
+        data = res.data;
+        error = res.error;
+      } else {
+        const res = await supabase
+          .from("quest_message_notes")
+          .insert(newRecord)
+          .select()
+          .single();
+        data = res.data;
+        error = res.error;
+      }
+
+      if (error) {
+        console.error("quest_message_notes upsert error:", error);
+        return NextResponse.json({ error: error.message || "Database error" }, { status: 500 });
+      }
+      if (data) {
         return NextResponse.json({ messageNote: data }, { status: 201 });
       }
-
-      // Fallback insert to quest_verifications if table not migrated
-      const { data: fallbackData } = await supabase
-        .from("quest_verifications")
-        .insert({
-          ...newRecord,
-          proof_url: "Message Submission",
-        })
-        .select()
-        .single();
-
-      if (fallbackData) {
-        return NextResponse.json({ messageNote: fallbackData }, { status: 201 });
-      }
     } catch (err: any) {
-      console.warn("DB insert fallback notice:", err.message);
+      console.error("DB error in messages POST:", err.message);
+      return NextResponse.json({ error: err.message }, { status: 500 });
     }
-
-    const memoryRecord = { id: Date.now(), ...newRecord };
-    memoryMessageNotes.unshift(memoryRecord);
-    return NextResponse.json({ messageNote: memoryRecord }, { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
@@ -140,9 +141,8 @@ export async function PATCH(request: Request) {
     try {
       const supabase = getSupabase();
 
-      // 1. Fetch from quest_message_notes or quest_verifications
+      // 1. Fetch from quest_message_notes
       let currentMsg: any = null;
-      let targetTable = "quest_message_notes";
 
       const { data: msgData } = await supabase
         .from("quest_message_notes")
@@ -152,25 +152,19 @@ export async function PATCH(request: Request) {
 
       if (msgData) {
         currentMsg = msgData;
-      } else {
-        const { data: verifData } = await supabase
-          .from("quest_verifications")
-          .select("user_email, xp, status, quest_id")
-          .eq("id", id)
-          .single();
-        if (verifData) {
-          currentMsg = verifData;
-          targetTable = "quest_verifications";
-        }
       }
 
-      if (currentMsg && currentMsg.status === status) {
+      if (!currentMsg) {
+        return NextResponse.json({ error: "Message note not found in database." }, { status: 404 });
+      }
+
+      if (currentMsg.status === status) {
         return NextResponse.json({ messageNote: currentMsg });
       }
 
-      // 2. Update status in DB
+      // 2. Update status in quest_message_notes
       const { data, error } = await supabase
-        .from(targetTable)
+        .from("quest_message_notes")
         .update(updatePayload)
         .eq("id", id)
         .select()
@@ -192,13 +186,17 @@ export async function PATCH(request: Request) {
                 .eq("id", user.id);
             }
 
-            await supabase
+            // Use registration_id (not user_email) for quest_completions
+            const { error: compErr } = await supabase
               .from("quest_completions")
               .insert({
                 quest_id: currentMsg.quest_id,
-                user_email: currentMsg.user_email,
+                registration_id: user.id,
                 xp_awarded: currentMsg.xp,
               });
+            if (compErr && compErr.code !== "23505") {
+              console.warn("quest_completions insert notice:", compErr.message);
+            }
           }
         } else if ((status === "Rejected" || status === "Pending") && currentMsg && currentMsg.status === "Approved") {
           const { data: user } = await supabase
@@ -217,21 +215,16 @@ export async function PATCH(request: Request) {
               .from("quest_completions")
               .delete()
               .eq("quest_id", currentMsg.quest_id)
-              .eq("user_email", currentMsg.user_email);
+              .eq("registration_id", user.id);
           }
         }
 
         return NextResponse.json({ messageNote: data });
       }
     } catch (err: any) {
-      console.warn("PATCH fallback warning:", err.message);
+      console.error("PATCH error in messages:", err.message);
+      return NextResponse.json({ error: err.message }, { status: 500 });
     }
-
-    memoryMessageNotes = memoryMessageNotes.map((item) =>
-      item.id === id ? { ...item, status, rejection_reason: rejection_reason || null } : item
-    );
-    const updated = memoryMessageNotes.find((item) => item.id === id);
-    return NextResponse.json({ messageNote: updated });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

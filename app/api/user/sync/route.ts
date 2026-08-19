@@ -65,13 +65,22 @@ export async function GET(request: Request) {
         .order("created_at", { ascending: false })
     ]);
 
-    const combinedVerifs = [
+    const sortedSubmissions = [
       ...(verifRes.data || []),
       ...(msgRes.data || [])
-    ];
+    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-    verifications = combinedVerifs;
-    verifXp = combinedVerifs
+    const latestByQuestMap = new Map<string, any>();
+    sortedSubmissions.forEach((item) => {
+      if (!latestByQuestMap.has(item.quest_id)) {
+        latestByQuestMap.set(item.quest_id, item);
+      }
+    });
+
+    const verificationsList = Array.from(latestByQuestMap.values());
+
+    verifications = verificationsList;
+    verifXp = verificationsList
       .filter((v) => v.status === "Approved")
       .reduce((sum, v) => sum + (v.xp || 0), 0);
 

@@ -121,7 +121,7 @@ export default function AdminPage() {
             setAdminUser(session.adminUser);
           }
         }
-      } catch (e) {}
+      } catch (e) { }
     }
   }, []);
 
@@ -548,9 +548,6 @@ export default function AdminPage() {
 
   // ─── Verification helpers (Screenshot proofs ONLY) ─────────────────────────
   const filteredVerifications = verifications.filter((v) => {
-    // Strictly exclude any items with a user_message from the Quest Verifications tab
-    if (v.user_message) return false;
-
     const query = verificationSearch.toLowerCase();
     const matchesQuery =
       !query ||
@@ -654,7 +651,7 @@ export default function AdminPage() {
           return;
         }
       }
-    } catch {}
+    } catch { }
     setHasSavedDraft(false);
     setQuestForm({ ...EMPTY_QUEST });
     setShowQuestModal(true);
@@ -667,14 +664,14 @@ export default function AdminPage() {
       if (hasContent) {
         try {
           localStorage.setItem(DRAFT_KEY, JSON.stringify(questForm));
-        } catch {}
+        } catch { }
       }
     }
     setShowQuestModal(false);
   }
 
   function discardDraft() {
-    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+    try { localStorage.removeItem(DRAFT_KEY); } catch { }
     setHasSavedDraft(false);
     setQuestForm({ ...EMPTY_QUEST });
   }
@@ -683,12 +680,12 @@ export default function AdminPage() {
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
       if (raw) setQuestForm(JSON.parse(raw));
-    } catch {}
+    } catch { }
     setHasSavedDraft(false);
   }
 
   function clearDraft() {
-    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+    try { localStorage.removeItem(DRAFT_KEY); } catch { }
     setHasSavedDraft(false);
   }
 
@@ -999,7 +996,7 @@ export default function AdminPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to create admin");
-      
+
       setAdminUsersList(prev => [json.adminUser, ...prev]);
       setNewAdminForm({ email: "", password: "", full_name: "", role: "verifier" });
       alert("Admin created successfully!");
@@ -1021,7 +1018,7 @@ export default function AdminPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to delete admin");
-      
+
       setAdminUsersList(prev => prev.filter(u => u.id !== deletingAdminUser.id));
       setDeletingAdminUser(null);
     } catch (err: any) {
@@ -1042,7 +1039,7 @@ export default function AdminPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to create social mission");
-      
+
       setSocialMissions(prev => [...prev, json.mission]);
       setNewSocialMissionForm({ platform: "facebook", title: "", description: "", url: "", button_text: "", button_color: "#1877f2", sort_order: 0 });
       setShowAddMissionModal(false);
@@ -1064,7 +1061,7 @@ export default function AdminPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to delete mission");
-      
+
       setSocialMissions(prev => prev.filter(m => m.id !== id));
     } catch (err: any) {
       alert("Error: " + err.message);
@@ -1276,39 +1273,39 @@ export default function AdminPage() {
               {t === "scanner"
                 ? "📷"
                 : t === "attendees"
-                ? "🎫"
-                : t === "quests"
-                ? "⚡"
-                : t === "messages"
-                ? "💬"
-                : t === "questlog"
-                ? "📊"
-                : t === "booths"
-                ? "🏪"
-                : t === "staff"
-                ? "🛡️"
-                : t === "socials"
-                ? "📣"
-                : "🔍"}
+                  ? "🎫"
+                  : t === "quests"
+                    ? "⚡"
+                    : t === "messages"
+                      ? "💬"
+                      : t === "questlog"
+                        ? "📊"
+                        : t === "booths"
+                          ? "🏪"
+                          : t === "staff"
+                            ? "🛡️"
+                            : t === "socials"
+                              ? "📣"
+                              : "🔍"}
             </span>
             <span className="admin-tab-text">
               {t === "scanner"
                 ? " QR Scanner"
                 : t === "attendees"
-                ? " Event Pass Attendees"
-                : t === "quests"
-                ? " Fiesta Event Quests"
-                : t === "messages"
-                ? ` Message Notes (${messageNotes.filter((v) => v.status === "Pending").length})`
-                : t === "questlog"
-                ? " Quest Log"
-                : t === "booths"
-                ? " Booth Stations"
-                : t === "staff"
-                ? " Staff / Admins"
-                : t === "socials"
-                ? " Social Missions"
-                : ` Quest Verifications (${verifications.filter((v) => !v.user_message && v.status === "Pending").length})`}
+                  ? " Event Pass Attendees"
+                  : t === "quests"
+                    ? " Fiesta Event Quests"
+                    : t === "messages"
+                      ? ` Message Notes (${messageNotes.filter((v) => v.status === "Pending").length})`
+                      : t === "questlog"
+                        ? " Quest Log"
+                        : t === "booths"
+                          ? " Booth Stations"
+                          : t === "staff"
+                            ? " Staff / Admins"
+                            : t === "socials"
+                              ? " Social Missions"
+                              : ` Quest Verifications (${verifications.filter((v) => !v.user_message && v.status === "Pending").length})`}
             </span>
           </button>
         ))}
@@ -1334,7 +1331,7 @@ export default function AdminPage() {
                 className="admin-search-input"
                 style={{ flex: "1 1 220px", minWidth: 200 }}
               />
-              
+
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as any)}
@@ -1725,14 +1722,14 @@ export default function AdminPage() {
                   <p style={{ color: "var(--text-secondary)", marginBottom: 20, fontSize: "0.9rem" }}>
                     Select a new status for <strong>{statusModalQuest.title}</strong>
                   </p>
-                  
+
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {STATUS_OPTIONS.map((s) => (
                       <button
                         key={s}
                         className={`admin-status-badge admin-status-badge--${s.toLowerCase()}`}
-                        style={{ 
-                          width: "100%", 
+                        style={{
+                          width: "100%",
                           padding: "12px",
                           justifyContent: "center",
                           opacity: statusModalQuest.status === s ? 0.5 : 1,
@@ -2340,7 +2337,7 @@ export default function AdminPage() {
         {/* ─── STAFF TAB ─── */}
         {tab === "staff" && adminUser?.role === "superadmin" && !loading && (
           <div style={{ display: "flex", gap: 24, flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start" }}>
-            
+
             {/* Staff List Table */}
             <div className="admin-table-wrapper" style={{ flex: "2 1 500px" }}>
               <div className="admin-toolbar" style={{ marginBottom: 0, paddingBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
@@ -2387,8 +2384,8 @@ export default function AdminPage() {
                             ✏️ Edit
                           </button>
                           {user.email !== adminUser.email && (
-                            <button 
-                              className="admin-delete-btn" 
+                            <button
+                              className="admin-delete-btn"
                               onClick={() => setDeletingAdminUser(user)}
                             >
                               Delete
@@ -2441,8 +2438,8 @@ export default function AdminPage() {
                 </label>
                 <label className="qf-label">
                   Role Access Level
-                  <select 
-                    className="admin-login-input" 
+                  <select
+                    className="admin-login-input"
                     value={newAdminForm.role}
                     onChange={(e) => setNewAdminForm(f => ({ ...f, role: e.target.value }))}
                     style={{ padding: "12px", cursor: "pointer" }}
@@ -2465,7 +2462,7 @@ export default function AdminPage() {
         {/* ─── SOCIAL MISSIONS TAB ─── */}
         {tab === "socials" && adminUser?.role === "superadmin" && !loading && (
           <div style={{ display: "flex", gap: 24, flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start" }}>
-            
+
             {/* Missions List */}
             <div className="admin-table-wrapper" style={{ flex: "2 1 500px" }}>
               <div className="admin-toolbar" style={{ marginBottom: 0, paddingBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
@@ -2507,14 +2504,14 @@ export default function AdminPage() {
                         </td>
                         <td>{mission.sort_order}</td>
                         <td style={{ display: "flex", gap: 6 }}>
-                          <button 
-                            className="admin-edit-btn" 
+                          <button
+                            className="admin-edit-btn"
                             onClick={() => handleOpenEditSocialMission(mission)}
                           >
                             Edit
                           </button>
-                          <button 
-                            className="admin-delete-btn" 
+                          <button
+                            className="admin-delete-btn"
                             onClick={() => handleDeleteSocialMission(mission.id)}
                           >
                             Delete
@@ -2537,12 +2534,12 @@ export default function AdminPage() {
                     </h2>
                     <button className="admin-modal__close" onClick={() => setShowAddMissionModal(false)}>✕</button>
                   </div>
-                  
+
                   <form onSubmit={handleCreateSocialMission} style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
                     <label className="qf-label">
                       Platform Type *
-                      <select 
-                        className="qf-input" 
+                      <select
+                        className="qf-input"
                         value={newSocialMissionForm.platform}
                         onChange={(e) => setNewSocialMissionForm(f => ({ ...f, platform: e.target.value }))}
                         style={{ padding: "12px", cursor: "pointer", background: "#0e131f", color: "#fff" }}
@@ -2607,13 +2604,13 @@ export default function AdminPage() {
                       <label className="qf-label">
                         Button Color (Hex) *
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-                          <span style={{ 
-                            width: 28, 
-                            height: 28, 
-                            borderRadius: "50%", 
+                          <span style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: "50%",
                             backgroundColor: newSocialMissionForm.button_color || "#1877f2",
                             border: "2px solid rgba(255,255,255,0.2)",
-                            flexShrink: 0 
+                            flexShrink: 0
                           }} />
                           <input
                             type="text"
@@ -2643,9 +2640,9 @@ export default function AdminPage() {
                       <button type="button" className="admin-cancel-btn" onClick={() => setShowAddMissionModal(false)}>
                         Cancel
                       </button>
-                      <button 
-                        type="submit" 
-                        className="admin-save-btn" 
+                      <button
+                        type="submit"
+                        className="admin-save-btn"
                         style={{
                           background: "linear-gradient(135deg, #1877f2, #0056b3)",
                           color: "#fff",
@@ -2676,12 +2673,12 @@ export default function AdminPage() {
                     </h2>
                     <button className="admin-modal__close" onClick={() => setEditingSocialMission(null)}>✕</button>
                   </div>
-                  
+
                   <form onSubmit={handleUpdateSocialMission} style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
                     <label className="qf-label">
                       Platform Type *
-                      <select 
-                        className="qf-input" 
+                      <select
+                        className="qf-input"
                         value={editSocialMissionForm.platform}
                         onChange={(e) => setEditSocialMissionForm(f => ({ ...f, platform: e.target.value }))}
                         style={{ padding: "12px", cursor: "pointer", background: "#0e131f", color: "#fff" }}
@@ -2746,13 +2743,13 @@ export default function AdminPage() {
                       <label className="qf-label">
                         Button Color (Hex) *
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-                          <span style={{ 
-                            width: 28, 
-                            height: 28, 
-                            borderRadius: "50%", 
+                          <span style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: "50%",
                             backgroundColor: editSocialMissionForm.button_color || "#1877f2",
                             border: "2px solid rgba(255,255,255,0.2)",
-                            flexShrink: 0 
+                            flexShrink: 0
                           }} />
                           <input
                             type="text"
@@ -2782,9 +2779,9 @@ export default function AdminPage() {
                       <button type="button" className="admin-cancel-btn" onClick={() => setEditingSocialMission(null)}>
                         Cancel
                       </button>
-                      <button 
-                        type="submit" 
-                        className="admin-save-btn" 
+                      <button
+                        type="submit"
+                        className="admin-save-btn"
                         style={{
                           background: "linear-gradient(135deg, #f5a623, #d97706)",
                           color: "#000",
@@ -3386,7 +3383,7 @@ export default function AdminPage() {
                 {/* ① Quest Title & Details */}
                 <div className="qf-section">
                   <div className="qf-section__label">① Quest Details</div>
-                  
+
                   <label className="qf-label">
                     Quest Title *
                     <input
@@ -3425,7 +3422,7 @@ export default function AdminPage() {
                       />
                       <small>{editingQuest ? "Locked ID" : "Auto-generated from title · click to customize"}</small>
                     </label>
-                    
+
                     <label className="qf-label">
                       Sort Order
                       <input
@@ -3555,7 +3552,7 @@ export default function AdminPage() {
                 {/* ④ Verification Mode (Interactive 4-Way Selector) */}
                 <div className="qf-section">
                   <div className="qf-section__label">④ Verification Mode</div>
-                  
+
                   <div className="qf-mode-grid" style={{ marginBottom: 14 }}>
                     {/* Instant Claim */}
                     <div
@@ -3581,6 +3578,30 @@ export default function AdminPage() {
                       </div>
                     </div>
 
+                    {/* Messagebox Note */}
+                    <div
+                      className={`qf-mode-card${questForm.requires_message && !questForm.requires_proof ? " qf-mode-card--active" : ""}`}
+                      onClick={() => setQuestForm((f) => ({ ...f, requires_message: true, requires_proof: false, is_quiz: false, passcode: "" }))}
+                    >
+                      <span className="qf-mode-card__icon">💬</span>
+                      <div className="qf-mode-card__info">
+                        <span className="qf-mode-card__title">Messagebox Note</span>
+                        <span className="qf-mode-card__desc">Quester submits a text message for admin review.</span>
+                      </div>
+                    </div>
+
+                    {/* Photo + Message */}
+                    <div
+                      className={`qf-mode-card${questForm.requires_proof && questForm.requires_message ? " qf-mode-card--active" : ""}`}
+                      onClick={() => setQuestForm((f) => ({ ...f, requires_proof: true, requires_message: true, is_quiz: false, passcode: "" }))}
+                    >
+                      <span className="qf-mode-card__icon">📸+💬</span>
+                      <div className="qf-mode-card__info">
+                        <span className="qf-mode-card__title">Photo + Message</span>
+                        <span className="qf-mode-card__desc">Upload photo AND add text message.</span>
+                      </div>
+                    </div>
+
                     {/* Quiz Answer */}
                     <div
                       className={`qf-mode-card${questForm.is_quiz ? " qf-mode-card--active" : ""}`}
@@ -3602,18 +3623,6 @@ export default function AdminPage() {
                       <div className="qf-mode-card__info">
                         <span className="qf-mode-card__title">Secret Passcode</span>
                         <span className="qf-mode-card__desc">Enter PIN from speaker or booth.</span>
-                      </div>
-                    </div>
-
-                    {/* Messagebox Note */}
-                    <div
-                      className={`qf-mode-card${questForm.requires_message && !questForm.requires_proof ? " qf-mode-card--active" : ""}`}
-                      onClick={() => setQuestForm((f) => ({ ...f, requires_message: true, requires_proof: false, is_quiz: false, passcode: "" }))}
-                    >
-                      <span className="qf-mode-card__icon">💬</span>
-                      <div className="qf-mode-card__info">
-                        <span className="qf-mode-card__title">Messagebox Note</span>
-                        <span className="qf-mode-card__desc">Quester submits a text message for admin review.</span>
                       </div>
                     </div>
                   </div>
@@ -3657,7 +3666,7 @@ export default function AdminPage() {
                 {/* ⑤ Advanced Rules (Expiration & Prerequisite) */}
                 <div className="qf-section">
                   <div className="qf-section__label">⑤ Optional Rules & Locking</div>
-                  
+
                   <div className="admin-form-row" style={{ marginBottom: 12 }}>
                     <label className="qf-label">
                       ⏱️ Expiration Time <span style={{ fontWeight: 400, color: "#64748b" }}>(Flash Quest)</span>
@@ -3736,8 +3745,8 @@ export default function AdminPage() {
                     <span className={`quest-preview-status quest-preview-status--${(questForm.status || "draft").toLowerCase()}`}>
                       {questForm.status === "Live" ? "🟢 Live"
                         : questForm.status === "Done" ? "✅ Done"
-                        : questForm.status === "Draft" ? "📝 Draft"
-                        : "🔜 Soon"}
+                          : questForm.status === "Draft" ? "📝 Draft"
+                            : "🔜 Soon"}
                     </span>
                   </div>
 
@@ -4185,7 +4194,7 @@ export default function AdminPage() {
             </h3>
             <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: "8px 0 16px" }}>
               Are you sure you want to permanently delete this quest? This action cannot be undone.
-              <br/><br/>
+              <br /><br />
               To proceed, please type the Quest ID: <strong>{deletingQuestId}</strong>
             </p>
 
@@ -4212,12 +4221,12 @@ export default function AdminPage() {
                 className="admin-delete-btn"
                 onClick={executeDeleteQuest}
                 disabled={deleteConfirmation !== deletingQuestId || isDeleting}
-                style={{ 
-                  background: deleteConfirmation === deletingQuestId ? "#ef4444" : "var(--border)", 
-                  color: "#fff", 
-                  borderColor: deleteConfirmation === deletingQuestId ? "#dc2626" : "var(--border)", 
-                  opacity: deleteConfirmation === deletingQuestId ? 1 : 0.5, 
-                  cursor: deleteConfirmation === deletingQuestId ? "pointer" : "not-allowed" 
+                style={{
+                  background: deleteConfirmation === deletingQuestId ? "#ef4444" : "var(--border)",
+                  color: "#fff",
+                  borderColor: deleteConfirmation === deletingQuestId ? "#dc2626" : "var(--border)",
+                  opacity: deleteConfirmation === deletingQuestId ? 1 : 0.5,
+                  cursor: deleteConfirmation === deletingQuestId ? "pointer" : "not-allowed"
                 }}
               >
                 {isDeleting ? "Deleting..." : "Proceed"}
