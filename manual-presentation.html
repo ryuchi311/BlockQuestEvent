@@ -650,7 +650,7 @@
       <div class="hero-badge">⚡ End-to-End System Manual & Dashboard Guide</div>
       <h1 class="hero-title">BlockQuest Event Platform</h1>
       <p class="hero-subtitle">
-        A comprehensive guide explaining the strategic purpose, quester onboarding, gate operations, and an in-depth breakdown of all 6 Admin Dashboard Modules.
+        A comprehensive guide explaining the strategic purpose, quester onboarding, gate operations, and an in-depth breakdown of all 9 Admin Dashboard Modules.
       </p>
 
       <div class="hero-metrics">
@@ -667,7 +667,7 @@
         <div class="metric-card">
           <div class="metric-icon">⚡</div>
           <div class="metric-title">Live Quest Builder</div>
-          <div class="metric-desc">Real-time side-by-side preview with auto-slugged IDs & draft autosave.</div>
+          <div class="metric-desc">12 Preset templates, 6 verification modes, real-time preview & reviewer tracing.</div>
         </div>
         <div class="metric-card">
           <div class="metric-icon">🛡️</div>
@@ -713,8 +713,9 @@
             </p>
             <ul style="color: var(--text-muted); line-height: 1.8; padding-left: 20px; display: flex; flex-direction: column; gap: 8px;">
               <li><strong>Secure Login:</strong> Admins log in via a hidden portal using their secure credentials. The system automatically recognizes their role (Superadmin, Verifier, Viewer, etc.).</li>
-              <li><strong>1-Click Presets:</strong> In the <strong>"⚡ Fiesta Event Quests"</strong> tab, click <strong>"+ Add Quest"</strong> to open the builder. Use 1-click presets (Social Follow, Booth Passcode, Trivia Quiz, Stage Selfie, Instant Check-in) to pre-fill quests in seconds!</li>
-              <li><strong>4 Verification Modes:</strong> Choose between <strong>⚡ Instant Claim</strong>, <strong>📷 Screenshot Proof</strong>, <strong>❓ Trivia Quiz</strong>, or <strong>🔑 Secret Passcode</strong>.</li>
+              <li><strong>12 Quick Preset Templates:</strong> In the <strong>"⚡ Fiesta Event Quests"</strong> tab, click <strong>"+ Add Quest"</strong> to open the builder. Use 1-click presets (<em>Social Follow, Join Telegram, Event Feedback Note, Booth Passcode, Booth Photo + Review, Networking Buddy, Keynote Takeaway, Trivia Quiz, Stage Selfie, Swag Bag Claim, Workshop Code, Instant Check-in</em>) to pre-fill quests in seconds!</li>
+              <li><strong>6 Verification Modes:</strong> Choose between <strong>⚡ Instant Claim</strong>, <strong>📷 Screenshot Proof</strong>, <strong>💬 Messagebox Note</strong>, <strong>📸+💬 Photo + Message</strong>, <strong>❓ Trivia Quiz</strong>, or <strong>🔑 Secret Passcode</strong>.</li>
+              <li><strong>Admin Reviewer Attribution:</strong> Every approved or rejected submission records the reviewing admin's email (e.g. <code>👮 admin@blockquest.ph</code>) and timestamp, visible in both review tables and the master CSV audit log!</li>
               <li><strong>Advanced Rules:</strong> Configure time-limited <strong>⏱️ Flash Quests</strong> (countdown timers) or <strong>🔒 Prerequisite Chains</strong> (locked quests).</li>
               <li><strong>Live Mobile Simulation:</strong> As you type, the right-hand panel renders an exact real-time preview of the mobile quest card.</li>
               <li><strong>Publishing:</strong> Save it as a "Draft" to hide it temporarily, or set it to "Live" to immediately broadcast it to attendee phones!</li>
@@ -879,9 +880,9 @@
         <p class="section-desc">The BlockQuest Quest System is a gamified engagement engine designed to drive physical venue traffic, boost social media viral reach, test attendee knowledge, and reward active participation.</p>
       </div>
 
-      <!-- THE 4 QUEST MODES -->
+      <!-- THE 6 QUEST MODES -->
       <h3 style="font-size: 1.4rem; color: #fff; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-        <span>🎯</span> The 4 Quest Verification Modes
+        <span>🎯</span> The 6 Quest Verification Modes
       </h3>
 
       <div class="quest-builder-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-bottom: 36px;">
@@ -906,17 +907,43 @@
             <h4 class="qb-title" style="color: #c084fc;">2. Screenshot Proof</h4>
           </div>
           <p class="qb-desc">
-            <strong>How it Works:</strong> Attendees upload a photo or screenshot. The submission routes to the Admin Verifier Queue for 1-click approval or rejection.<br><br>
+            <strong>How it Works:</strong> Attendees upload a photo or screenshot. The submission routes strictly to the <strong>Quest Verifications</strong> queue for 1-click review.<br><br>
             <strong>Best For:</strong> Social media follows, reposts, selfies at the keynote stage, or community group invites.<br><br>
             <strong>Example:</strong> <em>"Follow @BlockQuest on X & Submit Screenshot"</em> (+100 XP).
           </p>
         </div>
 
         <!-- Mode 3 -->
+        <div class="qb-step-card" style="border-top: 3px solid #f59e0b;">
+          <div class="qb-step-header">
+            <span style="font-size: 1.6rem;">💬</span>
+            <h4 class="qb-title" style="color: #fbbf24;">3. Messagebox Note</h4>
+          </div>
+          <p class="qb-desc">
+            <strong>How it Works:</strong> Attendees submit written feedback, thoughts, or answers in a dedicated text box. Routes strictly to the <strong>Message Notes</strong> queue.<br><br>
+            <strong>Best For:</strong> Event surveys, speaker questions, product feedback, or sharing takeaways.<br><br>
+            <strong>Example:</strong> <em>"Share Your Event Feedback"</em> (+150 XP).
+          </p>
+        </div>
+
+        <!-- Mode 4 -->
+        <div class="qb-step-card" style="border-top: 3px solid #38bdf8;">
+          <div class="qb-step-header">
+            <span style="font-size: 1.6rem;">📸+💬</span>
+            <h4 class="qb-title" style="color: #38bdf8;">4. Photo + Message</h4>
+          </div>
+          <p class="qb-desc">
+            <strong>How it Works:</strong> Combines visual image proof with an accompanying written text note. Shows full photo thumbnail and message banner in Verifications queue.<br><br>
+            <strong>Best For:</strong> Booth review photos, speaker selfies with key learnings, or networking photos with quester handles.<br><br>
+            <strong>Example:</strong> <em>"Booth Photo & Feedback"</em> (+250 XP).
+          </p>
+        </div>
+
+        <!-- Mode 5 -->
         <div class="qb-step-card" style="border-top: 3px solid #a855f7;">
           <div class="qb-step-header">
             <span style="font-size: 1.6rem;">❓</span>
-            <h4 class="qb-title" style="color: #e879f9;">3. Trivia Quiz Question</h4>
+            <h4 class="qb-title" style="color: #e879f9;">5. Trivia Quiz Question</h4>
           </div>
           <p class="qb-desc">
             <strong>How it Works:</strong> Organizers configure a secret answer string. Attendees must type the correct answer (case-insensitive) on their app to unlock XP instantly.<br><br>
@@ -925,17 +952,127 @@
           </p>
         </div>
 
-        <!-- Mode 4 -->
+        <!-- Mode 6 -->
         <div class="qb-step-card" style="border-top: 3px solid #f5a623;">
           <div class="qb-step-header">
             <span style="font-size: 1.6rem;">🔑</span>
-            <h4 class="qb-title" style="color: var(--gold-light);">4. Secret Passcode</h4>
+            <h4 class="qb-title" style="color: var(--gold-light);">6. Secret Passcode</h4>
           </div>
           <p class="qb-desc">
-            <strong>How it Works:</strong> Organizers assign a 4-to-8 character secret code (e.g. <code>BOOTH-07</code>). Booth staff or keynote speakers verbally reveal the code to attendees.<br><br>
-            <strong>Best For:</strong> Driving physical foot traffic to sponsor booths, workshop rooms, and product demos.<br><br>
-            <strong>Example:</strong> <em>"Visit Sponsor Booth A in Zone 2"</em> (Passcode: <code>SPONSOR-A</code>) (+250 XP).
+            <strong>How it Works:</strong> Organizers assign a 4-to-8 character secret code (e.g. <code>BOOTH-01</code>). Booth staff or keynote speakers verbally reveal the code to attendees with instant retry error guidance.<br><br>
+            <strong>Best For:</strong> Driving physical foot traffic to sponsor booths, workshop rooms, and swag claim counters.<br><br>
+            <strong>Example:</strong> <em>"Visit Sponsor Booth in Zone 2"</em> (Passcode: <code>BOOTH-01</code>) (+150 XP).
           </p>
+        </div>
+      </div>
+
+      <!-- 12 QUICK PRESET TEMPLATES REFERENCE TABLE -->
+      <div class="card-box" style="margin-bottom: 36px; border: 1px solid rgba(245, 166, 35, 0.25);">
+        <h3 style="font-size: 1.3rem; color: var(--gold-light); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+          <span>⚡</span> 12 Built-in Quick Preset Templates (1-Click Fill)
+        </h3>
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 18px;">
+          When creating quests in the Admin Studio, click any of the 12 preset chips at the top of the modal to instantly pre-fill all form fields, XP rewards, instructions, and verification modes:
+        </p>
+
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
+            <thead>
+              <tr style="border-bottom: 1px solid var(--border-subtle); color: var(--gold-light);">
+                <th style="padding: 10px;">Preset Chip</th>
+                <th style="padding: 10px;">Verification Mode</th>
+                <th style="padding: 10px;">XP</th>
+                <th style="padding: 10px;">Category</th>
+                <th style="padding: 10px;">Pre-Filled Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 10px; font-weight: 700; color: #fff;">📱 Social Follow</td>
+                <td style="padding: 10px;"><span style="color: #c084fc;">📷 Screenshot Proof</span></td>
+                <td style="padding: 10px; color: var(--gold-light);">+100 XP</td>
+                <td style="padding: 10px; color: var(--text-muted);">Social</td>
+                <td style="padding: 10px; color: var(--text-muted);">Follow on X and upload profile screenshot proof</td>
+              </tr>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 10px; font-weight: 700; color: #fff;">✈️ Join Telegram</td>
+                <td style="padding: 10px;"><span style="color: #c084fc;">📷 Screenshot Proof</span></td>
+                <td style="padding: 10px; color: var(--gold-light);">+100 XP</td>
+                <td style="padding: 10px; color: var(--text-muted);">Social</td>
+                <td style="padding: 10px; color: var(--text-muted);">Join Telegram community group and upload screenshot</td>
+              </tr>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 10px; font-weight: 700; color: #fff;">💬 Event Feedback Note</td>
+                <td style="padding: 10px;"><span style="color: #fbbf24;">💬 Messagebox Note</span></td>
+                <td style="padding: 10px; color: var(--gold-light);">+150 XP</td>
+                <td style="padding: 10px; color: var(--text-muted);">Daily</td>
+                <td style="padding: 10px; color: var(--text-muted);">Write a short 1-sentence feedback about the event</td>
+              </tr>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 10px; font-weight: 700; color: #fff;">🔑 Booth Passcode</td>
+                <td style="padding: 10px;"><span style="color: var(--gold-light);">🔑 Secret Passcode</span></td>
+                <td style="padding: 10px; color: var(--gold-light);">+150 XP</td>
+                <td style="padding: 10px; color: var(--text-muted);">Onboarding</td>
+                <td style="padding: 10px; color: var(--text-muted);">Visit sponsor booth in hall and enter secret passcode</td>
+              </tr>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 10px; font-weight: 700; color: #fff;">📸+💬 Booth Photo + Review</td>
+                <td style="padding: 10px;"><span style="color: #38bdf8;">📸+💬 Photo + Message</span></td>
+                <td style="padding: 10px; color: var(--gold-light);">+250 XP</td>
+                <td style="padding: 10px; color: var(--text-muted);">Social</td>
+                <td style="padding: 10px; color: var(--text-muted);">Take clear booth photo + type favorite feature in note box</td>
+              </tr>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 10px; font-weight: 700; color: #fff;">🤝+💬 Networking Buddy</td>
+                <td style="padding: 10px;"><span style="color: #38bdf8;">📸+💬 Photo + Message</span></td>
+                <td style="padding: 10px; color: var(--gold-light);">+200 XP</td>
+                <td style="padding: 10px; color: var(--text-muted);">Social</td>
+                <td style="padding: 10px; color: var(--text-muted);">Selfie with fellow quester + enter their name/handle in note</td>
+              </tr>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 10px; font-weight: 700; color: #fff;">🎤+💬 Keynote Takeaway</td>
+                <td style="padding: 10px;"><span style="color: #38bdf8;">📸+💬 Photo + Message</span></td>
+                <td style="padding: 10px; color: var(--gold-light);">+200 XP</td>
+                <td style="padding: 10px; color: var(--text-muted);">Daily</td>
+                <td style="padding: 10px; color: var(--text-muted);">Snap speaker photo on stage + write #1 key learning</td>
+              </tr>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 10px; font-weight: 700; color: #fff;">❓ Trivia Quiz</td>
+                <td style="padding: 10px;"><span style="color: #e879f9;">❓ Quiz Question</span></td>
+                <td style="padding: 10px; color: var(--gold-light);">+100 XP</td>
+                <td style="padding: 10px; color: var(--text-muted);">Quiz</td>
+                <td style="padding: 10px; color: var(--text-muted);">Web3 trivia quiz question with answer <code>ETH</code></td>
+              </tr>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 10px; font-weight: 700; color: #fff;">📸 Stage Selfie</td>
+                <td style="padding: 10px;"><span style="color: #c084fc;">📷 Screenshot Proof</span></td>
+                <td style="padding: 10px; color: var(--gold-light);">+200 XP</td>
+                <td style="padding: 10px; color: var(--text-muted);">Daily</td>
+                <td style="padding: 10px; color: var(--text-muted);">Photo selfie at keynote stage during live session</td>
+              </tr>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 10px; font-weight: 700; color: #fff;">🎁 Swag Bag Claim</td>
+                <td style="padding: 10px;"><span style="color: var(--gold-light);">🔑 Secret Passcode</span></td>
+                <td style="padding: 10px; color: var(--gold-light);">+300 XP</td>
+                <td style="padding: 10px; color: var(--text-muted);">Onboarding</td>
+                <td style="padding: 10px; color: var(--text-muted);">Enter staff claim PIN <code>SWAG-2026</code> at merch counter</td>
+              </tr>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 10px; font-weight: 700; color: #fff;">💡 Workshop Code</td>
+                <td style="padding: 10px;"><span style="color: var(--gold-light);">🔑 Secret Passcode</span></td>
+                <td style="padding: 10px; color: var(--gold-light);">+350 XP</td>
+                <td style="padding: 10px; color: var(--text-muted);">Onboarding</td>
+                <td style="padding: 10px; color: var(--text-muted);">Hands-on developer workshop slide code <code>BUILD-WEB3</code></td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; font-weight: 700; color: #fff;">⚡ Instant Check-in</td>
+                <td style="padding: 10px;"><span style="color: #34d399;">⚡ Instant Claim</span></td>
+                <td style="padding: 10px; color: var(--gold-light);">+50 XP</td>
+                <td style="padding: 10px; color: var(--text-muted);">Daily</td>
+                <td style="padding: 10px; color: var(--text-muted);">1-tap instant community check-in bonus points</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -1034,7 +1171,7 @@
     <section id="admin-tabs">
       <div class="section-header">
         <span class="section-tag tag-emerald">ADMIN DASHBOARD MODULES</span>
-        <h2 class="section-title">Complete Breakdown of All 6 Admin Tabs</h2>
+        <h2 class="section-title">Complete Breakdown of All 9 Admin Dashboard Modules</h2>
         <p class="section-desc">A detailed walkthrough of every tab, capability, safety control, and operational feature available in the Admin Portal.</p>
       </div>
 
@@ -1144,7 +1281,7 @@
               <div class="tab-icon-box">⚡</div>
               <div>
                 <h3 class="tab-name">Tab 3: Fiesta Event Quests</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted);">Interactive quest creation studio, live preview simulation, draft autosave & catalog management</p>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Interactive quest creation studio, 12 preset templates, live preview simulation, draft autosave & 6-way verification mode filter</p>
               </div>
             </div>
             <span class="tab-badge" style="background: rgba(245,166,35,0.15); color: var(--gold); border: 1px solid var(--gold);">Manager & Superadmin</span>
@@ -1154,15 +1291,11 @@
             <ul class="feature-list">
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
-                <div><strong>5-Section Quest Creation Studio:</strong>
-                  <ul style="margin: 6px 0 0 16px; font-size: 0.84rem; color: var(--text-secondary); line-height: 1.6;">
-                    <li><strong>① Identity & Ordering:</strong> Auto-slugs titles into immutable lowercase alphanumeric IDs (e.g., <code>booth-visit-a</code>) and sets display priority numbers.</li>
-                    <li><strong>② Content & Quick-Format Bar:</strong> Multi-line description editor with 1-click markdown tools for <code>• Bullet Lists</code> and <code>1. Numbered Steps</code>.</li>
-                    <li><strong>③ Economy & State:</strong> Assign exact XP rewards (e.g., +250 XP), choose category (🚀 Onboarding, 📣 Social, 📅 Daily), and select status (🟢 Live, 🔜 Soon, ✅ Done, 📝 Draft).</li>
-                    <li><strong>④ Action Button CTA:</strong> Define external/internal URLs with custom button text (e.g., "Join Discord →", "Visit Booth Website").</li>
-                    <li><strong>⑤ Verification Mode Switch:</strong> Toggle between <strong>Instant Claim</strong> (zero-friction 1-click XP) and <strong>Screenshot Proof Required</strong> (routed to Verifier Queue).</li>
-                  </ul>
-                </div>
+                <div><strong>12 Quick Preset Templates:</strong> 1-click chips pre-fill Social Follows, Telegram Joins, Feedback Notes, Booth PINs, Photo + Reviews, Trivia Quizzes, Stage Selfies, Swag Bag claims, and Workshop codes.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>6 Verification Mode Filter:</strong> Quests table toolbar includes a 6-way mode filter dropdown (Instant Claim, Screenshot Proof, Messagebox Note, Photo + Message, Quiz, Passcode).</div>
               </li>
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
@@ -1172,40 +1305,32 @@
                 <span class="feature-bullet">✦</span>
                 <div><strong>Browser Draft Autosave & Recovery:</strong> In-flight form changes are continuously cached in localStorage. If closed accidentally or reloaded, a recovery banner lets staff resume work seamlessly.</div>
               </li>
-              <li class="feature-item">
-                <span class="feature-bullet">✦</span>
-                <div><strong>Instant Status Switcher Modal:</strong> Click any status badge directly in the catalog table to change status between Live, Soon, Done, or Draft without entering the full edit modal.</div>
-              </li>
-              <li class="feature-item">
-                <span class="feature-bullet">✦</span>
-                <div><strong>Publish Draft Flow:</strong> Draft quests remain invisible to attendees until a Superadmin clicks <em>"🚀 Publish Quest"</em> to launch them live.</div>
-              </li>
             </ul>
 
             <div class="mockup-preview">
               <div class="mockup-bar">
                 <span>QUEST STUDIO & SIMULATOR</span>
-                <span style="color: var(--gold);">XP POOL: 25,000</span>
+                <span style="color: var(--gold);">12 PRESETS ACTIVE</span>
               </div>
               <div style="color: var(--text-muted); line-height: 1.8;">
                 [+] <span style="color: var(--gold);">+ Add New Quest (Studio Modal)</span><br>
-                1. "Follow X Account" [Onboarding] <span style="color: var(--gold-light);">+100 XP</span> <span style="color: var(--emerald);">[🟢 Live]</span><br>
-                2. "Booth Partner Photo" [Social] <span style="color: var(--gold-light);">+500 XP</span> <span style="color: var(--blue);">[📷 Proof Req]</span><br>
-                3. "VIP Mixer Pass" [Daily] <span style="color: var(--gold-light);">+1,000 XP</span> <span style="color: #fbbf24;">[📝 Draft]</span><br>
-                Actions: <span style="color: var(--emerald);">[ 🚀 Publish ]</span> | <span style="color: var(--gold-light);">[ ✏️ Edit ]</span> | <span style="color: var(--red);">[ ⚠️ Delete ]</span>
+                1. "Follow X Account" [Social] <span style="color: var(--gold-light);">+100 XP</span> <span style="color: var(--blue);">[📷 Screenshot]</span><br>
+                2. "Booth Photo + Review" [Social] <span style="color: var(--gold-light);">+250 XP</span> <span style="color: #38bdf8;">[📸+💬 Photo+Msg]</span><br>
+                3. "Event Feedback Note" [Daily] <span style="color: var(--gold-light);">+150 XP</span> <span style="color: #fbbf24;">[💬 Note Box]</span><br>
+                Filter: <span style="color: var(--emerald);">[ All 6 Modes Dropdown ]</span>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- TAB 4: QUEST VERIFICATIONS -->
+        <!-- TAB 4: QUEST VERIFICATIONS (SCREENSHOT PROOFS) -->
         <div class="tab-card">
           <div class="tab-card-header">
             <div class="tab-title-group">
               <div class="tab-icon-box">🔍</div>
               <div>
-                <h3 class="tab-name">Tab 4: Quest Verifications</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted);">Proof review queue, full-screen image inspector & feedback</p>
+                <h3 class="tab-name">Tab 4: Quest Verifications (Screenshot Proofs)</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Dedicated image inspection queue, full-screen zoom, reviewer attribution & descending sort</p>
               </div>
             </div>
             <span class="tab-badge" style="background: rgba(16,185,129,0.15); color: var(--emerald); border: 1px solid var(--emerald);">Verifier & Manager</span>
@@ -1215,44 +1340,140 @@
             <ul class="feature-list">
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
-                <div><strong>Dedicated Review Queue:</strong> Filter by Pending, Approved, or Rejected submissions with real-time counters.</div>
+                <div><strong>Strict Database Isolation:</strong> Queries exclusively from <code>quest_verifications</code> table for screenshot and photo proof uploads.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Admin Reviewer Attribution:</strong> Automatically captures and displays which admin approved or rejected each item (e.g. <code>👮 admin@blockquest.ph</code>) with review timestamps.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Descending Chronological Sort:</strong> Displays newest and latest submissions at the top of the queue.</div>
               </li>
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
                 <div><strong>Full-Screen Zoom & Pan Inspector:</strong> Click any screenshot to open an interactive zoom modal to verify evidence clarity.</div>
               </li>
-              <li class="feature-item">
-                <span class="feature-bullet">✦</span>
-                <div><strong>One-Click Approval:</strong> Instantly deposits XP into the attendee's profile wallet and creates an audit completion receipt.</div>
-              </li>
-              <li class="feature-item">
-                <span class="feature-bullet">✦</span>
-                <div><strong>Mandatory Rejection Feedback:</strong> Prompts the verifier for a reason (e.g. "Blurry photo", "Wrong booth") to guide the attendee.</div>
-              </li>
             </ul>
 
             <div class="mockup-preview">
               <div class="mockup-bar">
-                <span>VERIFICATION QUEUE</span>
-                <span style="color: #fbbf24;">(14 PENDING)</span>
+                <span>VERIFICATIONS QUEUE</span>
+                <span style="color: #fbbf24;">(DESC SORT ACTIVE)</span>
               </div>
               <div style="color: var(--text-muted); line-height: 1.8;">
                 Submission: <span style="color: #fff;">Alex Rivera</span><br>
                 Quest: <span style="color: var(--gold-light);">"Booth Photo Quest"</span><br>
-                Proof: <span style="color: var(--blue);">[ View S3 Image Modal ]</span><br>
+                Reviewer: <span style="color: #60a5fa;">👮 admin@blockquest.ph</span><br>
                 Actions: <span style="color: var(--emerald);">[ APPROVE ]</span> | <span style="color: var(--red);">[ REJECT + REASON ]</span>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- TAB 5: SOCIAL MISSIONS -->
+        <!-- TAB 5: MESSAGE NOTES (TEXT SUBMISSIONS) -->
+        <div class="tab-card">
+          <div class="tab-card-header">
+            <div class="tab-title-group">
+              <div class="tab-icon-box">💬</div>
+              <div>
+                <h3 class="tab-name">Tab 5: Message Notes (Text Feedback)</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Dedicated text feedback queue, attendee message bubbles, reviewer attribution & descending sort</p>
+              </div>
+            </div>
+            <span class="tab-badge" style="background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid #fbbf24;">Verifier & Manager</span>
+          </div>
+
+          <div class="tab-grid">
+            <ul class="feature-list">
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Strict Database Isolation:</strong> Queries exclusively from <code>quest_message_notes</code> table for written feedback and survey notes.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Admin Reviewer Traceability:</strong> Records reviewer email and timestamp for full auditing transparency.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Descending Sort Order:</strong> Displays the freshest incoming thoughts and messages at the top.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>1-Click Approval / Rejection:</strong> Approving rewards XP to attendee wallet; rejecting prompts feedback reason.</div>
+              </li>
+            </ul>
+
+            <div class="mockup-preview">
+              <div class="mockup-bar">
+                <span>MESSAGE NOTES QUEUE</span>
+                <span style="color: #fbbf24;">(TEXT ONLY)</span>
+              </div>
+              <div style="color: var(--text-muted); line-height: 1.8;">
+                Quester: <span style="color: #fff;">Maria Santos</span><br>
+                Note: <span style="color: #fbbf24;">"Amazing keynote on Web3 scaling!"</span><br>
+                Status: <span style="color: var(--emerald);">✓ Approved by admin@block.io</span><br>
+                Actions: <span style="color: var(--emerald);">[ APPROVE ]</span> | <span style="color: var(--red);">[ REJECT ]</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 6: MASTER QUEST LOG & AUDIT REPORT -->
+        <div class="tab-card">
+          <div class="tab-card-header">
+            <div class="tab-title-group">
+              <div class="tab-icon-box">📊</div>
+              <div>
+                <h3 class="tab-name">Tab 6: Quest Log (Master Audit & CSV Export)</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Unified activity audit log, customizable column toggles, reviewer tracing & CSV report download</p>
+              </div>
+            </div>
+            <span class="tab-badge" style="background: rgba(168,85,247,0.15); color: var(--purple); border: 1px solid var(--purple);">All Staff & Management</span>
+          </div>
+
+          <div class="tab-grid">
+            <ul class="feature-list">
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Unified Audit Trail:</strong> Combines Screenshot Proofs and Messagebox Notes into a single comprehensive reporting view.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>👮 Reviewed / Approved By Column:</strong> Traces exactly which admin validated each reward.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Customizable Column Toggles:</strong> Show/hide Quester, Email, Ticket, Quest Title, XP, Type, Status, Reviewer, or Date.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>📥 1-Click CSV Export:</strong> Exports fully formatted audit spreadsheets with reviewer emails for post-event sponsor reporting.</div>
+              </li>
+            </ul>
+
+            <div class="mockup-preview">
+              <div class="mockup-bar">
+                <span>MASTER AUDIT LOG</span>
+                <span style="color: var(--emerald);">CSV EXPORT READY</span>
+              </div>
+              <div style="color: var(--text-muted); line-height: 1.8;">
+                • Search: <span style="color: #fff;">Name, Email, Quest, Reviewer</span><br>
+                • Columns: <span style="color: var(--gold-light);">[ Quester | XP | Type | Reviewer ]</span><br>
+                • Download: <span style="color: var(--emerald);">[ 📥 Export Report (CSV) ]</span><br>
+                • Traceability: <span style="color: #60a5fa;">100% Reviewer Attribution</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 7: SOCIAL MISSIONS -->
         <div class="tab-card">
           <div class="tab-card-header">
             <div class="tab-title-group">
               <div class="tab-icon-box">📣</div>
               <div>
-                <h3 class="tab-name">Tab 5: Social Missions</h3>
+                <h3 class="tab-name">Tab 7: Social Missions</h3>
                 <p style="font-size: 0.85rem; color: var(--text-muted);">Dynamic configuration of registration onboarding tasks</p>
               </div>
             </div>
@@ -1295,13 +1516,13 @@
           </div>
         </div>
 
-        <!-- TAB 6: STAFF / ADMINS -->
+        <!-- TAB 8: STAFF / ADMINS -->
         <div class="tab-card">
           <div class="tab-card-header">
             <div class="tab-title-group">
               <div class="tab-icon-box">🛡️</div>
               <div>
-                <h3 class="tab-name">Tab 6: Staff / Admins</h3>
+                <h3 class="tab-name">Tab 8: Staff / Admins</h3>
                 <p style="font-size: 0.85rem; color: var(--text-muted);">Staff account provisioning & RBAC role assignments</p>
               </div>
             </div>
@@ -1322,9 +1543,9 @@
                 <span class="feature-bullet">✦</span>
                 <div><strong>Strict Role Access Boundaries (Least-Privilege Isolation):</strong>
                   <ul style="margin: 6px 0 0 16px; font-size: 0.84rem; color: var(--text-secondary); line-height: 1.6;">
-                    <li><strong><code>verifier</code>:</strong> Restricted solely to the Quest Verifications queue. Scanner, Attendees, Staff, and Quest editing are completely hidden.</li>
+                    <li><strong><code>verifier</code>:</strong> Restricted solely to Quest Verifications and Message Notes queues. Scanner, Attendees, Staff, and Quest editing are completely hidden.</li>
                     <li><strong><code>manage_attendees</code>:</strong> Restricted to QR Scanner & Attendee Check-In. Cannot access quest configurations, review queues, or staff management.</li>
-                    <li><strong><code>admin</code> (Manager):</strong> Handles Day-of-Event operations (Scanner, Attendees, Quests, Verifications) but is blocked from Staff management and Social Missions.</li>
+                    <li><strong><code>admin</code> (Manager):</strong> Handles Day-of-Event operations (Scanner, Attendees, Quests, Verifications, Messages, Quest Log, Booths) but is blocked from Staff management and Social Missions.</li>
                     <li><strong><code>viewer</code>:</strong> Read-only observation tier with all action buttons disabled to prevent unauthorized edits.</li>
                   </ul>
                 </div>
@@ -1351,7 +1572,7 @@
               <div style="color: var(--text-muted); line-height: 1.8;">
                 • superadmin@block.io (<span style="color: var(--gold);">Superadmin</span>) → [Full Access]<br>
                 • gate1@block.io (<span style="color: var(--purple);">Manage Attendees</span>) → [Scanner & Check-in Only]<br>
-                • verifier1@block.io (<span style="color: var(--emerald);">Verifier</span>) → [Verifications Only]<br>
+                • verifier1@block.io (<span style="color: var(--emerald);">Verifier</span>) → [Verifications & Notes]<br>
                 • manager@block.io (<span style="color: var(--blue);">Manager</span>) → [Operations Access]<br>
                 • observer@block.io (<span style="color: #94a3b8;">Viewer</span>) → [Read-Only View]<br>
                 Security: <span style="color: var(--emerald);">scryptSync Active</span> | <span style="color: var(--gold);">5-Min Auto Timeout</span><br>
@@ -1361,13 +1582,13 @@
           </div>
         </div>
 
-        <!-- TAB 7: BOOTH STATIONS -->
+        <!-- TAB 9: BOOTH STATIONS -->
         <div class="tab-card">
           <div class="tab-card-header">
             <div class="tab-title-group">
               <div class="tab-icon-box">🏪</div>
               <div>
-                <h3 class="tab-name">Tab 7: Vendor & Booth Stations</h3>
+                <h3 class="tab-name">Tab 9: Vendor & Booth Stations</h3>
                 <p style="font-size: 0.85rem; color: var(--text-muted);">Sponsor station credentials, XP rewards, and live attendee visit tracking</p>
               </div>
             </div>
