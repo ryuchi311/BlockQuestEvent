@@ -31,6 +31,7 @@ export async function GET(request: Request) {
       .maybeSingle();
 
     let completions: string[] = [];
+    let completedDetails: any[] = [];
     let verifications: any[] = [];
     let compXp = 0;
     let verifXp = 0;
@@ -42,11 +43,12 @@ export async function GET(request: Request) {
       // 2. Fetch completed instant quests
       const { data: compData } = await supabase
         .from("quest_completions")
-        .select("quest_id, xp_awarded")
+        .select("quest_id, xp_awarded, completed_at")
         .eq("registration_id", user.id);
 
       if (compData) {
         completions = compData.map((c) => c.quest_id);
+        completedDetails = compData.map((c) => ({ quest_id: c.quest_id, completed_at: c.completed_at }));
         compXp = compData.reduce((sum, c) => sum + (c.xp_awarded || 0), 0);
       }
     }
@@ -97,6 +99,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       totalXp: exactTotalXp,
       completedQuests: completions,
+      completedQuestDetails: completedDetails,
       verifications: verifications,
       isCheckedIn: isCheckedIn,
     });

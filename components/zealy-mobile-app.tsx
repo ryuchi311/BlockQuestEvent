@@ -340,6 +340,8 @@ export default function ZealyMobileApp() {
             requiresMessage: !!q.requires_message,
             passcode: q.passcode || undefined,
             is_quiz: !!q.is_quiz,
+            sort_order: q.sort_order ?? 999,
+            created_at: q.created_at || undefined,
           }));
 
         // Detect if new quests were published by admin
@@ -382,9 +384,17 @@ export default function ZealyMobileApp() {
       const verifJson = await verifRes.json();
       const msgJson = await msgRes.json();
 
-      const vList = verifRes.ok && Array.isArray(verifJson.verifications) ? verifJson.verifications : [];
-      const mList = msgRes.ok && Array.isArray(msgJson.messages) ? msgJson.messages : [];
-      setUserVerifications([...vList, ...mList]);
+      const vList = verifRes.ok && Array.isArray(verifJson.verifications)
+        ? verifJson.verifications.map((v: any) => ({ ...v, uniqueKey: `verif_${v.id || v.quest_id}` }))
+        : [];
+      const mList = msgRes.ok && Array.isArray(msgJson.messages)
+        ? msgJson.messages.map((m: any) => ({ ...m, uniqueKey: `msg_${m.id || m.quest_id}` }))
+        : [];
+
+      const combined = [...vList, ...mList].sort(
+        (a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+      );
+      setUserVerifications(combined);
     } catch {
       // ignore
     }
@@ -416,37 +426,44 @@ export default function ZealyMobileApp() {
       const json = await res.json();
       if (!res.ok) return;
 
-      const { totalXp, completedQuests, verifications, isCheckedIn } = json;
+      const { totalXp, completedQuests, completedQuestDetails, verifications, isCheckedIn } = json;
 
       if (typeof totalXp === "number") {
         setUserXp(totalXp);
       }
 
-      const compSet = new Set<string>(completedQuests || []);
-      const verifMap = new Map<string, string>();
+      const compMap = new Map<string, string>();
+      (completedQuestDetails || []).forEach((c: any) => {
+        if (c.quest_id) compMap.set(c.quest_id, c.completed_at || "");
+      });
+      (completedQuests || []).forEach((id: string) => {
+        if (!compMap.has(id)) compMap.set(id, "");
+      });
+
+      const verifMap = new Map<string, { status: string; createdAt: string }>();
       (verifications || []).forEach((v: any) => {
         const existing = verifMap.get(v.quest_id);
-        if (!existing || v.status === "Approved" || (existing !== "Approved" && v.status === "Pending")) {
-          verifMap.set(v.quest_id, v.status);
+        if (!existing || v.status === "Approved" || (existing.status !== "Approved" && v.status === "Pending")) {
+          verifMap.set(v.quest_id, { status: v.status, createdAt: v.created_at || "" });
         }
       });
 
       setQuests((prevQuests) =>
         prevQuests.map((q) => {
-          if (compSet.has(q.id)) {
-            return { ...q, status: "Done" };
+          if (compMap.has(q.id)) {
+            return { ...q, status: "Done", completedAt: compMap.get(q.id) || (q as any).completedAt };
           }
           if (q.id === "checkin") {
             return { ...q, status: isCheckedIn ? "Live" : "Soon" };
           }
-          const vStatus = verifMap.get(q.id);
-          if (vStatus === "Pending") {
+          const vData = verifMap.get(q.id);
+          if (vData?.status === "Pending") {
             return { ...q, status: "Pending Verification" };
           }
-          if (vStatus === "Approved") {
-            return { ...q, status: "Done" };
+          if (vData?.status === "Approved") {
+            return { ...q, status: "Done", completedAt: vData.createdAt || (q as any).completedAt };
           }
-          if (vStatus === "Rejected") {
+          if (vData?.status === "Rejected") {
             return { ...q, status: "Rejected" };
           }
           return q;
@@ -918,7 +935,17 @@ export default function ZealyMobileApp() {
                       <span>⚡ Active Quests ({quests.filter((q) => q.status !== "Done").length})</span>
                     </div>
 
-                    {quests.filter((q) => q.status !== "Done").map((q) => (
+                    {quests
+                      .filter((q) => q.status !== "Done")
+                      .sort((a, b) => {
+                        const orderA = (a as any).sort_order ?? 999;
+                        const orderB = (b as any).sort_order ?? 999;
+                        if (orderA !== orderB) return orderA - orderB; // ASC sort order
+                        const timeA = (a as any).created_at ? new Date((a as any).created_at).getTime() : 0;
+                        const timeB = (b as any).created_at ? new Date((b as any).created_at).getTime() : 0;
+                        return timeA - timeB; // ASC date order
+                      })
+                      .map((q) => (
                       <div
                         key={q.id}
                         className={`quest-card quest-card--${q.status.toLowerCase().replace(/\s+/g, "-")}`}
@@ -1024,7 +1051,14 @@ export default function ZealyMobileApp() {
 
                         {showCompletedQuests && (
                           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
-                            {quests.filter((q) => q.status === "Done").map((q) => (
+                            {quests
+                              .filter((q) => q.status === "Done")
+                              .sort((a, b) => {
+                                const timeA = (a as any).completedAt ? new Date((a as any).completedAt).getTime() : 0;
+                                const timeB = (b as any).completedAt ? new Date((b as any).completedAt).getTime() : 0;
+                                return timeA - timeB; // Ascending order
+                              })
+                              .map((q) => (
                               <div
                                 key={q.id}
                                 className={`quest-card quest-card--done`}
@@ -1379,9 +1413,9 @@ export default function ZealyMobileApp() {
                     </p>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: "240px", overflowY: "auto", paddingRight: 4 }}>
-                      {userVerifications.map((v) => (
+                      {userVerifications.map((v, idx) => (
                         <div
-                          key={v.id}
+                          key={v.uniqueKey || `${v.id}_${idx}`}
                           style={{
                             background: "rgba(12, 12, 22, 0.7)",
                             border: "1px solid rgba(255, 255, 255, 0.08)",
@@ -1463,6 +1497,20 @@ export default function ZealyMobileApp() {
                               </button>
                             </div>
                           )}
+                          {v.user_message && (
+                            <div style={{ fontSize: "0.76rem", color: "rgba(255,255,255,0.75)", background: "rgba(255,255,255,0.04)", padding: "6px 8px", borderRadius: 6, fontStyle: "italic" }}>
+                              💬 "{v.user_message}"
+                            </div>
+                          )}
+
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.68rem", color: "var(--text-muted)", marginTop: 2 }}>
+                            <span>
+                              {v.created_at
+                                ? new Date(v.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+                                : "Completed"}
+                            </span>
+                            {v.is_instant && <span style={{ color: "#38bdf8" }}>⚡ Instant Claim</span>}
+                          </div>
                         </div>
                       ))}
                     </div>

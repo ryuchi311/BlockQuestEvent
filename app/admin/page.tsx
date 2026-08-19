@@ -206,10 +206,12 @@ export default function AdminPage() {
   const [questSearch, setQuestSearch] = useState("");
   const [questStatusFilter, setQuestStatusFilter] = useState<"all" | Quest["status"]>("all");
   const [questCategoryFilter, setQuestCategoryFilter] = useState<"all" | Quest["category"]>("all");
+  const [questVerificationModeFilter, setQuestVerificationModeFilter] = useState<"all" | "instant" | "proof_only" | "message_only" | "photo_and_message" | "quiz" | "passcode">("all");
 
   // ── Verification search & filter ──
   const [verificationSearch, setVerificationSearch] = useState("");
   const [verificationStatusFilter, setVerificationStatusFilter] = useState<"all" | QuestVerification["status"]>("all");
+  const [verificationModeFilter, setVerificationModeFilter] = useState<"all" | "photo_only" | "photo_and_message">("all");
 
   // ── Message Notes state & search filter ──
   const [messageNotes, setMessageNotes] = useState<QuestVerification[]>([]);
@@ -543,6 +545,22 @@ export default function AdminPage() {
     if (!matchesQuery) return false;
     if (questStatusFilter !== "all" && q.status !== questStatusFilter) return false;
     if (questCategoryFilter !== "all" && q.category !== questCategoryFilter) return false;
+
+    // Verification Mode filter (all 6 modes from modal)
+    if (questVerificationModeFilter === "instant") {
+      if (q.requires_proof || q.requires_message || q.is_quiz || !!q.passcode) return false;
+    } else if (questVerificationModeFilter === "proof_only") {
+      if (!q.requires_proof || q.requires_message) return false;
+    } else if (questVerificationModeFilter === "message_only") {
+      if (!q.requires_message || q.requires_proof) return false;
+    } else if (questVerificationModeFilter === "photo_and_message") {
+      if (!q.requires_proof || !q.requires_message) return false;
+    } else if (questVerificationModeFilter === "quiz") {
+      if (!q.is_quiz) return false;
+    } else if (questVerificationModeFilter === "passcode") {
+      if (!q.passcode || q.requires_proof || q.requires_message || q.is_quiz) return false;
+    }
+
     return true;
   });
 
@@ -559,6 +577,8 @@ export default function AdminPage() {
 
     if (!matchesQuery) return false;
     if (verificationStatusFilter !== "all" && v.status !== verificationStatusFilter) return false;
+    if (verificationModeFilter === "photo_only" && v.user_message) return false;
+    if (verificationModeFilter === "photo_and_message" && !v.user_message) return false;
     return true;
   });
 
@@ -1604,6 +1624,28 @@ export default function AdminPage() {
                 <option value="quiz">❓ Quiz</option>
               </select>
 
+              {/* ④ Verification Mode Filter */}
+              <select
+                value={questVerificationModeFilter}
+                onChange={(e) => setQuestVerificationModeFilter(e.target.value as any)}
+                className="admin-search-input"
+                style={{
+                  width: "auto",
+                  padding: "8px 12px",
+                  cursor: "pointer",
+                  borderColor: questVerificationModeFilter !== "all" ? "rgba(245, 166, 35, 0.6)" : undefined,
+                  fontWeight: questVerificationModeFilter !== "all" ? 700 : 400,
+                }}
+              >
+                <option value="all">⚡ All Verification Modes</option>
+                <option value="instant">⚡ Instant Claim</option>
+                <option value="proof_only">📷 Screenshot Proof</option>
+                <option value="message_only">💬 Messagebox Note</option>
+                <option value="photo_and_message">📸+💬 Photo + Message</option>
+                <option value="quiz">❓ Quiz Question</option>
+                <option value="passcode">🔑 Secret Passcode</option>
+              </select>
+
               <span className="admin-toolbar__count" style={{ marginLeft: "auto" }}>
                 Showing {filteredQuests.length} of {quests.length} quests
               </span>
@@ -1772,6 +1814,18 @@ export default function AdminPage() {
                 <option value="Pending">⏳ Pending ({verifications.filter((v) => v.status === "Pending").length})</option>
                 <option value="Approved">✓ Approved ({verifications.filter((v) => v.status === "Approved").length})</option>
                 <option value="Rejected">✕ Rejected ({verifications.filter((v) => v.status === "Rejected").length})</option>
+              </select>
+
+              {/* Verification Mode Filter */}
+              <select
+                value={verificationModeFilter}
+                onChange={(e) => setVerificationModeFilter(e.target.value as any)}
+                className="admin-search-input"
+                style={{ width: "auto", padding: "8px 12px", cursor: "pointer", borderColor: verificationModeFilter !== "all" ? "rgba(245, 166, 35, 0.6)" : undefined }}
+              >
+                <option value="all">📁 All Modes ({verifications.length})</option>
+                <option value="photo_only">📷 Screenshot Proof Only ({verifications.filter((v) => !v.user_message).length})</option>
+                <option value="photo_and_message">📸+💬 Photo + Message ({verifications.filter((v) => !!v.user_message).length})</option>
               </select>
 
               <span className="admin-toolbar__count" style={{ marginLeft: "auto" }}>
@@ -3279,7 +3333,7 @@ export default function AdminPage() {
                     <span className="qf-section__label" style={{ margin: 0 }}>⚡ Quick Preset Templates</span>
                     <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Click to pre-fill</span>
                   </div>
-                  <div className="qf-presets-bar">
+                  <div className="qf-presets-bar" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                     {[
                       {
                         icon: "📱",
@@ -3343,6 +3397,38 @@ export default function AdminPage() {
                         }
                       },
                       {
+                        icon: "📸+💬",
+                        name: "Photo + Feedback",
+                        data: {
+                          title: "Booth Photo & Feedback",
+                          description: "1. Visit the sponsor booth and take a clear photo\n2. Type your feedback or favorite booth feature in the note box\n3. Submit both for admin review!",
+                          category: "social" as const,
+                          xp: 250,
+                          requires_proof: true,
+                          requires_message: true,
+                          is_quiz: false,
+                          passcode: "",
+                          action_label: "View Floorplan",
+                          action_url: "",
+                        }
+                      },
+                      {
+                        icon: "🎤+💬",
+                        name: "Speaker Keynote + Note",
+                        data: {
+                          title: "Keynote Photo & Key Takeaway",
+                          description: "1. Snap a photo of the main stage speaker\n2. Write your #1 key learning in the message box\n3. Claim +200 XP upon approval!",
+                          category: "daily" as const,
+                          xp: 200,
+                          requires_proof: true,
+                          requires_message: true,
+                          is_quiz: false,
+                          passcode: "",
+                          action_label: "View Agenda",
+                          action_url: "",
+                        }
+                      },
+                      {
                         icon: "⚡",
                         name: "Instant Check-in",
                         data: {
@@ -3351,6 +3437,7 @@ export default function AdminPage() {
                           category: "daily" as const,
                           xp: 50,
                           requires_proof: false,
+                          requires_message: false,
                           is_quiz: false,
                           passcode: "",
                           action_label: "",

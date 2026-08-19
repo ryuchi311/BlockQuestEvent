@@ -3454,13 +3454,9 @@ a {
 /* Preset Template Chips */
 .qf-presets-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;
   padding-bottom: 4px;
-  scrollbar-width: none;
-}
-.qf-presets-bar::-webkit-scrollbar {
-  display: none;
 }
 .qf-preset-chip {
   display: inline-flex;

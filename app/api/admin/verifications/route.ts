@@ -54,15 +54,25 @@ export async function GET(request: Request) {
         completions = compData || [];
       }
 
+      // Fetch all dynamic quest titles from database for accurate names
+      const { data: allQuests } = await supabase
+        .from("fiesta_event_quests")
+        .select("id, title");
+      
+      const dynamicTitles: Record<string, string> = { ...QUEST_TITLES };
+      (allQuests || []).forEach((q: any) => {
+        if (q.id && q.title) dynamicTitles[q.id] = q.title;
+      });
+
       // Map instant claims into activity log entries
       const formattedCompletions = completions.map((c: any) => ({
         id: `comp_${c.id}`,
         quest_id: c.quest_id,
-        quest_title: QUEST_TITLES[c.quest_id] || c.quest_id,
+        quest_title: dynamicTitles[c.quest_id] || c.quest_id,
         user_email: email,
         xp: c.xp_awarded,
         status: "Approved",
-        created_at: c.created_at,
+        created_at: c.completed_at || c.created_at || new Date().toISOString(),
         is_instant: true,
       }));
 
