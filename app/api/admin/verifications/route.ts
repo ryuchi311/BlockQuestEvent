@@ -83,7 +83,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ verifications: combined });
     }
 
-    // Admin view: fetch strictly from quest_verifications table
+    // Admin view: fetch strictly from quest_verifications table (DESC - newest first)
     const { data, error } = await supabase
       .from("quest_verifications")
       .select("*")
@@ -227,16 +227,21 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH — admin approves or rejects a submission (with optional rejection reason)
+// PATCH — admin approves or rejects a submission (with optional rejection reason & admin attribution)
 export async function PATCH(request: Request) {
   try {
-    const { id, status, rejection_reason } = await request.json();
+    const { id, status, rejection_reason, approved_by, admin_email } = await request.json();
 
     if (!id || !status) {
       return NextResponse.json({ error: "id and status are required." }, { status: 400 });
     }
 
-    const updatePayload: Record<string, any> = { status };
+    const reviewer = approved_by || admin_email || "Admin";
+    const updatePayload: Record<string, any> = {
+      status,
+      approved_by: reviewer,
+      reviewed_at: new Date().toISOString(),
+    };
     if (rejection_reason !== undefined) {
       updatePayload.rejection_reason = rejection_reason;
     }

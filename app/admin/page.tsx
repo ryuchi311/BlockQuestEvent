@@ -56,6 +56,8 @@ interface QuestVerification {
   user_message?: string | null;
   status: "Pending" | "Approved" | "Rejected";
   rejection_reason?: string | null;
+  approved_by?: string | null;
+  reviewed_at?: string | null;
   created_at: string;
 }
 
@@ -231,6 +233,7 @@ export default function AdminPage() {
     xp: true,
     type: true,
     status: true,
+    reviewer: true,
     date: true,
   });
 
@@ -475,16 +478,21 @@ export default function AdminPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   async function handleVerifyQuest(id: number, newStatus: "Approved" | "Rejected" | "Pending", reason?: string) {
+    const reviewer = adminUser?.email || "Admin";
     try {
       const res = await fetch("/api/admin/verifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status: newStatus, rejection_reason: reason }),
+        body: JSON.stringify({ id, status: newStatus, rejection_reason: reason, approved_by: reviewer }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to update verification.");
       setVerifications((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, status: newStatus, rejection_reason: reason || null } : item))
+        prev.map((item) =>
+          item.id === id
+            ? { ...item, status: newStatus, rejection_reason: reason || null, approved_by: reviewer, reviewed_at: new Date().toISOString() }
+            : item
+        )
       );
     } catch (err: any) {
       alert("Verification Error: " + err.message);
@@ -492,16 +500,21 @@ export default function AdminPage() {
   }
 
   async function handleVerifyMessage(id: number, newStatus: "Approved" | "Rejected" | "Pending", reason?: string) {
+    const reviewer = adminUser?.email || "Admin";
     try {
       const res = await fetch("/api/admin/messages", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status: newStatus, rejection_reason: reason }),
+        body: JSON.stringify({ id, status: newStatus, rejection_reason: reason, approved_by: reviewer }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to update message note.");
       setMessageNotes((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, status: newStatus, rejection_reason: reason || null } : item))
+        prev.map((item) =>
+          item.id === id
+            ? { ...item, status: newStatus, rejection_reason: reason || null, approved_by: reviewer, reviewed_at: new Date().toISOString() }
+            : item
+        )
       );
     } catch (err: any) {
       alert("Message Note Verification Error: " + err.message);
@@ -580,7 +593,7 @@ export default function AdminPage() {
     if (verificationModeFilter === "photo_only" && v.user_message) return false;
     if (verificationModeFilter === "photo_and_message" && !v.user_message) return false;
     return true;
-  });
+  }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   // ─── Message Notes helpers (Text Notes ONLY) ───────────────────────────────
   const filteredMessageVerifications = messageNotes.filter((v) => {
@@ -596,7 +609,7 @@ export default function AdminPage() {
     if (!matchesQuery) return false;
     if (messageStatusFilter !== "all" && v.status !== messageStatusFilter) return false;
     return true;
-  });
+  }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   function copyTicket(attendee: Attendee) {
     navigator.clipboard.writeText(attendee.ticket_code ?? "");
@@ -1938,12 +1951,24 @@ export default function AdminPage() {
                         </td>
                         <td>
                           {v.status === "Approved" ? (
-                            <span className="admin-status-badge admin-status-badge--live">✓ Approved</span>
+                            <div>
+                              <span className="admin-status-badge admin-status-badge--live">✓ Approved</span>
+                              {v.approved_by && (
+                                <div style={{ fontSize: "0.68rem", color: "#60a5fa", marginTop: 4, display: "flex", alignItems: "center", gap: 3 }}>
+                                  <span>👮</span> {v.approved_by}
+                                </div>
+                              )}
+                            </div>
                           ) : v.status === "Rejected" ? (
                             <div>
                               <span className="admin-status-badge admin-status-badge--done" style={{ background: "rgba(239, 68, 68, 0.15)", color: "#ef4444" }}>
                                 ✕ Rejected
                               </span>
+                              {v.approved_by && (
+                                <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: 2 }}>
+                                  by {v.approved_by}
+                                </div>
+                              )}
                               {v.rejection_reason && (
                                 <div style={{ fontSize: "0.72rem", color: "#f87171", marginTop: 4, maxWidth: 160 }}>
                                   Reason: <em>"{v.rejection_reason}"</em>
@@ -2124,12 +2149,24 @@ export default function AdminPage() {
                         </td>
                         <td>
                           {v.status === "Approved" ? (
-                            <span className="admin-status-badge admin-status-badge--live">✓ Approved</span>
+                            <div>
+                              <span className="admin-status-badge admin-status-badge--live">✓ Approved</span>
+                              {v.approved_by && (
+                                <div style={{ fontSize: "0.68rem", color: "#60a5fa", marginTop: 4, display: "flex", alignItems: "center", gap: 3 }}>
+                                  <span>👮</span> {v.approved_by}
+                                </div>
+                              )}
+                            </div>
                           ) : v.status === "Rejected" ? (
                             <div>
                               <span className="admin-status-badge admin-status-badge--done" style={{ background: "rgba(239, 68, 68, 0.15)", color: "#ef4444" }}>
                                 ✕ Rejected
                               </span>
+                              {v.approved_by && (
+                                <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: 2 }}>
+                                  by {v.approved_by}
+                                </div>
+                              )}
                               {v.rejection_reason && (
                                 <div style={{ fontSize: "0.72rem", color: "#f87171", marginTop: 4, maxWidth: 160 }}>
                                   Reason: <em>"{v.rejection_reason}"</em>
@@ -2221,7 +2258,7 @@ export default function AdminPage() {
           });
 
           const exportToCSV = () => {
-            const headers = ["Quester Name", "Email", "Ticket Code", "Quest Title", "XP", "Type", "Status", "Date"];
+            const headers = ["Quester Name", "Email", "Ticket Code", "Quest Title", "XP", "Type", "Status", "Reviewed By", "Date"];
             const rows = filteredLogs.map((item) => [
               `"${item.user_name || ""}"`,
               `"${item.user_email || ""}"`,
@@ -2230,6 +2267,7 @@ export default function AdminPage() {
               item.xp || 0,
               `"${item.logType}"`,
               `"${item.status}"`,
+              `"${item.approved_by || (item.status === "Approved" ? "Admin" : "N/A")}"`,
               `"${new Date(item.created_at).toLocaleString()}"`,
             ]);
             const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
@@ -2248,7 +2286,7 @@ export default function AdminPage() {
                 <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                   <input
                     type="text"
-                    placeholder="Search Quest Log (Name, Email, Title)..."
+                    placeholder="Search Quest Log (Name, Email, Title, Reviewer)..."
                     value={questLogSearch}
                     onChange={(e) => setQuestLogSearch(e.target.value)}
                     className="admin-search-input"
@@ -2341,13 +2379,14 @@ export default function AdminPage() {
                       {visibleColumns.xp && <th>⭐ XP</th>}
                       {visibleColumns.type && <th>🏷️ Type</th>}
                       {visibleColumns.status && <th>📌 Status</th>}
+                      {visibleColumns.reviewer && <th>👮 Reviewed / Approved By</th>}
                       {visibleColumns.date && <th>📅 Date Submitted</th>}
                     </tr>
                   </thead>
                   <tbody>
                     {filteredLogs.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="admin-table__empty">
+                        <td colSpan={10} className="admin-table__empty">
                           📊 No log entries found matching criteria.
                         </td>
                       </tr>
@@ -2371,6 +2410,28 @@ export default function AdminPage() {
                               <span className={`admin-status-badge ${item.status === "Approved" ? "admin-status-badge--live" : item.status === "Rejected" ? "admin-status-badge--done" : "admin-status-badge--soon"}`}>
                                 {item.status}
                               </span>
+                            </td>
+                          )}
+                          {visibleColumns.reviewer && (
+                            <td>
+                              {item.approved_by ? (
+                                <span style={{
+                                  fontSize: "0.76rem",
+                                  padding: "3px 8px",
+                                  borderRadius: 8,
+                                  background: "rgba(59, 130, 246, 0.15)",
+                                  color: "#60a5fa",
+                                  border: "1px solid rgba(59, 130, 246, 0.3)",
+                                  fontWeight: 600,
+                                  display: "inline-block"
+                                }}>
+                                  👮 {item.approved_by}
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>
+                                  {item.status === "Pending" ? "⏳ Pending Review" : "—"}
+                                </span>
+                              )}
                             </td>
                           )}
                           {visibleColumns.date && (
@@ -3344,6 +3405,7 @@ export default function AdminPage() {
                           category: "social" as const,
                           xp: 100,
                           requires_proof: true,
+                          requires_message: false,
                           is_quiz: false,
                           passcode: "",
                           action_label: "Follow on X",
@@ -3351,17 +3413,98 @@ export default function AdminPage() {
                         }
                       },
                       {
+                        icon: "✈️",
+                        name: "Join Telegram",
+                        data: {
+                          title: "Join Official Telegram Group",
+                          description: "1. Join our BlockQuest PH Telegram community\n2. Say hi and upload a screenshot proof below!",
+                          category: "social" as const,
+                          xp: 100,
+                          requires_proof: true,
+                          requires_message: false,
+                          is_quiz: false,
+                          passcode: "",
+                          action_label: "Join Telegram",
+                          action_url: "https://t.me",
+                        }
+                      },
+                      {
+                        icon: "💬",
+                        name: "Event Feedback Note",
+                        data: {
+                          title: "Share Your Event Feedback",
+                          description: "Write a short 1-sentence feedback about your experience at BlockQuest Fiesta PH today!",
+                          category: "daily" as const,
+                          xp: 150,
+                          requires_proof: false,
+                          requires_message: true,
+                          is_quiz: false,
+                          passcode: "",
+                          action_label: "",
+                          action_url: "",
+                        }
+                      },
+                      {
                         icon: "🔑",
                         name: "Booth Passcode",
                         data: {
                           title: "Visit Sponsor Booth",
-                          description: "Visit our sponsor booth in the main exhibition hall and ask for the secret passcode!",
+                          description: "Visit our sponsor booth in the main exhibition hall and ask the team for the secret passcode!",
                           category: "onboarding" as const,
                           xp: 150,
                           requires_proof: false,
+                          requires_message: false,
                           is_quiz: false,
                           passcode: "BOOTH-01",
                           action_label: "View Booth Info",
+                          action_url: "",
+                        }
+                      },
+                      {
+                        icon: "📸+💬",
+                        name: "Booth Photo + Review",
+                        data: {
+                          title: "Booth Photo & Feedback",
+                          description: "1. Visit the sponsor booth and take a clear photo\n2. Type your feedback or favorite feature in the note box\n3. Submit both for admin review!",
+                          category: "social" as const,
+                          xp: 250,
+                          requires_proof: true,
+                          requires_message: true,
+                          is_quiz: false,
+                          passcode: "",
+                          action_label: "View Floorplan",
+                          action_url: "",
+                        }
+                      },
+                      {
+                        icon: "🤝+💬",
+                        name: "Networking Buddy",
+                        data: {
+                          title: "Meet a Fellow Quester",
+                          description: "1. Snap a selfie with someone you met at the event\n2. Write their name / handle in the note box\n3. Claim +200 XP for networking!",
+                          category: "social" as const,
+                          xp: 200,
+                          requires_proof: true,
+                          requires_message: true,
+                          is_quiz: false,
+                          passcode: "",
+                          action_label: "",
+                          action_url: "",
+                        }
+                      },
+                      {
+                        icon: "🎤+💬",
+                        name: "Keynote Takeaway",
+                        data: {
+                          title: "Keynote Photo & Key Takeaway",
+                          description: "1. Snap a photo of the main stage speaker\n2. Write your #1 key takeaway in the message box\n3. Claim +200 XP upon approval!",
+                          category: "daily" as const,
+                          xp: 200,
+                          requires_proof: true,
+                          requires_message: true,
+                          is_quiz: false,
+                          passcode: "",
+                          action_label: "View Agenda",
                           action_url: "",
                         }
                       },
@@ -3374,6 +3517,7 @@ export default function AdminPage() {
                           category: "quiz" as const,
                           xp: 100,
                           requires_proof: false,
+                          requires_message: false,
                           is_quiz: true,
                           quiz_answer: "ETH",
                           passcode: "",
@@ -3390,6 +3534,7 @@ export default function AdminPage() {
                           category: "daily" as const,
                           xp: 200,
                           requires_proof: true,
+                          requires_message: false,
                           is_quiz: false,
                           passcode: "",
                           action_label: "Stage Schedule",
@@ -3397,34 +3542,34 @@ export default function AdminPage() {
                         }
                       },
                       {
-                        icon: "📸+💬",
-                        name: "Photo + Feedback",
+                        icon: "🎁",
+                        name: "Swag Bag Claim",
                         data: {
-                          title: "Booth Photo & Feedback",
-                          description: "1. Visit the sponsor booth and take a clear photo\n2. Type your feedback or favorite booth feature in the note box\n3. Submit both for admin review!",
-                          category: "social" as const,
-                          xp: 250,
-                          requires_proof: true,
-                          requires_message: true,
+                          title: "Claim Official Swag Bag",
+                          description: "Head to the merch counter and enter the claim code given by staff to register your swag bag!",
+                          category: "onboarding" as const,
+                          xp: 300,
+                          requires_proof: false,
+                          requires_message: false,
                           is_quiz: false,
-                          passcode: "",
-                          action_label: "View Floorplan",
+                          passcode: "SWAG-2026",
+                          action_label: "Merch Desk Map",
                           action_url: "",
                         }
                       },
                       {
-                        icon: "🎤+💬",
-                        name: "Speaker Keynote + Note",
+                        icon: "💡",
+                        name: "Workshop Code",
                         data: {
-                          title: "Keynote Photo & Key Takeaway",
-                          description: "1. Snap a photo of the main stage speaker\n2. Write your #1 key learning in the message box\n3. Claim +200 XP upon approval!",
-                          category: "daily" as const,
-                          xp: 200,
-                          requires_proof: true,
-                          requires_message: true,
+                          title: "Attend Developer Workshop",
+                          description: "Attend the hands-on workshop session and enter the workshop code revealed on the final slide.",
+                          category: "onboarding" as const,
+                          xp: 350,
+                          requires_proof: false,
+                          requires_message: false,
                           is_quiz: false,
-                          passcode: "",
-                          action_label: "View Agenda",
+                          passcode: "BUILD-WEB3",
+                          action_label: "Workshop Slides",
                           action_url: "",
                         }
                       },
@@ -3433,7 +3578,7 @@ export default function AdminPage() {
                         name: "Instant Check-in",
                         data: {
                           title: "Daily Community Check-in",
-                          description: "Claim your daily event participation bonus points!",
+                          description: "Claim your daily event participation bonus points with a single tap!",
                           category: "daily" as const,
                           xp: 50,
                           requires_proof: false,
