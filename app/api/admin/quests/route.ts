@@ -80,8 +80,8 @@ export async function POST(request: Request) {
         expires_at: expires_at || null,
         depends_on_quest_id: depends_on_quest_id || null,
         sort_order: sort_order ?? 99,
-        created_by: admin_email || "System",
-        updated_by: admin_email || "System",
+        created_by: body.admin_name || admin_email || "System",
+        updated_by: body.admin_name || admin_email || "System",
       })
       .select()
       .single();
@@ -97,12 +97,12 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { id, admin_email, ...updates } = body;
+    const { id, admin_email, admin_name, ...updates } = body;
 
     if (!id) return NextResponse.json({ error: "Quest id is required." }, { status: 400 });
 
-    if (admin_email) {
-      updates.updated_by = admin_email;
+    if (admin_name || admin_email) {
+      updates.updated_by = admin_name || admin_email;
     }
 
     const supabase = getSupabase();

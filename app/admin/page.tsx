@@ -762,6 +762,7 @@ export default function AdminPage() {
         action_url: questForm.action_url || null,
         description: questForm.description || null,
         admin_email: adminUser?.email,
+        admin_name: adminUser?.fullName || adminUser?.email || "Admin",
       };
       const res = await fetch("/api/admin/quests", {
         method,
@@ -815,13 +816,14 @@ export default function AdminPage() {
     if (!statusModalQuest) return;
     setIsUpdatingStatus(true);
     try {
+      const reviewer = adminUser?.fullName || adminUser?.email || "Admin";
       const res = await fetch("/api/admin/quests", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: statusModalQuest.id, status: newStatus, admin_email: adminUser?.email }),
+        body: JSON.stringify({ id: statusModalQuest.id, status: newStatus, admin_email: adminUser?.email, admin_name: reviewer }),
       });
       if (!res.ok) throw new Error("Failed to update status.");
-      setQuests((prev) => prev.map((q) => (q.id === statusModalQuest.id ? { ...q, status: newStatus } : q)));
+      setQuests((prev) => prev.map((q) => (q.id === statusModalQuest.id ? { ...q, status: newStatus, updated_by: reviewer, updated_at: new Date().toISOString() } : q)));
       setStatusModalQuest(null);
     } catch (err: any) {
       alert("Error: " + err.message);
@@ -832,13 +834,14 @@ export default function AdminPage() {
 
   async function publishQuest(quest: Quest) {
     try {
+      const reviewer = adminUser?.fullName || adminUser?.email || "Admin";
       const res = await fetch("/api/admin/quests", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: quest.id, status: "Live", admin_email: adminUser?.email }),
+        body: JSON.stringify({ id: quest.id, status: "Live", admin_email: adminUser?.email, admin_name: reviewer }),
       });
       if (!res.ok) throw new Error("Failed to publish quest.");
-      setQuests((prev) => prev.map((q) => (q.id === quest.id ? { ...q, status: "Live" } : q)));
+      setQuests((prev) => prev.map((q) => (q.id === quest.id ? { ...q, status: "Live", updated_by: reviewer, updated_at: new Date().toISOString() } : q)));
     } catch (err: any) {
       alert("Publish Error: " + err.message);
     }
@@ -1325,9 +1328,9 @@ export default function AdminPage() {
               {t === "scanner"
                 ? " QR Scanner"
                 : t === "attendees"
-                  ? " Event Pass Attendees"
+                  ? " Attendees"
                   : t === "quests"
-                    ? " Fiesta Event Quests"
+                    ? " Event Quests"
                     : t === "messages"
                       ? ` Message Notes (${messageNotes.filter((v) => v.status === "Pending").length})`
                       : t === "questlog"
@@ -1723,13 +1726,27 @@ export default function AdminPage() {
                         </td>
                         <td style={{ fontSize: "0.72rem", lineHeight: "1.3" }}>
                           <div>
-                            <span style={{ color: "rgba(255,255,255,0.4)" }}>Created:</span> {q.created_by || "System"}{" "}
+                            <span style={{ color: "rgba(255,255,255,0.4)" }}>Created:</span>{" "}
+                            <span style={{ fontWeight: 600, color: "#fff" }}>
+                              {(() => {
+                                const creator = q.created_by || "System";
+                                const matched = adminUsersList.find((u) => u.email?.toLowerCase() === creator.toLowerCase());
+                                return matched?.fullName || creator;
+                              })()}
+                            </span>{" "}
                             <span style={{ color: "var(--text-muted)", fontSize: "0.68rem" }}>
                               ({new Date(q.created_at).toLocaleDateString("en-PH", { month: "short", day: "numeric" })})
                             </span>
                           </div>
                           <div style={{ marginTop: 2 }}>
-                            <span style={{ color: "rgba(255,255,255,0.4)" }}>Edited:</span> {q.updated_by || "System"}{" "}
+                            <span style={{ color: "rgba(255,255,255,0.4)" }}>Edited:</span>{" "}
+                            <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>
+                              {(() => {
+                                const editor = q.updated_by || "System";
+                                const matched = adminUsersList.find((u) => u.email?.toLowerCase() === editor.toLowerCase());
+                                return matched?.fullName || editor;
+                              })()}
+                            </span>{" "}
                             <span style={{ color: "var(--text-muted)", fontSize: "0.68rem" }}>
                               {q.updated_at ? `(${new Date(q.updated_at).toLocaleDateString("en-PH", { month: "short", day: "numeric" })})` : "—"}
                             </span>

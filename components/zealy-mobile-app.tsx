@@ -862,7 +862,7 @@ export default function ZealyMobileApp() {
                 <div className="section-head">
                   <div>
                     <p className="section-head__eyebrow">Available tasks</p>
-                    <h2>Fiesta Event Quests</h2>
+                    <h2>Event Quests</h2>
                   </div>
                 </div>
 

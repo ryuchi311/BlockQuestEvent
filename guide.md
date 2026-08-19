@@ -205,8 +205,13 @@ The admin portal supports multiple roles to securely delegate tasks during the e
 1. **`superadmin`**: Full access. Can create/delete quests, publish drafts, export attendees, and manage other admins.
 2. **`admin` (Manager)**: Broad access. Can check in users, edit quests, and verify proofs, but cannot delete quests or export data.
 3. **`verifier`**: Restricted to the **Quest Verifications** tab. Their primary job is to approve or reject submitted screenshot proofs rapidly during peak hours.
-4. **`manage_attendees` (Scanner & Attendees)**: Restricted to the **Scanner** and **Event Pass Attendees** tabs. Their primary job is to scan QR codes and manually check in attendees at the physical event gate.
+4. **`manage_attendees` (Scanner & Attendees)**: Restricted to the **Scanner** and **Attendees** tabs. Their primary job is to scan QR codes and manually check in attendees at the physical event gate.
 5. **`viewer`**: Read-only access across the dashboard. Cannot modify any data.
+
+### Dashboard Modules Breakdown
+
+- **QR Scanner**: Direct webcam / camera feed to scan attendee QR ticket passes. Features double-scan protection and manual fallback.
+- **Attendees**: Real-time attendee list, search bar, check-in status filters, manual check-in button, and CSV export.
 
 ### How a Superadmin Creates Roles
 Superadmins can add, edit, and assign roles directly from the **Staff / Admins** tab in the dashboard, or via database / scripts:
