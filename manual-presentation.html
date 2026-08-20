@@ -662,17 +662,22 @@
         <div class="metric-card">
           <div class="metric-icon">📣</div>
           <div class="metric-title">Dynamic Socials</div>
-          <div class="metric-desc">Configurable 10s auto-verification countdown tasks.</div>
+          <div class="metric-desc">Configurable 10s auto-verification tasks with `is_active` soft-hide controls.</div>
         </div>
         <div class="metric-card">
-          <div class="metric-icon">⚡</div>
-          <div class="metric-title">Live Quest Builder</div>
-          <div class="metric-desc">12 Preset templates, 6 verification modes, real-time preview & reviewer tracing.</div>
+          <div class="metric-icon">🔒</div>
+          <div class="metric-title">Security PIN Protection</div>
+          <div class="metric-desc">Mandatory first-login 4-digit PIN setup, login gate & self-service profile change.</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-icon">📥</div>
+          <div class="metric-title">Filter-Aware CSV Exports</div>
+          <div class="metric-desc">1-click CSV report downloads for Attendees, Quest Audit, Verifications & Message Notes.</div>
         </div>
         <div class="metric-card">
           <div class="metric-icon">🛡️</div>
-          <div class="metric-title">5-Tier RBAC Engine</div>
-          <div class="metric-desc">Superadmin, Manager, Quester Staff, Verifier, and Viewer.</div>
+          <div class="metric-title">5-Tier RBAC & Password Controls</div>
+          <div class="metric-desc">Superadmin, Manager, Verifier, Gate & Viewer with mandatory staff password updates.</div>
         </div>
       </div>
     </header>
@@ -1295,6 +1300,10 @@
               </li>
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
+                <div><strong>5 Quest Categories & ATFX Support:</strong> Organize quests under 🚀 Onboarding, 📣 Social, 📅 Daily, ❓ Quiz, or 📈 ATFX (trading chart icon badge) for structured filtering.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
                 <div><strong>6 Verification Mode Filter:</strong> Quests table toolbar includes a 6-way mode filter dropdown (Instant Claim, Screenshot Proof, Messagebox Note, Photo + Message, Quiz, Passcode).</div>
               </li>
               <li class="feature-item">
@@ -1352,7 +1361,11 @@
               </li>
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
-                <div><strong>Full-Screen Zoom & Pan Inspector:</strong> Click any screenshot to open an interactive zoom modal to verify evidence clarity.</div>
+                <div><strong>Full-Screen Zoom & Image Fallback:</strong> Click any screenshot to open an interactive zoom modal. Built-in <code>onError</code> handlers display dark SVG placeholders for broken image URLs.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Category Filter & 📥 Filter-Aware CSV Export:</strong> Filter proof queues by category (Onboarding, Social, Daily, Quiz, ATFX) and download filtered results into CSV audit reports instantly.</div>
               </li>
             </ul>
 
@@ -1400,7 +1413,7 @@
               </li>
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
-                <div><strong>1-Click Approval / Rejection:</strong> Approving rewards XP to attendee wallet; rejecting prompts feedback reason.</div>
+                <div><strong>Compact Message Accordions & 📥 CSV Export:</strong> Converts long text messages into space-saving <code>💬 View Message</code> accordions and features 1-click filter-aware CSV exports.</div>
               </li>
             </ul>
 
@@ -1496,7 +1509,7 @@
               </li>
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
-                <div><strong>Priority Sort Order:</strong> Control the sequence of missions shown in the attendee registration modal.</div>
+                <div><strong>Priority Sort Order & 👁️ Active / 🙈 Hidden Soft-Hide:</strong> Control the display order or soft-hide social missions without deleting them to preserve historical records while hiding them from registration forms.</div>
               </li>
             </ul>
 
@@ -1957,6 +1970,28 @@
             • <strong>Signed Proof Uploads:</strong> Screenshots are stored in dedicated S3 storage with sanitized filenames and secure URL paths.
           </p>
         </div>
+
+        <div class="qb-step-card" style="border-color: rgba(245, 166, 35, 0.4);">
+          <div class="qb-step-header">
+            <div class="qb-num" style="background: rgba(245, 166, 35, 0.15); border-color: var(--gold); color: var(--gold);">7</div>
+            <h4 class="qb-title">Attendee Security PIN Protection</h4>
+          </div>
+          <p class="qb-desc">
+            • <strong>First-Time Login Setup:</strong> Attendees without a PIN are prompted with a mandatory modal to create a 4-to-6 digit Security PIN code.<br>
+            • <strong>PIN-Gated Login & Profile Change:</strong> Login form dynamically requests PIN for protected accounts; attendees can change their PIN anytime in profile settings.
+          </p>
+        </div>
+
+        <div class="qb-step-card" style="border-color: rgba(168, 85, 247, 0.4);">
+          <div class="qb-step-header">
+            <div class="qb-num" style="background: rgba(168, 85, 247, 0.15); border-color: var(--purple); color: var(--purple);">8</div>
+            <h4 class="qb-title">Mandatory Staff Password Updates</h4>
+          </div>
+          <p class="qb-desc">
+            • <strong>First-Login Enforcement:</strong> Admin staff accounts created with temporary credentials are flagged with <code>requires_password_change</code>.<br>
+            • <strong>Blocking Modal UI:</strong> Enforces an immediate password update on first login before granting access to administrative tools.
+          </p>
+        </div>
       </div>
     </section>
 
@@ -2102,6 +2137,39 @@
         </div>
         <div class="faq-answer">
           The system features a dedicated interactive load testing portal at <code>/stress-test</code> and a terminal CLI script (<code>npm run stress-test</code>). This allows developers to simulate concurrent bursts of 50–500 requests across registration, gate check-in, booth visits, and admin dashboard polling to verify latency, throughput (TPS), and database connection pool health before live event day.
+        </div>
+      </div>
+
+      <!-- FAQ 13: Attendee Security PIN -->
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>13. How does the Attendee Security PIN Code protection work?</span>
+          <span class="faq-tag" style="background: rgba(245,166,35,0.15); color: var(--gold); border: 1px solid var(--gold);">Account Security</span>
+        </div>
+        <div class="faq-answer">
+          When an attendee logs in for the first time without a PIN, the app prompts them to create a 4-to-6 digit <strong>Security PIN code</strong>. On future logins, the login form detects the PIN requirement and displays the PIN input field box. Attendees can also update their PIN anytime inside their profile settings.
+        </div>
+      </div>
+
+      <!-- FAQ 14: Filter-Aware CSV Exports -->
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>14. How do CSV exports and category filters work across Admin Dashboard tables?</span>
+          <span class="faq-tag" style="background: rgba(16,185,129,0.15); color: var(--emerald); border: 1px solid var(--emerald);">Data Reporting</span>
+        </div>
+        <div class="faq-answer">
+          All major admin tables (Attendees, Quest Log, Quest Verifications, Message Notes) include a green <strong>📥 Export CSV</strong> button. The export dynamically reads your active filters (Search keywords, Status, Category, or Verification Mode) so you only export the exact slice of data you need.
+        </div>
+      </div>
+
+      <!-- FAQ 15: Soft-Hiding Social Missions -->
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>15. How can Superadmins hide social missions without deleting them?</span>
+          <span class="faq-tag" style="background: rgba(168,85,247,0.15); color: var(--purple); border: 1px solid var(--purple);">Social Missions</span>
+        </div>
+        <div class="faq-answer">
+          Superadmins can click the <strong>🙈 Hide / 👁️ Show</strong> toggle button in the <strong>Social Missions</strong> tab. Hiding a mission updates its <code>is_active</code> status to <code>false</code>, which immediately removes it from public attendee registration forms while keeping historical records intact.
         </div>
       </div>
 
