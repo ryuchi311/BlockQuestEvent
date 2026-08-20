@@ -97,6 +97,87 @@ const EMPTY_QUEST: Omit<Quest, "created_at" | "updated_at"> = {
   sort_order: 99,
 };
 
+interface PaginationBarProps {
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
+}
+
+function PaginationBar({
+  currentPage,
+  pageSize,
+  totalItems,
+  onPageChange,
+  onPageSizeChange,
+}: PaginationBarProps) {
+  if (totalItems === 0) return null;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginTop: 16, padding: "8px 4px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.85rem", color: "var(--text-muted)" }}>
+        <span>Rows per page:</span>
+        <select
+          value={pageSize}
+          onChange={(e) => {
+            onPageSizeChange(Number(e.target.value));
+            onPageChange(1);
+          }}
+          className="admin-search-input"
+          style={{ width: "auto", padding: "4px 10px", fontSize: "0.85rem", cursor: "pointer" }}
+        >
+          <option value={10}>10</option>
+          <option value={20}>20</option>
+          <option value={50}>50</option>
+          <option value={100}>100</option>
+        </select>
+        <span style={{ marginLeft: 8 }}>
+          Showing <strong>{totalItems > 0 ? startIndex + 1 : 0}</strong>–<strong>{endIndex}</strong> of <strong>{totalItems}</strong>
+        </span>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <button
+          type="button"
+          className="admin-refresh-btn"
+          onClick={() => onPageChange(Math.max(1, safePage - 1))}
+          disabled={safePage <= 1}
+          style={{
+            opacity: safePage <= 1 ? 0.4 : 1,
+            cursor: safePage <= 1 ? "not-allowed" : "pointer",
+            padding: "6px 14px"
+          }}
+        >
+          ← Prev
+        </button>
+
+        <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--gold-light)", padding: "0 8px" }}>
+          Page {safePage} of {totalPages}
+        </span>
+
+        <button
+          type="button"
+          className="admin-refresh-btn"
+          onClick={() => onPageChange(Math.min(totalPages, safePage + 1))}
+          disabled={safePage >= totalPages}
+          style={{
+            opacity: safePage >= totalPages ? 0.4 : 1,
+            cursor: safePage >= totalPages ? "not-allowed" : "pointer",
+            padding: "6px 14px"
+          }}
+        >
+          Next →
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Admin Dashboard ─────────────────────────────────────────────────────────
 export default function AdminPage() {
   // ── Auth gate ──
@@ -248,6 +329,32 @@ export default function AdminPage() {
     date: true,
   });
 
+  // ── Pagination states ──
+  const [questPage, setQuestPage] = useState(1);
+  const [questPageSize, setQuestPageSize] = useState(10);
+  useEffect(() => setQuestPage(1), [questSearch, questStatusFilter, questCategoryFilter, questVerificationModeFilter, questPageSize]);
+
+  const [verificationPage, setVerificationPage] = useState(1);
+  const [verificationPageSize, setVerificationPageSize] = useState(10);
+  useEffect(() => setVerificationPage(1), [verificationSearch, verificationStatusFilter, verificationModeFilter, verificationCategoryFilter, verificationPageSize]);
+
+  const [messagePage, setMessagePage] = useState(1);
+  const [messagePageSize, setMessagePageSize] = useState(10);
+  useEffect(() => setMessagePage(1), [messageSearch, messageStatusFilter, messagePageSize]);
+
+  const [questLogPage, setQuestLogPage] = useState(1);
+  const [questLogPageSize, setQuestLogPageSize] = useState(10);
+  useEffect(() => setQuestLogPage(1), [questLogSearch, questLogStatusFilter, questLogCategoryFilter, questLogPageSize]);
+
+  const [staffPage, setStaffPage] = useState(1);
+  const [staffPageSize, setStaffPageSize] = useState(10);
+
+  const [socialPage, setSocialPage] = useState(1);
+  const [socialPageSize, setSocialPageSize] = useState(10);
+
+  const [boothPage, setBoothPage] = useState(1);
+  const [boothPageSize, setBoothPageSize] = useState(10);
+
   // ── Quest modal ──
   const DRAFT_KEY = "blockquest_quest_draft";
   const [showQuestModal, setShowQuestModal] = useState(false);
@@ -290,12 +397,12 @@ export default function AdminPage() {
 
   // ── Social Missions (Superadmin only) ──
   const [socialMissions, setSocialMissions] = useState<any[]>([]);
-  const [newSocialMissionForm, setNewSocialMissionForm] = useState({ platform: "facebook", title: "", description: "", url: "", button_text: "", button_color: "#1877f2", sort_order: 0 });
+  const [newSocialMissionForm, setNewSocialMissionForm] = useState({ platform: "facebook", title: "", description: "", url: "", button_text: "", button_color: "#1877f2", sort_order: 0, is_active: true });
   const [isCreatingMission, setIsCreatingMission] = useState(false);
   const [showAddMissionModal, setShowAddMissionModal] = useState(false);
 
   const [editingSocialMission, setEditingSocialMission] = useState<any | null>(null);
-  const [editSocialMissionForm, setEditSocialMissionForm] = useState({ id: 0, platform: "facebook", title: "", description: "", url: "", button_text: "", button_color: "#1877f2", sort_order: 0 });
+  const [editSocialMissionForm, setEditSocialMissionForm] = useState({ id: 0, platform: "facebook", title: "", description: "", url: "", button_text: "", button_color: "#1877f2", sort_order: 0, is_active: true });
   const [isUpdatingMission, setIsUpdatingMission] = useState(false);
 
   // ── Copy tooltip ──
@@ -1136,13 +1243,30 @@ export default function AdminPage() {
       if (!res.ok) throw new Error(json.error || "Failed to create social mission");
 
       setSocialMissions(prev => [...prev, json.mission]);
-      setNewSocialMissionForm({ platform: "facebook", title: "", description: "", url: "", button_text: "", button_color: "#1877f2", sort_order: 0 });
+      setNewSocialMissionForm({ platform: "facebook", title: "", description: "", url: "", button_text: "", button_color: "#1877f2", sort_order: 0, is_active: true });
       setShowAddMissionModal(false);
       alert("Social mission created successfully!");
     } catch (err: any) {
       alert("Error: " + err.message);
     } finally {
       setIsCreatingMission(false);
+    }
+  }
+
+  async function handleToggleSocialMissionActive(mission: any) {
+    const nextStatus = mission.is_active === false ? true : false;
+    try {
+      const res = await fetch("/api/admin/social-missions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: mission.id, is_active: nextStatus }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to update mission status");
+
+      setSocialMissions(prev => prev.map(m => m.id === mission.id ? { ...m, is_active: nextStatus } : m));
+    } catch (err: any) {
+      alert("Error: " + err.message);
     }
   }
 
@@ -1174,6 +1298,7 @@ export default function AdminPage() {
       button_text: mission.button_text || "",
       button_color: mission.button_color || "#1877f2",
       sort_order: mission.sort_order || 0,
+      is_active: mission.is_active !== false,
     });
   }
 
@@ -1814,7 +1939,7 @@ export default function AdminPage() {
                       </td>
                     </tr>
                   ) : (
-                    filteredQuests.map((q) => (
+                    filteredQuests.slice((questPage - 1) * questPageSize, (questPage - 1) * questPageSize + questPageSize).map((q) => (
                       <tr key={q.id} className="admin-table__row">
                         <td className="admin-table__num">{q.sort_order}</td>
                         <td>
@@ -1896,6 +2021,14 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+
+            <PaginationBar
+              currentPage={questPage}
+              pageSize={questPageSize}
+              totalItems={filteredQuests.length}
+              onPageChange={setQuestPage}
+              onPageSizeChange={setQuestPageSize}
+            />
 
             {/* Status Change Modal */}
             {statusModalQuest && (
@@ -2031,7 +2164,7 @@ export default function AdminPage() {
                       </td>
                     </tr>
                   ) : (
-                    filteredVerifications.map((v, i) => (
+                    filteredVerifications.slice((verificationPage - 1) * verificationPageSize, (verificationPage - 1) * verificationPageSize + verificationPageSize).map((v, i) => (
                       <tr key={v.id} className="admin-table__row">
                         <td className="admin-table__num">{i + 1}</td>
                         <td className="admin-table__name">
@@ -2058,6 +2191,10 @@ export default function AdminPage() {
                               <img
                                 src={v.proof_url}
                                 alt="Proof thumbnail"
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100%' height='100%' fill='%231e1e2e'/><text x='50%' y='40%' dominant-baseline='middle' text-anchor='middle' font-size='22'>🖼️</text><text x='50%' y='70%' dominant-baseline='middle' text-anchor='middle' fill='%23ef4444' font-size='9' font-family='sans-serif' font-weight='bold'>Image Error</text></svg>";
+                                }}
                                 style={{
                                   width: 54,
                                   height: 54,
@@ -2194,6 +2331,14 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+
+            <PaginationBar
+              currentPage={verificationPage}
+              pageSize={verificationPageSize}
+              totalItems={filteredVerifications.length}
+              onPageChange={setVerificationPage}
+              onPageSizeChange={setVerificationPageSize}
+            />
           </>
         )}
 
@@ -2267,7 +2412,7 @@ export default function AdminPage() {
                       </td>
                     </tr>
                   ) : (
-                    filteredMessageVerifications.map((v) => (
+                    filteredMessageVerifications.slice((messagePage - 1) * messagePageSize, (messagePage - 1) * messagePageSize + messagePageSize).map((v) => (
                       <tr key={v.id}>
                         <td>
                           <div style={{ fontWeight: 700, color: "#fff", fontSize: "0.95rem" }}>{v.user_name}</div>
@@ -2404,6 +2549,14 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+
+            <PaginationBar
+              currentPage={messagePage}
+              pageSize={messagePageSize}
+              totalItems={filteredMessageVerifications.length}
+              onPageChange={setMessagePage}
+              onPageSizeChange={setMessagePageSize}
+            />
           </>
         )}
 
@@ -2577,7 +2730,7 @@ export default function AdminPage() {
                         </td>
                       </tr>
                     ) : (
-                      filteredLogs.map((item) => (
+                      filteredLogs.slice((questLogPage - 1) * questLogPageSize, (questLogPage - 1) * questLogPageSize + questLogPageSize).map((item) => (
                         <tr key={`${item.logType}-${item.id}`}>
                           {visibleColumns.quester && <td style={{ fontWeight: 700, color: "#fff" }}>{item.user_name}</td>}
                           {visibleColumns.email && <td style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>{item.user_email}</td>}
@@ -2631,6 +2784,14 @@ export default function AdminPage() {
                   </tbody>
                 </table>
               </div>
+
+              <PaginationBar
+                currentPage={questLogPage}
+                pageSize={questLogPageSize}
+                totalItems={filteredLogs.length}
+                onPageChange={setQuestLogPage}
+                onPageSizeChange={setQuestLogPageSize}
+              />
             </>
           );
         })()}
@@ -2662,7 +2823,7 @@ export default function AdminPage() {
                   {adminUsersList.filter(u => u.role !== 'booth_staff').length === 0 ? (
                     <tr><td colSpan={6} className="admin-table__empty">No other admins found.</td></tr>
                   ) : (
-                    adminUsersList.filter(u => u.role !== 'booth_staff').map(user => (
+                    adminUsersList.filter(u => u.role !== 'booth_staff').slice((staffPage - 1) * staffPageSize, (staffPage - 1) * staffPageSize + staffPageSize).map(user => (
                       <tr key={user.id} className="admin-table__row">
                         <td className="admin-table__num">{user.id}</td>
                         <td className="admin-table__name">{user.full_name}</td>
@@ -2698,6 +2859,13 @@ export default function AdminPage() {
                   )}
                 </tbody>
               </table>
+              <PaginationBar
+                currentPage={staffPage}
+                pageSize={staffPageSize}
+                totalItems={adminUsersList.filter(u => u.role !== 'booth_staff').length}
+                onPageChange={setStaffPage}
+                onPageSizeChange={setStaffPageSize}
+              />
             </div>
 
             {/* Add Staff Form */}
@@ -2784,15 +2952,16 @@ export default function AdminPage() {
                     <th>Details</th>
                     <th>Link</th>
                     <th>Sort</th>
+                    <th>Status</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {socialMissions.length === 0 ? (
-                    <tr><td colSpan={5} className="admin-table__empty">No social missions found.</td></tr>
+                    <tr><td colSpan={6} className="admin-table__empty">No social missions found.</td></tr>
                   ) : (
-                    socialMissions.map(mission => (
-                      <tr key={mission.id} className="admin-table__row">
+                    socialMissions.slice((socialPage - 1) * socialPageSize, (socialPage - 1) * socialPageSize + socialPageSize).map(mission => (
+                      <tr key={mission.id} className="admin-table__row" style={{ opacity: mission.is_active === false ? 0.65 : 1 }}>
                         <td style={{ fontSize: "1.5rem" }}>
                           {mission.platform === 'facebook' ? '🌐' : mission.platform === 'telegram' ? '✈️' : mission.platform === 'twitter' ? '🐦' : '🔗'}
                         </td>
@@ -2804,7 +2973,31 @@ export default function AdminPage() {
                           <a href={mission.url} target="_blank" rel="noreferrer" style={{ color: "var(--gold-light)", textDecoration: "underline" }}>View Link</a>
                         </td>
                         <td>{mission.sort_order}</td>
-                        <td style={{ display: "flex", gap: 6 }}>
+                        <td>
+                          {mission.is_active === false ? (
+                            <span className="admin-status-badge" style={{ background: "rgba(245, 158, 11, 0.15)", color: "#fbbf24", borderColor: "rgba(245, 158, 11, 0.3)" }}>
+                              🙈 Hidden
+                            </span>
+                          ) : (
+                            <span className="admin-status-badge admin-status-badge--live">
+                              👁️ Active
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                          <button
+                            type="button"
+                            className="admin-refresh-btn"
+                            onClick={() => handleToggleSocialMissionActive(mission)}
+                            style={{
+                              padding: "6px 10px",
+                              fontSize: "0.75rem",
+                              borderColor: mission.is_active === false ? "rgba(16, 185, 129, 0.4)" : "rgba(245, 158, 11, 0.4)",
+                              color: mission.is_active === false ? "#34d399" : "#fbbf24"
+                            }}
+                          >
+                            {mission.is_active === false ? "👁️ Show" : "🙈 Hide"}
+                          </button>
                           <button
                             className="admin-edit-btn"
                             onClick={() => handleOpenEditSocialMission(mission)}
@@ -2823,6 +3016,13 @@ export default function AdminPage() {
                   )}
                 </tbody>
               </table>
+              <PaginationBar
+                currentPage={socialPage}
+                pageSize={socialPageSize}
+                totalItems={socialMissions.length}
+                onPageChange={setSocialPage}
+                onPageSizeChange={setSocialPageSize}
+              />
             </div>
 
             {/* Add Mission Form (Modal) */}
@@ -3192,7 +3392,7 @@ export default function AdminPage() {
                       ? dbBooths.map(u => ({ id: u.id, name: u.full_name, email: u.email, points: 150, isDb: true, rawUser: u }))
                       : boothList;
 
-                    return displayList.map((b: any, idx: number) => (
+                    return displayList.slice((boothPage - 1) * boothPageSize, (boothPage - 1) * boothPageSize + boothPageSize).map((b: any, idx: number) => (
                       <tr key={b.id || idx} className="admin-table__row">
                         <td className="admin-table__num">{idx + 1}</td>
                         <td className="admin-table__name">
@@ -3340,6 +3540,19 @@ export default function AdminPage() {
                   })()}
                 </tbody>
               </table>
+              {(() => {
+                const dbBooths = adminUsersList.filter(u => u.role === 'booth_staff');
+                const totalBooths = dbBooths.length > 0 ? dbBooths.length : boothList.length;
+                return (
+                  <PaginationBar
+                    currentPage={boothPage}
+                    pageSize={boothPageSize}
+                    totalItems={totalBooths}
+                    onPageChange={setBoothPage}
+                    onPageSizeChange={setBoothPageSize}
+                  />
+                );
+              })()}
             </div>
 
             {/* Modal to Edit Booth */}
@@ -4361,6 +4574,10 @@ export default function AdminPage() {
               <img
                 src={selectedProofImage}
                 alt="Proof Full Resolution"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='250' height='250' viewBox='0 0 200 200'><rect width='100%' height='100%' fill='%231e1e2e'/><text x='50%' y='40%' dominant-baseline='middle' text-anchor='middle' font-size='48'>🖼️</text><text x='50%' y='70%' dominant-baseline='middle' text-anchor='middle' fill='%23ef4444' font-size='12' font-family='sans-serif' font-weight='bold'>Image Load Error / Broken Link</text></svg>";
+                }}
                 draggable={false}
                 style={{
                   maxWidth: "100%",

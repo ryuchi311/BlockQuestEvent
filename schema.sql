@@ -143,6 +143,7 @@ CREATE TABLE IF NOT EXISTS public.social_missions (
   button_text TEXT NOT NULL,
   button_color TEXT NOT NULL,
   sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

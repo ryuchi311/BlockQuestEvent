@@ -16,7 +16,7 @@ function getSupabase() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { platform, title, description, url, button_text, button_color, sort_order } = body;
+    const { platform, title, description, url, button_text, button_color, sort_order, is_active } = body;
 
     if (!platform || !title || !url || !button_text || !button_color) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -26,7 +26,16 @@ export async function POST(request: Request) {
     const { data, error } = await supabase
       .from("social_missions")
       .insert([
-        { platform, title, description, url, button_text, button_color, sort_order: sort_order || 0 },
+        {
+          platform,
+          title,
+          description,
+          url,
+          button_text,
+          button_color,
+          sort_order: sort_order || 0,
+          is_active: is_active ?? true,
+        },
       ])
       .select()
       .single();
@@ -60,7 +69,7 @@ export async function DELETE(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { id, platform, title, description, url, button_text, button_color, sort_order } = body;
+    const { id, platform, title, description, url, button_text, button_color, sort_order, is_active } = body;
 
     if (!id) {
       return NextResponse.json({ error: "Mission ID is required" }, { status: 400 });
@@ -74,6 +83,7 @@ export async function PATCH(request: Request) {
     if (button_text !== undefined) updatePayload.button_text = button_text;
     if (button_color !== undefined) updatePayload.button_color = button_color;
     if (sort_order !== undefined) updatePayload.sort_order = sort_order;
+    if (is_active !== undefined) updatePayload.is_active = is_active;
 
     const supabase = getSupabase();
     const { data, error } = await supabase

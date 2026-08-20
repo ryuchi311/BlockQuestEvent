@@ -31,7 +31,10 @@ export async function GET() {
 
     if (error) throw error;
 
-    return NextResponse.json({ missions: data });
+    // Filter out inactive / hidden missions (support legacy records where is_active is null)
+    const activeMissions = (data || []).filter((m: any) => m.is_active !== false);
+
+    return NextResponse.json({ missions: activeMissions });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
