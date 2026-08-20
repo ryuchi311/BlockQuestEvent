@@ -2071,19 +2071,34 @@ export default function AdminPage() {
                             <span className="admin-table__muted" style={{ fontSize: "0.75rem" }}>💬 Text Only</span>
                           )}
                           {v.user_message && (
-                            <div style={{
-                              marginTop: 6,
-                              padding: "6px 10px",
-                              background: "rgba(245, 166, 35, 0.12)",
-                              border: "1px solid rgba(245, 166, 35, 0.35)",
-                              borderRadius: 8,
-                              fontSize: "0.8rem",
-                              color: "#fff",
-                              maxWidth: 240,
-                              wordBreak: "break-word"
-                            }}>
-                              💬 <strong>Message:</strong> "{v.user_message}"
-                            </div>
+                            <details style={{ marginTop: 8, maxWidth: 240 }}>
+                              <summary style={{
+                                padding: "4px 8px",
+                                background: "rgba(245, 166, 35, 0.15)",
+                                border: "1px solid rgba(245, 166, 35, 0.3)",
+                                borderRadius: 6,
+                                fontSize: "0.75rem",
+                                color: "#fbbf24",
+                                cursor: "pointer",
+                                userSelect: "none",
+                                fontWeight: 600,
+                                display: "inline-block"
+                              }}>
+                                💬 View Message
+                              </summary>
+                              <div style={{
+                                marginTop: 6,
+                                padding: "8px 10px",
+                                background: "rgba(0, 0, 0, 0.25)",
+                                border: "1px solid rgba(245, 166, 35, 0.15)",
+                                borderRadius: 6,
+                                fontSize: "0.8rem",
+                                color: "#fff",
+                                wordBreak: "break-word"
+                              }}>
+                                "{v.user_message}"
+                              </div>
+                            </details>
                           )}
                         </td>
                         <td className="admin-table__muted">
