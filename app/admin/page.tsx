@@ -377,6 +377,13 @@ export default function AdminPage() {
   const [isDeletingAdmin, setIsDeletingAdmin] = useState(false);
   const [checkInConfirmAttendee, setCheckInConfirmAttendee] = useState<Attendee | null>(null);
 
+  // ── Reset PIN Studio Modal States ──
+  const [resetPinAttendee, setResetPinAttendee] = useState<Attendee | null>(null);
+  const [resetPinInput, setResetPinInput] = useState("");
+  const [resetPinResult, setResetPinResult] = useState<{ tempPin: string; attendee: any } | null>(null);
+  const [isResettingPin, setIsResettingPin] = useState(false);
+  const [copiedPinToast, setCopiedPinToast] = useState(false);
+
   // ── Booths / Vendors (Superadmin only) ──
   const [boothList, setBoothList] = useState<any[]>([
     { id: "polygon-guild", name: "Polygon Guild Booth", points: 150, email: "booth.polygon@blockquest.ph" },
@@ -806,6 +813,38 @@ export default function AdminPage() {
     } finally {
       setCheckingInId(null);
       setCheckInConfirmAttendee(null);
+    }
+  }
+
+  function openResetPinModal(attendee: Attendee) {
+    setResetPinAttendee(attendee);
+    setResetPinInput("");
+    setResetPinResult(null);
+    setCopiedPinToast(false);
+  }
+
+  async function handleExecuteResetPin(customPin?: string) {
+    if (!resetPinAttendee) return;
+    setIsResettingPin(true);
+    try {
+      const pinToUse = customPin !== undefined ? customPin : resetPinInput.trim();
+      const res = await fetch("/api/admin/attendees", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: resetPinAttendee.id, tempPin: pinToUse }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to reset PIN");
+
+      setAttendees((prev) =>
+        prev.map((item) => (item.id === resetPinAttendee.id ? { ...item, pincode: json.tempPin } : item))
+      );
+
+      setResetPinResult({ tempPin: json.tempPin, attendee: resetPinAttendee });
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setIsResettingPin(false);
     }
   }
 
@@ -1817,12 +1856,8 @@ export default function AdminPage() {
                             year: "numeric",
                           })}
                         </td>
-                        <td>
-                          {a.checked_in ? (
-                            <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>Done</span>
-                          ) : adminUser?.role === "viewer" ? (
-                            <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>Read-only</span>
-                          ) : (
+                        <td style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                          {!a.checked_in && adminUser?.role !== "viewer" && (
                             <button
                               className="admin-edit-btn"
                               onClick={() => setCheckInConfirmAttendee(a)}
@@ -1836,6 +1871,21 @@ export default function AdminPage() {
                               }}
                             >
                               {checkingInId === a.id ? "Checking..." : "Check In"}
+                            </button>
+                          )}
+                          {adminUser?.role !== "viewer" && (
+                            <button
+                              className="admin-refresh-btn"
+                              onClick={() => openResetPinModal(a)}
+                              title="Open Reset PIN Studio for attendee"
+                              style={{
+                                padding: "4px 10px",
+                                fontSize: "0.75rem",
+                                borderColor: "rgba(245, 166, 35, 0.4)",
+                                color: "#fbbf24",
+                              }}
+                            >
+                              🔑 Reset PIN
                             </button>
                           )}
                         </td>
@@ -1928,6 +1978,240 @@ export default function AdminPage() {
                       {checkingInId === checkInConfirmAttendee.id ? "Checking in..." : "Yes, Check In"}
                     </button>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Reset PIN Studio Modal */}
+            {resetPinAttendee && (
+              <div className="admin-modal-overlay" onClick={() => setResetPinAttendee(null)} style={{ zIndex: 99999 }}>
+                <div
+                  className="quest-modal"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    maxWidth: 420,
+                    padding: 26,
+                    background: "linear-gradient(145deg, #0e131f 0%, #172033 100%)",
+                    border: "1px solid rgba(245, 166, 35, 0.4)",
+                    borderRadius: 20,
+                    boxShadow: "0 20px 60px rgba(0,0,0,0.85), 0 0 30px rgba(245, 166, 35, 0.15)",
+                    position: "relative",
+                  }}
+                >
+                  <button
+                    onClick={() => setResetPinAttendee(null)}
+                    style={{
+                      position: "absolute",
+                      top: 16,
+                      right: 16,
+                      background: "rgba(255,255,255,0.06)",
+                      border: "none",
+                      color: "#94a3b8",
+                      fontSize: "1.1rem",
+                      width: 32,
+                      height: 32,
+                      borderRadius: "50%",
+                      cursor: "pointer",
+                    }}
+                  >
+                    ✕
+                  </button>
+
+                  {!resetPinResult ? (
+                    <>
+                      <div style={{ textAlign: "center", marginBottom: 18 }}>
+                        <div style={{
+                          width: 56,
+                          height: 56,
+                          borderRadius: "50%",
+                          background: "rgba(245, 166, 35, 0.12)",
+                          border: "1px solid rgba(245, 166, 35, 0.4)",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "1.6rem",
+                          marginBottom: 8
+                        }}>
+                          🔑
+                        </div>
+                        <h3 style={{ fontSize: "1.2rem", color: "#fbbf24", margin: 0, fontWeight: 800 }}>
+                          Security PIN Reset Studio
+                        </h3>
+                        <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: 4 }}>
+                          Issue a temporary Security PIN for the attendee
+                        </p>
+                      </div>
+
+                      <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 12, marginBottom: 18, border: "1px solid rgba(255,255,255,0.08)" }}>
+                        <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#fff" }}>
+                          👤 {resetPinAttendee.full_name}
+                        </div>
+                        <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: 2 }}>
+                          📧 {resetPinAttendee.email}
+                        </div>
+                        <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: 2 }}>
+                          🎫 Ticket: <span style={{ color: "var(--gold-light)", fontFamily: "monospace", fontWeight: 700 }}>{resetPinAttendee.ticket_code}</span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <button
+                          type="button"
+                          disabled={isResettingPin}
+                          onClick={() => handleExecuteResetPin(undefined)}
+                          style={{
+                            padding: "13px",
+                            borderRadius: 12,
+                            background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                            border: "none",
+                            color: "#000",
+                            fontWeight: 800,
+                            fontSize: "0.9rem",
+                            cursor: "pointer",
+                            boxShadow: "0 8px 20px rgba(245, 166, 35, 0.3)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 8
+                          }}
+                        >
+                          {isResettingPin ? "Generating..." : "⚡ Auto-Generate Random 4-Digit PIN"}
+                        </button>
+
+                        <div style={{ textAlign: "center", fontSize: "0.72rem", color: "rgba(255,255,255,0.35)", margin: "2px 0" }}>
+                          ── OR ENTER CUSTOM TEMPORARY PIN ──
+                        </div>
+
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <input
+                            type="text"
+                            maxLength={6}
+                            placeholder="e.g. 1234"
+                            value={resetPinInput}
+                            onChange={(e) => setResetPinInput(e.target.value.replace(/[^\d]/g, ""))}
+                            style={{
+                              flex: 1,
+                              padding: "10px 12px",
+                              borderRadius: 10,
+                              background: "#080b12",
+                              border: "1px solid rgba(245,166,35,0.4)",
+                              color: "#fff",
+                              letterSpacing: "4px",
+                              fontWeight: "bold",
+                              fontSize: "1.05rem",
+                              textAlign: "center"
+                            }}
+                          />
+                          <button
+                            type="button"
+                            disabled={isResettingPin || !resetPinInput}
+                            onClick={() => handleExecuteResetPin(resetPinInput)}
+                            style={{
+                              padding: "10px 16px",
+                              borderRadius: 10,
+                              background: "rgba(255, 255, 255, 0.1)",
+                              border: "1px solid rgba(255, 255, 255, 0.2)",
+                              color: "#fff",
+                              fontWeight: 700,
+                              fontSize: "0.82rem",
+                              cursor: resetPinInput ? "pointer" : "not-allowed",
+                              opacity: resetPinInput ? 1 : 0.5
+                            }}
+                          >
+                            Set Custom PIN
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: "2.5rem", marginBottom: 4 }}>🎉</div>
+                      <h3 style={{ fontSize: "1.2rem", color: "#34d399", margin: "0 0 4px", fontWeight: 800 }}>
+                        Temporary PIN Ready!
+                      </h3>
+                      <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: 16 }}>
+                        Share this temporary PIN with <strong>{resetPinAttendee.full_name}</strong>
+                      </p>
+
+                      <div style={{
+                        background: "rgba(16, 185, 129, 0.1)",
+                        border: "2px dashed rgba(16, 185, 129, 0.4)",
+                        borderRadius: 16,
+                        padding: "16px",
+                        marginBottom: 18,
+                      }}>
+                        <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
+                          Temporary Security PIN
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
+                          {resetPinResult.tempPin.split("").map((digit, idx) => (
+                            <div
+                              key={idx}
+                              style={{
+                                width: 44,
+                                height: 54,
+                                borderRadius: 10,
+                                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                                color: "#fff",
+                                fontSize: "1.7rem",
+                                fontWeight: 900,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                boxShadow: "0 6px 16px rgba(16, 185, 129, 0.4)"
+                              }}
+                            >
+                              {digit}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(resetPinResult.tempPin);
+                            setCopiedPinToast(true);
+                            setTimeout(() => setCopiedPinToast(false), 2500);
+                          }}
+                          style={{
+                            padding: "12px",
+                            borderRadius: 10,
+                            background: copiedPinToast ? "rgba(16, 185, 129, 0.25)" : "rgba(255, 255, 255, 0.1)",
+                            border: "1px solid rgba(255, 255, 255, 0.2)",
+                            color: copiedPinToast ? "#34d399" : "#fff",
+                            fontWeight: 700,
+                            fontSize: "0.85rem",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 6
+                          }}
+                        >
+                          {copiedPinToast ? "✓ Copied PIN to Clipboard!" : "📋 Copy Temporary PIN"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setResetPinAttendee(null)}
+                          style={{
+                            padding: "11px",
+                            borderRadius: 10,
+                            background: "rgba(255, 255, 255, 0.05)",
+                            border: "none",
+                            color: "var(--text-muted)",
+                            fontWeight: 600,
+                            fontSize: "0.85rem",
+                            cursor: "pointer"
+                          }}
+                        >
+                          Done & Close
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

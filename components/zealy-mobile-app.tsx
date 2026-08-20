@@ -1011,18 +1011,23 @@ export default function ZealyMobileApp() {
                         </div>
                       </label>
                       {showPinInput && (
-                        <label style={{ gap: "4px", marginTop: "10px" }}>
-                          🔒 Security PIN Code *
-                          <input
-                            type="password"
-                            maxLength={6}
-                            value={ticketPinCode}
-                            onChange={(e) => setTicketPinCode(e.target.value.replace(/[^\d]/g, ""))}
-                            placeholder="Enter 4-digit PIN (e.g. 1234)"
-                            required
-                            style={{ padding: "10px 12px", fontSize: "0.85rem", letterSpacing: "2px", fontWeight: "bold" }}
-                          />
-                        </label>
+                        <>
+                          <label style={{ gap: "4px", marginTop: "10px" }}>
+                            🔒 Security PIN Code *
+                            <input
+                              type="password"
+                              maxLength={6}
+                              value={ticketPinCode}
+                              onChange={(e) => setTicketPinCode(e.target.value.replace(/[^\d]/g, ""))}
+                              placeholder="Enter 4-digit PIN (e.g. 1234)"
+                              required
+                              style={{ padding: "10px 12px", fontSize: "0.85rem", letterSpacing: "2px", fontWeight: "bold" }}
+                            />
+                          </label>
+                          <p style={{ fontSize: "0.74rem", color: "rgba(245, 166, 35, 0.85)", marginTop: 6, marginBottom: 4, lineHeight: 1.4 }}>
+                            💡 <strong>Forgot PIN?</strong> Please ask an Event Staff / Admin at the helpdesk to issue a temporary PIN code for your account.
+                          </p>
+                        </>
                       )}
                       {ticketError && (
                         <p style={{ color: "#f87171", fontSize: "0.78rem", margin: "6px 0 2px" }}>

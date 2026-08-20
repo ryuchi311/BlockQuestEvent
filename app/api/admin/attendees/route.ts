@@ -17,11 +17,44 @@ export async function GET() {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("registrations")
-      .select("id, full_name, email, phone, organization, ticket_code, checked_in, checked_in_at, agreed_at, created_at")
+      .select("id, full_name, email, phone, organization, ticket_code, checked_in, checked_in_at, agreed_at, created_at, pincode")
       .order("created_at", { ascending: false });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ attendees: data });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, tempPin } = body;
+    if (!id) return NextResponse.json({ error: "Attendee ID is required." }, { status: 400 });
+
+    // Generate random 4-digit PIN if tempPin not supplied
+    const finalPin = tempPin?.trim() || Math.floor(1000 + Math.random() * 9000).toString();
+
+    if (!/^\d{4,6}$/.test(finalPin)) {
+      return NextResponse.json({ error: "Temporary PIN must be 4 to 6 digits." }, { status: 400 });
+    }
+
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from("registrations")
+      .update({ pincode: finalPin })
+      .eq("id", id)
+      .select("id, full_name, email, pincode")
+      .single();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    return NextResponse.json({
+      message: "Security PIN reset successfully.",
+      tempPin: finalPin,
+      attendee: data
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
