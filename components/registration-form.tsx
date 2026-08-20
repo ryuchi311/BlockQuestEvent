@@ -284,6 +284,7 @@ export default function RegistrationForm() {
           email,
           phone,
           password,
+          skipPin: true,
         }),
       });
 

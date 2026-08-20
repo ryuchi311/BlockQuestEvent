@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   const phone = rawPhone.replace(/[^\d+]/g, ""); // Keep only digits and +
   const password = payload.password ?? "";
   const inputPin = payload.pincode?.trim() ?? "";
-  const skipPin = payload.skipPin ?? true; // Default to true so QR pass generation does not require PIN
+  const skipPin = payload.skipPin === true; // Requires PIN for Zealy logins unless skipPin is explicitly true
 
   if (!email || !phone || !password) {
     return NextResponse.json({ error: "Email, phone, and password are required." }, { status: 400 });
