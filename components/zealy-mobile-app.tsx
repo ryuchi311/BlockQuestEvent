@@ -159,6 +159,17 @@ export default function ZealyMobileApp() {
   });
   const [ticketError, setTicketError] = useState("");
   const [ticketLoading, setTicketLoading] = useState(false);
+  const [ticketPinCode, setTicketPinCode] = useState("");
+  const [showPinInput, setShowPinInput] = useState(false);
+
+  // Security PIN modal states
+  const [showPinSetupModal, setShowPinSetupModal] = useState(false);
+  const [showChangePinModal, setShowChangePinModal] = useState(false);
+  const [currentPinInput, setCurrentPinInput] = useState("");
+  const [newPinInput, setNewPinInput] = useState("");
+  const [confirmPinInput, setConfirmPinInput] = useState("");
+  const [pinModalError, setPinModalError] = useState("");
+  const [pinSaving, setPinSaving] = useState(false);
   const [claimedQuestIds, setClaimedQuestIds] = useState<string[]>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("bq_claimed");
@@ -181,6 +192,8 @@ export default function ZealyMobileApp() {
     setTicketMobileNum("");
     setTicketCountryCode("+63");
     setTicketError("");
+    setTicketPinCode("");
+    setShowPinInput(false);
     setUserXp(0);
     setUserRank(12);
     setQuests(initialQuests);
@@ -677,10 +690,18 @@ export default function ZealyMobileApp() {
       const loginResponse = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: ticketEmail.trim(), phone: fullPhone, password: ticketPassword }),
+        body: JSON.stringify({
+          email: ticketEmail.trim(),
+          phone: fullPhone,
+          password: ticketPassword,
+          pincode: ticketPinCode.trim()
+        }),
       });
       const loginResult = await loginResponse.json();
       if (!loginResponse.ok || !loginResult?.fullName || !loginResult.email) {
+        if (loginResult?.requiresPin) {
+          setShowPinInput(true);
+        }
         setTicketError(loginResult?.error ?? "No matching ticket found with this email and phone.");
         setTicketLoading(false);
         return;
@@ -706,6 +727,10 @@ export default function ZealyMobileApp() {
         passCode: qrResult.passCode,
         qrDataUrl: qrResult.qrDataUrl,
       });
+
+      if (loginResult?.requiresPinSetup) {
+        setShowPinSetupModal(true);
+      }
 
       const completedIds = loginResult.completedQuests || [];
       const hasRegister = completedIds.includes("register");
@@ -733,14 +758,88 @@ export default function ZealyMobileApp() {
             }),
           });
         } catch (e) {
-          console.warn("Failed to save registration quest XP", e);
+          console.error("Failed to auto-claim register quest", e);
         }
       }
-    } catch (err) {
-      setTicketError("Connection error. Please try again.");
+    } catch (err: any) {
+      setTicketError("An error occurred during verification.");
     } finally {
       setTicketLoading(false);
-      fetchLeaderboard();
+    }
+  };
+
+  const handleSaveFirstPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPinModalError("");
+    const cleanPin = newPinInput.trim();
+    if (!cleanPin || !/^\d{4,6}$/.test(cleanPin)) {
+      setPinModalError("Security PIN must be 4 to 6 digits.");
+      return;
+    }
+    if (cleanPin !== confirmPinInput.trim()) {
+      setPinModalError("PIN codes do not match.");
+      return;
+    }
+    setPinSaving(true);
+    try {
+      const res = await fetch("/api/user/pincode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: authenticatedUser?.email || ticketEmail.trim(),
+          pincode: cleanPin
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to set PIN code.");
+
+      setShowPinSetupModal(false);
+      setNewPinInput("");
+      setConfirmPinInput("");
+      alert("🔒 Security PIN code set successfully!");
+    } catch (err: any) {
+      setPinModalError(err.message);
+    } finally {
+      setPinSaving(false);
+    }
+  };
+
+  const handleChangePin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPinModalError("");
+    const cleanCurrent = currentPinInput.trim();
+    const cleanNew = newPinInput.trim();
+    if (!cleanNew || !/^\d{4,6}$/.test(cleanNew)) {
+      setPinModalError("New PIN must be 4 to 6 digits.");
+      return;
+    }
+    if (cleanNew !== confirmPinInput.trim()) {
+      setPinModalError("New PIN codes do not match.");
+      return;
+    }
+    setPinSaving(true);
+    try {
+      const res = await fetch("/api/user/pincode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: authenticatedUser?.email || ticketEmail.trim(),
+          currentPincode: cleanCurrent,
+          pincode: cleanNew
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update Security PIN.");
+
+      setShowChangePinModal(false);
+      setCurrentPinInput("");
+      setNewPinInput("");
+      setConfirmPinInput("");
+      alert("🔒 Security PIN code updated successfully!");
+    } catch (err: any) {
+      setPinModalError(err.message);
+    } finally {
+      setPinSaving(false);
     }
   };
 
@@ -911,6 +1010,20 @@ export default function ZealyMobileApp() {
                           />
                         </div>
                       </label>
+                      {showPinInput && (
+                        <label style={{ gap: "4px", marginTop: "10px" }}>
+                          🔒 Security PIN Code *
+                          <input
+                            type="password"
+                            maxLength={6}
+                            value={ticketPinCode}
+                            onChange={(e) => setTicketPinCode(e.target.value.replace(/[^\d]/g, ""))}
+                            placeholder="Enter 4-digit PIN (e.g. 1234)"
+                            required
+                            style={{ padding: "10px 12px", fontSize: "0.85rem", letterSpacing: "2px", fontWeight: "bold" }}
+                          />
+                        </label>
+                      )}
                       {ticketError && (
                         <p style={{ color: "#f87171", fontSize: "0.78rem", margin: "6px 0 2px" }}>
                           {ticketError}
@@ -1517,24 +1630,53 @@ export default function ZealyMobileApp() {
                   )}
                 </div>
                 {qrPass && (
-                  <button
-                    onClick={handleLogout}
-                    style={{
-                      width: "100%",
-                      padding: "12px",
-                      borderRadius: 12,
-                      border: "1px solid rgba(239, 68, 68, 0.3)",
-                      background: "rgba(239, 68, 68, 0.07)",
-                      color: "#f87171",
-                      fontSize: "0.88rem",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      marginTop: 4,
-                      fontFamily: "inherit",
-                    }}
-                  >
-                    🔓 Logout / Switch Account
-                  </button>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+                    <button
+                      onClick={() => {
+                        setPinModalError("");
+                        setCurrentPinInput("");
+                        setNewPinInput("");
+                        setConfirmPinInput("");
+                        setShowChangePinModal(true);
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "12px",
+                        borderRadius: 12,
+                        border: "1px solid rgba(245, 166, 35, 0.4)",
+                        background: "rgba(245, 166, 35, 0.08)",
+                        color: "#fbbf24",
+                        fontSize: "0.88rem",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6
+                      }}
+                    >
+                      🔒 Security PIN & Account Protection
+                    </button>
+
+                    <button
+                      onClick={handleLogout}
+                      style={{
+                        width: "100%",
+                        padding: "12px",
+                        borderRadius: 12,
+                        border: "1px solid rgba(239, 68, 68, 0.3)",
+                        background: "rgba(239, 68, 68, 0.07)",
+                        color: "#f87171",
+                        fontSize: "0.88rem",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      🔓 Logout / Switch Account
+                    </button>
+                  </div>
                 )}
               </div>
             )}
@@ -2029,6 +2171,138 @@ export default function ZealyMobileApp() {
                 >
                   ⚡ Stay Logged In
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* First-Time PIN Setup Modal */}
+          {showPinSetupModal && authenticatedUser && (
+            <div className="modal-overlay" style={{ background: "rgba(0,0,0,0.85)", zIndex: 99999 }}>
+              <div className="modal-content" style={{ maxWidth: 350, padding: 24, textAlign: "center", background: "#121723", border: "1px solid rgba(245, 166, 35, 0.4)", borderRadius: 16 }}>
+                <div style={{ fontSize: "2.5rem", marginBottom: 6 }}>🔒</div>
+                <h2 style={{ color: "#fbbf24", margin: "0 0 6px", fontSize: "1.2rem", fontWeight: 800 }}>
+                  Set Security PIN Code
+                </h2>
+                <p style={{ color: "var(--text-secondary)", fontSize: "0.82rem", marginBottom: 16, lineHeight: 1.4 }}>
+                  Protect your account! Set a 4 to 6-digit Security PIN code for your future logins.
+                </p>
+
+                <form onSubmit={handleSaveFirstPin} style={{ textAlign: "left", display: "flex", flexDirection: "column", gap: 12 }}>
+                  <label style={{ fontSize: "0.82rem", color: "#e2e8f0", display: "flex", flexDirection: "column", gap: 4 }}>
+                    New Security PIN (4-6 digits) *
+                    <input
+                      type="password"
+                      maxLength={6}
+                      required
+                      placeholder="e.g. 1234"
+                      value={newPinInput}
+                      onChange={(e) => setNewPinInput(e.target.value.replace(/[^\d]/g, ""))}
+                      style={{ padding: "10px 12px", borderRadius: 8, background: "#080b12", border: "1px solid rgba(245,166,35,0.4)", color: "#fff", letterSpacing: "2px", fontWeight: "bold" }}
+                    />
+                  </label>
+
+                  <label style={{ fontSize: "0.82rem", color: "#e2e8f0", display: "flex", flexDirection: "column", gap: 4 }}>
+                    Confirm Security PIN *
+                    <input
+                      type="password"
+                      maxLength={6}
+                      required
+                      placeholder="Re-enter PIN"
+                      value={confirmPinInput}
+                      onChange={(e) => setConfirmPinInput(e.target.value.replace(/[^\d]/g, ""))}
+                      style={{ padding: "10px 12px", borderRadius: 8, background: "#080b12", border: "1px solid rgba(245,166,35,0.4)", color: "#fff", letterSpacing: "2px", fontWeight: "bold" }}
+                    />
+                  </label>
+
+                  {pinModalError && (
+                    <p style={{ color: "#f87171", fontSize: "0.78rem", margin: "2px 0 0" }}>
+                      {pinModalError}
+                    </p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={pinSaving}
+                    className="arena-cta-btn"
+                    style={{ marginTop: 8, padding: "12px", fontSize: "0.9rem" }}
+                  >
+                    {pinSaving ? "Saving Security PIN..." : "🔒 Save & Activate PIN"}
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Change PIN Modal */}
+          {showChangePinModal && authenticatedUser && (
+            <div className="modal-overlay" style={{ background: "rgba(0,0,0,0.85)", zIndex: 99999 }}>
+              <div className="modal-content" style={{ maxWidth: 350, padding: 24, textAlign: "center", background: "#121723", border: "1px solid rgba(245, 166, 35, 0.4)", borderRadius: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <h2 style={{ color: "#fbbf24", margin: 0, fontSize: "1.1rem", fontWeight: 800, display: "flex", alignItems: "center", gap: 6 }}>
+                    <span>🔒</span> Security PIN Settings
+                  </h2>
+                  <button
+                    onClick={() => setShowChangePinModal(false)}
+                    style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "1.2rem", cursor: "pointer" }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <form onSubmit={handleChangePin} style={{ textAlign: "left", display: "flex", flexDirection: "column", gap: 12 }}>
+                  <label style={{ fontSize: "0.82rem", color: "#e2e8f0", display: "flex", flexDirection: "column", gap: 4 }}>
+                    Current Security PIN (leave empty if not set)
+                    <input
+                      type="password"
+                      maxLength={6}
+                      placeholder="Current PIN"
+                      value={currentPinInput}
+                      onChange={(e) => setCurrentPinInput(e.target.value.replace(/[^\d]/g, ""))}
+                      style={{ padding: "10px 12px", borderRadius: 8, background: "#080b12", border: "1px solid rgba(255,255,255,0.15)", color: "#fff", letterSpacing: "2px", fontWeight: "bold" }}
+                    />
+                  </label>
+
+                  <label style={{ fontSize: "0.82rem", color: "#e2e8f0", display: "flex", flexDirection: "column", gap: 4 }}>
+                    New Security PIN (4-6 digits) *
+                    <input
+                      type="password"
+                      maxLength={6}
+                      required
+                      placeholder="New PIN (e.g. 1234)"
+                      value={newPinInput}
+                      onChange={(e) => setNewPinInput(e.target.value.replace(/[^\d]/g, ""))}
+                      style={{ padding: "10px 12px", borderRadius: 8, background: "#080b12", border: "1px solid rgba(245,166,35,0.4)", color: "#fff", letterSpacing: "2px", fontWeight: "bold" }}
+                    />
+                  </label>
+
+                  <label style={{ fontSize: "0.82rem", color: "#e2e8f0", display: "flex", flexDirection: "column", gap: 4 }}>
+                    Confirm New Security PIN *
+                    <input
+                      type="password"
+                      maxLength={6}
+                      required
+                      placeholder="Re-enter New PIN"
+                      value={confirmPinInput}
+                      onChange={(e) => setConfirmPinInput(e.target.value.replace(/[^\d]/g, ""))}
+                      style={{ padding: "10px 12px", borderRadius: 8, background: "#080b12", border: "1px solid rgba(245,166,35,0.4)", color: "#fff", letterSpacing: "2px", fontWeight: "bold" }}
+                    />
+                  </label>
+
+                  {pinModalError && (
+                    <p style={{ color: "#f87171", fontSize: "0.78rem", margin: "2px 0 0" }}>
+                      {pinModalError}
+                    </p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={pinSaving}
+                    className="arena-cta-btn"
+                    style={{ marginTop: 8, padding: "12px", fontSize: "0.9rem" }}
+                  >
+                    {pinSaving ? "Updating PIN..." : "🔑 Update Security PIN"}
+                  </button>
+                </form>
               </div>
             </div>
           )}

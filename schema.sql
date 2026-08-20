@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS public.registrations (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   ticket_code TEXT UNIQUE,
-  total_xp INTEGER NOT NULL DEFAULT 0
+  total_xp INTEGER NOT NULL DEFAULT 0,
+  pincode TEXT
 );
 
 CREATE INDEX IF NOT EXISTS registrations_created_at_idx

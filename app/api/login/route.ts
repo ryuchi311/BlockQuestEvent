@@ -8,6 +8,7 @@ type LoginPayload = {
   email?: string;
   phone?: string;
   password?: string;
+  pincode?: string;
 };
 
 export async function POST(request: Request) {
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
   const rawPhone = payload.phone?.trim() ?? "";
   const phone = rawPhone.replace(/[^\d+]/g, ""); // Keep only digits and +
   const password = payload.password ?? "";
+  const inputPin = payload.pincode?.trim() ?? "";
 
   if (!email || !phone || !password) {
     return NextResponse.json({ error: "Email, phone, and password are required." }, { status: 400 });
@@ -45,7 +47,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabase
     .from("registrations")
-    .select("id, full_name, email, phone, password_hash, total_xp")
+    .select("id, full_name, email, phone, password_hash, total_xp, pincode")
     .eq("email", email)
     .maybeSingle();
 
@@ -59,6 +61,25 @@ export async function POST(request: Request) {
 
   if (!data || !verifyPassword(password, data.password_hash) || normalizedDbPhone !== normalizedInputPhone) {
     return NextResponse.json({ error: "Invalid email or phone number." }, { status: 401 });
+  }
+
+  const hasPin = Boolean(data.pincode && data.pincode.trim() !== "");
+
+  if (hasPin) {
+    if (!inputPin) {
+      return NextResponse.json({
+        error: "Security PIN code required.",
+        hasPin: true,
+        requiresPin: true
+      }, { status: 401 });
+    }
+    if (inputPin !== data.pincode) {
+      return NextResponse.json({
+        error: "Incorrect Security PIN code.",
+        hasPin: true,
+        requiresPin: true
+      }, { status: 401 });
+    }
   }
 
   // Fetch completed quests to restore UI state
@@ -91,5 +112,7 @@ export async function POST(request: Request) {
     email: data.email,
     totalXp: exactTotalXp,
     completedQuests: (completions || []).map((c: any) => c.quest_id),
+    hasPin,
+    requiresPinSetup: !hasPin,
   });
 }

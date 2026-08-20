@@ -833,6 +833,101 @@ export default function AdminPage() {
     document.body.removeChild(link);
   }
 
+  function exportVerificationsToCSV() {
+    if (filteredVerifications.length === 0) {
+      alert("No quest verifications match the current filters.");
+      return;
+    }
+    const headers = [
+      "ID",
+      "Quester Name",
+      "Email",
+      "Ticket Code",
+      "Quest Title",
+      "Category",
+      "XP",
+      "Status",
+      "User Message",
+      "Proof Screenshot URL",
+      "Reviewed By",
+      "Rejection Reason",
+      "Submitted At"
+    ];
+
+    const rows = filteredVerifications.map((v) => {
+      const qCategory = quests.find((q) => q.id === v.quest_id)?.category || "other";
+      return [
+        v.id,
+        `"${(v.user_name || "").replace(/"/g, '""')}"`,
+        `"${(v.user_email || "").replace(/"/g, '""')}"`,
+        `"${(v.ticket_code || "").replace(/"/g, '""')}"`,
+        `"${(v.quest_title || "").replace(/"/g, '""')}"`,
+        `"${qCategory}"`,
+        v.xp || 0,
+        `"${v.status}"`,
+        `"${(v.user_message || "").replace(/"/g, '""')}"`,
+        `"${(v.proof_url || "").replace(/"/g, '""')}"`,
+        `"${(v.approved_by || "").replace(/"/g, '""')}"`,
+        `"${(v.rejection_reason || "").replace(/"/g, '""')}"`,
+        `"${new Date(v.created_at).toLocaleString()}"`,
+      ];
+    });
+
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Quest_Verifications_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function exportMessageNotesToCSV() {
+    if (filteredMessageVerifications.length === 0) {
+      alert("No message notes match the current filters.");
+      return;
+    }
+    const headers = [
+      "ID",
+      "Quester Name",
+      "Email",
+      "Ticket Code",
+      "Quest Title",
+      "XP",
+      "Status",
+      "Message Note",
+      "Attached Photo URL",
+      "Reviewed By",
+      "Rejection Reason",
+      "Submitted At"
+    ];
+
+    const rows = filteredMessageVerifications.map((v) => [
+      v.id,
+      `"${(v.user_name || "").replace(/"/g, '""')}"`,
+      `"${(v.user_email || "").replace(/"/g, '""')}"`,
+      `"${(v.ticket_code || "").replace(/"/g, '""')}"`,
+      `"${(v.quest_title || "").replace(/"/g, '""')}"`,
+      v.xp || 0,
+      `"${v.status}"`,
+      `"${(v.user_message || "").replace(/"/g, '""')}"`,
+      `"${(v.proof_url || "").replace(/"/g, '""')}"`,
+      `"${(v.approved_by || "").replace(/"/g, '""')}"`,
+      `"${(v.rejection_reason || "").replace(/"/g, '""')}"`,
+      `"${new Date(v.created_at).toLocaleString()}"`,
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Attendee_Message_Notes_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   // ─── Quest helpers ───────────────────────────────────────────────────────
   function openAddQuest() {
     setEditingQuest(null);
@@ -2138,6 +2233,19 @@ export default function AdminPage() {
               <button className="admin-refresh-btn" onClick={fetchVerifications} title="Refresh">
                 ↻ Refresh
               </button>
+
+              <button
+                className="admin-refresh-btn"
+                onClick={exportVerificationsToCSV}
+                title="Export currently filtered quest verifications to CSV"
+                style={{
+                  background: "rgba(16, 185, 129, 0.15)",
+                  borderColor: "rgba(16, 185, 129, 0.4)",
+                  color: "#34d399",
+                }}
+              >
+                📥 Export CSV ({filteredVerifications.length})
+              </button>
             </div>
 
             <div className="admin-table-wrapper">
@@ -2381,6 +2489,19 @@ export default function AdminPage() {
 
               <button className="admin-refresh-btn" onClick={fetchMessageNotes} title="Refresh Messages">
                 ↻ Refresh
+              </button>
+
+              <button
+                className="admin-refresh-btn"
+                onClick={exportMessageNotesToCSV}
+                title="Export currently filtered message notes to CSV"
+                style={{
+                  background: "rgba(16, 185, 129, 0.15)",
+                  borderColor: "rgba(16, 185, 129, 0.4)",
+                  color: "#34d399",
+                }}
+              >
+                📥 Export CSV ({filteredMessageVerifications.length})
               </button>
             </div>
 
