@@ -694,14 +694,12 @@ export default function ZealyMobileApp() {
           email: ticketEmail.trim(),
           phone: fullPhone,
           password: ticketPassword,
-          pincode: ticketPinCode.trim()
+          pincode: ticketPinCode.trim(),
+          skipPin: true,
         }),
       });
       const loginResult = await loginResponse.json();
       if (!loginResponse.ok || !loginResult?.fullName || !loginResult.email) {
-        if (loginResult?.requiresPin) {
-          setShowPinInput(true);
-        }
         setTicketError(loginResult?.error ?? "No matching ticket found with this email and phone.");
         setTicketLoading(false);
         return;

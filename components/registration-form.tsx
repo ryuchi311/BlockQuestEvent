@@ -52,12 +52,27 @@ export default function RegistrationForm() {
     fetch("/api/social-missions")
       .then(res => res.json())
       .then(data => {
-        if (data.missions) setSocialMissions(data.missions);
+        if (data.missions) {
+          setSocialMissions(data.missions);
+          // Restore completed timers from localStorage
+          try {
+            const isAllCompleted = localStorage.getItem("social_missions_completed_all") === "true";
+            const savedIds = JSON.parse(localStorage.getItem("completed_social_mission_ids") || "[]");
+            
+            const restoredTimers: Record<number, number> = {};
+            data.missions.forEach((m: any) => {
+              if (isAllCompleted || savedIds.includes(m.id)) {
+                restoredTimers[m.id] = 0; // 0 means verified/completed
+              }
+            });
+            setMissionTimers(restoredTimers);
+          } catch {}
+        }
       })
       .catch(console.error);
   }, []);
 
-  // Generic timer countdown
+  // Generic timer countdown & persist completion
   useEffect(() => {
     const hasActive = Object.values(missionTimers).some(val => val !== null && val > 0);
     if (!hasActive) return;
@@ -81,9 +96,17 @@ export default function RegistrationForm() {
   const handleFollowMission = (missionId: number, url: string) => {
     window.open(url, "_blank");
     setMissionTimers(prev => ({ ...prev, [missionId]: 10 }));
+    try {
+      const saved = JSON.parse(localStorage.getItem("completed_social_mission_ids") || "[]");
+      if (!saved.includes(missionId)) {
+        saved.push(missionId);
+        localStorage.setItem("completed_social_mission_ids", JSON.stringify(saved));
+      }
+    } catch {}
   };
 
-  const allMissionsCompleted = socialMissions.length > 0 && socialMissions.every(m => missionTimers[m.id] === 0);
+  const isStoredCompleted = typeof window !== "undefined" && localStorage.getItem("social_missions_completed_all") === "true";
+  const allMissionsCompleted = isStoredCompleted || (socialMissions.length > 0 && socialMissions.every(m => missionTimers[m.id] === 0));
 
   const handleMobileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/[^\d]/g, ""); // digits only
@@ -655,6 +678,7 @@ export default function RegistrationForm() {
               disabled={!allMissionsCompleted || qrLoading}
               onClick={async () => {
                 if (allMissionsCompleted) {
+                  localStorage.setItem("social_missions_completed_all", "true");
                   setShowSocialModal(false);
                   if (authenticatedUser) {
                     await generateQrPass(authenticatedUser);

@@ -9,6 +9,7 @@ type LoginPayload = {
   phone?: string;
   password?: string;
   pincode?: string;
+  skipPin?: boolean;
 };
 
 export async function POST(request: Request) {
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
   const phone = rawPhone.replace(/[^\d+]/g, ""); // Keep only digits and +
   const password = payload.password ?? "";
   const inputPin = payload.pincode?.trim() ?? "";
+  const skipPin = payload.skipPin ?? true; // Default to true so QR pass generation does not require PIN
 
   if (!email || !phone || !password) {
     return NextResponse.json({ error: "Email, phone, and password are required." }, { status: 400 });
@@ -65,7 +67,7 @@ export async function POST(request: Request) {
 
   const hasPin = Boolean(data.pincode && data.pincode.trim() !== "");
 
-  if (hasPin) {
+  if (hasPin && !skipPin) {
     if (!inputPin) {
       return NextResponse.json({
         error: "Security PIN code required.",
