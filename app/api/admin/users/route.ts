@@ -83,9 +83,10 @@ export async function POST(request: Request) {
         email,
         password_hash: hashed,
         full_name,
-        role: role ?? "admin"
+        role: role ?? "admin",
+        requires_password_change: true
       })
-      .select("id, email, full_name, role, created_at")
+      .select("id, email, full_name, role, created_at, requires_password_change")
       .single();
 
     if (error) {

@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabase
     .from("admin_users")
-    .select("id, email, password_hash, full_name, role")
+    .select("id, email, password_hash, full_name, role, requires_password_change")
     .eq("email", email)
     .maybeSingle();
 
@@ -57,6 +57,7 @@ export async function POST(request: Request) {
       email: data.email,
       fullName: data.full_name,
       role: data.role,
+      requires_password_change: data.requires_password_change,
     }
   });
 }

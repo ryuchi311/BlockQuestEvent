@@ -25,7 +25,7 @@ interface Quest {
   description: string | null;
   xp: number;
   status: "Live" | "Soon" | "Done" | "Draft";
-  category: "onboarding" | "social" | "daily" | "quiz";
+  category: "onboarding" | "social" | "daily" | "quiz" | "atfx";
   action_label: string | null;
   action_url: string | null;
   requires_proof?: boolean;
@@ -66,6 +66,7 @@ interface AdminUser {
   email: string;
   fullName: string;
   role: string;
+  requires_password_change?: boolean;
 }
 
 
@@ -73,7 +74,7 @@ const ADMIN_TABS = ["scanner", "attendees", "quests", "verifications", "messages
 type AdminTab = (typeof ADMIN_TABS)[number];
 
 const STATUS_OPTIONS: Quest["status"][] = ["Live", "Soon", "Done", "Draft"];
-const CATEGORY_OPTIONS: Quest["category"][] = ["onboarding", "social", "daily", "quiz"];
+const CATEGORY_OPTIONS: Quest["category"][] = ["onboarding", "social", "daily", "quiz", "atfx"];
 
 const EMPTY_QUEST: Omit<Quest, "created_at" | "updated_at"> = {
   id: "",
@@ -106,6 +107,12 @@ export default function AdminPage() {
   const [authError, setAuthError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+  
+  // ── Change Password Modal ──
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [changePasswordForm, setChangePasswordForm] = useState({ oldPassword: "", newPassword: "", confirmPassword: "" });
+  const [changePasswordLoading, setChangePasswordLoading] = useState(false);
+  const [changePasswordError, setChangePasswordError] = useState("");
 
   // ── Session persistence & Idle Timeout ──
   useEffect(() => {
@@ -121,6 +128,9 @@ export default function AdminPage() {
           } else {
             setAuthed(true);
             setAdminUser(session.adminUser);
+            if (session.adminUser.requires_password_change) {
+                setShowChangePasswordModal(true);
+            }
           }
         }
       } catch (e) { }
@@ -214,6 +224,7 @@ export default function AdminPage() {
   const [verificationSearch, setVerificationSearch] = useState("");
   const [verificationStatusFilter, setVerificationStatusFilter] = useState<"all" | QuestVerification["status"]>("all");
   const [verificationModeFilter, setVerificationModeFilter] = useState<"all" | "photo_only" | "photo_and_message">("all");
+  const [verificationCategoryFilter, setVerificationCategoryFilter] = useState<string>("all");
 
   // ── Message Notes state & search filter ──
   const [messageNotes, setMessageNotes] = useState<QuestVerification[]>([]);
@@ -310,6 +321,9 @@ export default function AdminPage() {
 
       setAdminUser(json.adminUser);
       setAuthed(true);
+      if (json.adminUser.requires_password_change) {
+        setShowChangePasswordModal(true);
+      }
       localStorage.setItem("blockquest_admin_session", JSON.stringify({
         authed: true,
         adminUser: json.adminUser
@@ -346,6 +360,46 @@ export default function AdminPage() {
       setTab("attendees");
     }
   }, [adminUser]);
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setChangePasswordLoading(true);
+    setChangePasswordError("");
+    try {
+        if (changePasswordForm.newPassword !== changePasswordForm.confirmPassword) {
+            throw new Error("New passwords do not match.");
+        }
+        const res = await fetch("/api/admin/change-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                email: adminUser?.email,
+                oldPassword: changePasswordForm.oldPassword,
+                newPassword: changePasswordForm.newPassword
+            })
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Failed to change password");
+        
+        setShowChangePasswordModal(false);
+        setChangePasswordForm({ oldPassword: "", newPassword: "", confirmPassword: "" });
+        
+        // Update user state and storage to reflect no longer requiring password change
+        if (adminUser) {
+            const updatedUser = { ...adminUser, requires_password_change: false };
+            setAdminUser(updatedUser);
+            localStorage.setItem("blockquest_admin_session", JSON.stringify({
+                authed: true,
+                adminUser: updatedUser
+            }));
+        }
+        alert("Password updated successfully!");
+    } catch (err: any) {
+        setChangePasswordError(err.message);
+    } finally {
+        setChangePasswordLoading(false);
+    }
+  }
 
   // ─── Fetch data ──────────────────────────────────────────────────────────
   const fetchAttendees = useCallback(async () => {
@@ -593,6 +647,8 @@ export default function AdminPage() {
 
     if (!matchesQuery) return false;
     if (verificationStatusFilter !== "all" && v.status !== verificationStatusFilter) return false;
+    const questCategory = quests.find(q => q.id === v.quest_id)?.category || "other";
+    if (verificationCategoryFilter !== "all" && questCategory !== verificationCategoryFilter) return false;
     if (verificationModeFilter === "photo_only" && v.user_message) return false;
     if (verificationModeFilter === "photo_and_message" && !v.user_message) return false;
     return true;
@@ -1196,6 +1252,60 @@ export default function AdminPage() {
     );
   }
 
+  if (authed && showChangePasswordModal) {
+    return (
+      <main className="admin-login-page" suppressHydrationWarning>
+        <div className="admin-login-card" suppressHydrationWarning>
+          <div className="admin-login-logo">
+            <img
+              src="https://block-quest.com/assets/images/block_quest_logo.png"
+              alt="BlockQuest Logo"
+              style={{ width: 72, height: 72, objectFit: "contain" }}
+            />
+          </div>
+          <h1>Change Temporary Password</h1>
+          <p className="admin-login-hint">You are required to change your temporary password before accessing the dashboard.</p>
+          <form onSubmit={handleChangePassword} style={{ display: "flex", flexDirection: "column", gap: 12 }} suppressHydrationWarning>
+            <input
+              type="password"
+              placeholder="Current Password"
+              value={changePasswordForm.oldPassword}
+              onChange={(e) => setChangePasswordForm({ ...changePasswordForm, oldPassword: e.target.value })}
+              className="admin-login-input"
+              required
+              suppressHydrationWarning
+            />
+            <input
+              type="password"
+              placeholder="New Password"
+              value={changePasswordForm.newPassword}
+              onChange={(e) => setChangePasswordForm({ ...changePasswordForm, newPassword: e.target.value })}
+              className="admin-login-input"
+              required
+              suppressHydrationWarning
+            />
+            <input
+              type="password"
+              placeholder="Confirm New Password"
+              value={changePasswordForm.confirmPassword}
+              onChange={(e) => setChangePasswordForm({ ...changePasswordForm, confirmPassword: e.target.value })}
+              className="admin-login-input"
+              required
+              suppressHydrationWarning
+            />
+            {changePasswordError && <p className="admin-error-msg">{changePasswordError}</p>}
+            <button type="submit" className="admin-login-btn" disabled={changePasswordLoading}>
+              {changePasswordLoading ? "Updating..." : "Update Password"}
+            </button>
+            <button type="button" onClick={handleLogout} className="admin-login-btn" style={{ background: "transparent", color: "var(--text-muted)", border: "1px solid var(--border-color)", marginTop: 8 }}>
+              Logout
+            </button>
+          </form>
+        </div>
+      </main>
+    );
+  }
+
   function handleNavigate(e: React.MouseEvent<HTMLAnchorElement>, href: string) {
     e.preventDefault();
     if (window.confirm("Are you sure you want to leave the Admin Dashboard? Your session will be logged out.")) {
@@ -1641,6 +1751,7 @@ export default function AdminPage() {
                 <option value="social">📣 Social</option>
                 <option value="daily">📅 Daily</option>
                 <option value="quiz">❓ Quiz</option>
+                <option value="atfx">📈 ATFX</option>
               </select>
 
               {/* ④ Verification Mode Filter */}
@@ -1847,6 +1958,20 @@ export default function AdminPage() {
                 <option value="Pending">⏳ Pending ({verifications.filter((v) => v.status === "Pending").length})</option>
                 <option value="Approved">✓ Approved ({verifications.filter((v) => v.status === "Approved").length})</option>
                 <option value="Rejected">✕ Rejected ({verifications.filter((v) => v.status === "Rejected").length})</option>
+              </select>
+
+              <select
+                value={verificationCategoryFilter}
+                onChange={(e) => setVerificationCategoryFilter(e.target.value)}
+                className="admin-search-input"
+                style={{ width: "auto", padding: "8px 12px", cursor: "pointer" }}
+              >
+                <option value="all">All Categories</option>
+                <option value="onboarding">🚀 Onboarding</option>
+                <option value="social">📣 Social</option>
+                <option value="daily">📅 Daily</option>
+                <option value="quiz">❓ Quiz</option>
+                <option value="atfx">📈 ATFX</option>
               </select>
 
               {/* Verification Mode Filter */}
@@ -2286,6 +2411,8 @@ export default function AdminPage() {
 
             if (!matchesQuery) return false;
             if (questLogStatusFilter !== "all" && item.status !== questLogStatusFilter) return false;
+            const questCategory = quests.find(q => q.id === item.quest_id)?.category || "other";
+            if (questLogCategoryFilter !== "all" && questCategory !== questLogCategoryFilter) return false;
             return true;
           });
 
@@ -2333,6 +2460,18 @@ export default function AdminPage() {
                     <option value="Pending">Pending Review</option>
                     <option value="Approved">Approved</option>
                     <option value="Rejected">Rejected</option>
+                  </select>
+                  <select
+                    value={questLogCategoryFilter}
+                    onChange={(e) => setQuestLogCategoryFilter(e.target.value)}
+                    className="admin-select-filter"
+                  >
+                    <option value="all">All Categories</option>
+                    <option value="onboarding">🚀 Onboarding</option>
+                    <option value="social">📣 Social</option>
+                    <option value="daily">📅 Daily</option>
+                    <option value="quiz">❓ Quiz</option>
+                    <option value="atfx">📈 ATFX</option>
                   </select>
                 </div>
                 <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
@@ -3782,12 +3921,12 @@ export default function AdminPage() {
                   <label className="qf-label">
                     Category
                     <div className="qf-pill-group">
-                      {(["onboarding", "social", "daily", "quiz"] as Quest["category"][]).map((c) => (
+                      {(["onboarding", "social", "daily", "quiz", "atfx"] as Quest["category"][]).map((c) => (
                         <button key={c} type="button"
                           onClick={() => setQuestForm((f) => ({ ...f, category: c }))}
                           className={`qf-pill${questForm.category === c ? " qf-pill--active" : ""}`}
                         >
-                          {c === "onboarding" ? "🚀" : c === "social" ? "📣" : c === "daily" ? "📅" : "❓"} {c.charAt(0).toUpperCase() + c.slice(1)}
+                          {c === "onboarding" ? "🚀" : c === "social" ? "📣" : c === "daily" ? "📅" : c === "atfx" ? "📈" : "❓"} {c === "atfx" ? "ATFX" : c.charAt(0).toUpperCase() + c.slice(1)}
                         </button>
                       ))}
                     </div>
@@ -3993,7 +4132,7 @@ export default function AdminPage() {
                   <div className="quest-preview-card__top">
                     <div className="quest-preview-card__badges">
                       <span className={`quest-preview-badge quest-preview-badge--${questForm.category || "onboarding"}`}>
-                        {questForm.category === "social" ? "📣" : questForm.category === "daily" ? "📅" : questForm.category === "quiz" ? "❓" : "🚀"}
+                        {questForm.category === "social" ? "📣" : questForm.category === "daily" ? "📅" : questForm.category === "quiz" ? "❓" : questForm.category === "atfx" ? "📈" : "🚀"}
                         {" "}{(questForm.category || "onboarding").charAt(0).toUpperCase() + (questForm.category || "onboarding").slice(1)}
                       </span>
                       {questForm.requires_proof && (

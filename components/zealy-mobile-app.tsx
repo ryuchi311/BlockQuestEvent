@@ -9,7 +9,7 @@ interface Quest {
   description: string;
   xp: number;
   status: "Live" | "Soon" | "Done" | "Pending Verification" | "Approved" | "Rejected";
-  category: "onboarding" | "social" | "daily" | "quiz";
+  category: "onboarding" | "social" | "daily" | "quiz" | "atfx";
   actionLabel?: string;
   actionUrl?: string;
   requiresProof?: boolean;

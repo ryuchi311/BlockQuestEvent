@@ -105,12 +105,16 @@ CREATE TABLE IF NOT EXISTS public.admin_users (
   password_hash TEXT NOT NULL,
   full_name TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'viewer', -- 'superadmin', 'admin', 'verifier', 'manage_attendees', 'viewer'
+  requires_password_change BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Grant privileges so the service_role key can read/insert/update tables
 GRANT ALL ON TABLE public.admin_users TO postgres, service_role;
 GRANT ALL ON TABLE public.quest_verifications TO postgres, service_role, anon, authenticated;
+
+-- Optional migration statement if table was created in an earlier version:
+ALTER TABLE public.admin_users ADD COLUMN IF NOT EXISTS requires_password_change BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- Optional migration statement if table was created in an earlier version:
 ALTER TABLE public.quest_verifications ADD COLUMN IF NOT EXISTS rejection_reason TEXT;

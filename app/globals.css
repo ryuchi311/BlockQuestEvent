@@ -2100,6 +2100,12 @@ a {
   border: 1px solid rgba(236, 72, 153, 0.3);
 }
 
+.category-badge--atfx {
+  background: rgba(14, 165, 233, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(14, 165, 233, 0.3);
+}
+
 .xp-badge {
   font-size: 0.75rem;
   font-weight: 900;
@@ -3077,6 +3083,11 @@ a {
   background: rgba(245, 158, 11, 0.15);
   color: #fbbf24;
   border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.admin-category-badge--atfx {
+  background: rgba(14, 165, 233, 0.15);
+  color: #7dd3fc;
+  border: 1px solid rgba(14, 165, 233, 0.3);
 }
 
 .admin-xp-badge {
