@@ -384,6 +384,11 @@ export default function AdminPage() {
   const [isResettingPin, setIsResettingPin] = useState(false);
   const [copiedPinToast, setCopiedPinToast] = useState(false);
 
+  // ── Delete Attendee Modal States (Superadmin only) ──
+  const [deletingAttendee, setDeletingAttendee] = useState<Attendee | null>(null);
+  const [deleteConfirmEmailInput, setDeleteConfirmEmailInput] = useState("");
+  const [isDeletingAttendee, setIsDeletingAttendee] = useState(false);
+
   // ── Booths / Vendors (Superadmin only) ──
   const [boothList, setBoothList] = useState<any[]>([
     { id: "polygon-guild", name: "Polygon Guild Booth", points: 150, email: "booth.polygon@blockquest.ph" },
@@ -845,6 +850,28 @@ export default function AdminPage() {
       alert("Error: " + err.message);
     } finally {
       setIsResettingPin(false);
+    }
+  }
+
+  async function handleConfirmDeleteAttendee() {
+    if (!deletingAttendee) return;
+    setIsDeletingAttendee(true);
+    try {
+      const res = await fetch("/api/admin/attendees", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: deletingAttendee.id }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to delete attendee");
+
+      setAttendees((prev) => prev.filter((item) => item.id !== deletingAttendee.id));
+      setDeletingAttendee(null);
+      alert(`Attendee ${deletingAttendee.full_name} and all related Zealy quest records were permanently deleted.`);
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setIsDeletingAttendee(false);
     }
   }
 
@@ -1888,6 +1915,22 @@ export default function AdminPage() {
                               🔑 Reset PIN
                             </button>
                           )}
+                          {adminUser?.role === "superadmin" && (
+                            <button
+                              className="admin-delete-btn"
+                              onClick={() => {
+                                setDeletingAttendee(a);
+                                setDeleteConfirmEmailInput("");
+                              }}
+                              title="Delete attendee and purge all quest records"
+                              style={{
+                                padding: "4px 10px",
+                                fontSize: "0.75rem",
+                              }}
+                            >
+                              🗑️ Delete
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -2212,6 +2255,78 @@ export default function AdminPage() {
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Delete Attendee Modal (Superadmin Only) */}
+            {deletingAttendee && (
+              <div className="admin-modal-overlay" onClick={() => setDeletingAttendee(null)} style={{ zIndex: 99999 }}>
+                <div className="quest-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420, padding: 24, textAlign: "center" }}>
+                  <div style={{ fontSize: "2.5rem", marginBottom: 6 }}>⚠️</div>
+                  <h3 style={{ color: "#ef4444", margin: "0 0 6px", fontSize: "1.2rem", fontWeight: 800 }}>
+                    Delete Attendee & Purge Records
+                  </h3>
+                  <p style={{ color: "var(--text-secondary)", fontSize: "0.84rem", marginBottom: 14, lineHeight: 1.5 }}>
+                    Are you sure you want to permanently delete <strong>{deletingAttendee.full_name}</strong>?
+                  </p>
+                  <div style={{ background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: 10, padding: 12, textAlign: "left", fontSize: "0.78rem", color: "#f87171", marginBottom: 14 }}>
+                    <strong>This action will permanently delete:</strong>
+                    <ul style={{ margin: "6px 0 0 16px", padding: 0 }}>
+                      <li>Attendee Registration & Ticket Code (<code>{deletingAttendee.ticket_code}</code>)</li>
+                      <li>All Claimed Quests & Total XP balance</li>
+                      <li>All Screenshot Proof submissions & Message Notes</li>
+                    </ul>
+                  </div>
+
+                  <div style={{ marginBottom: 18, textAlign: "left" }}>
+                    <label style={{ fontSize: "0.78rem", color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
+                      Type attendee email <code style={{ color: "#f87171", fontWeight: "bold" }}>{deletingAttendee.email}</code> to confirm:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={`Type ${deletingAttendee.email}`}
+                      value={deleteConfirmEmailInput}
+                      onChange={(e) => setDeleteConfirmEmailInput(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        borderRadius: 10,
+                        background: "#080b12",
+                        border: deleteConfirmEmailInput.trim().toLowerCase() === deletingAttendee.email.trim().toLowerCase()
+                          ? "1px solid #10b981"
+                          : "1px solid rgba(239, 68, 68, 0.4)",
+                        color: "#fff",
+                        fontSize: "0.85rem",
+                        textAlign: "center"
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+                    <button
+                      className="admin-delete-btn"
+                      onClick={() => setDeletingAttendee(null)}
+                      style={{ padding: "9px 18px", background: "rgba(255,255,255,0.1)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="admin-delete-btn"
+                      onClick={handleConfirmDeleteAttendee}
+                      disabled={isDeletingAttendee || deleteConfirmEmailInput.trim().toLowerCase() !== deletingAttendee.email.trim().toLowerCase()}
+                      style={{
+                        padding: "9px 18px",
+                        background: deleteConfirmEmailInput.trim().toLowerCase() === deletingAttendee.email.trim().toLowerCase() ? "#ef4444" : "rgba(239, 68, 68, 0.2)",
+                        color: deleteConfirmEmailInput.trim().toLowerCase() === deletingAttendee.email.trim().toLowerCase() ? "#fff" : "rgba(255,255,255,0.4)",
+                        borderColor: deleteConfirmEmailInput.trim().toLowerCase() === deletingAttendee.email.trim().toLowerCase() ? "#dc2626" : "rgba(239, 68, 68, 0.3)",
+                        fontWeight: "bold",
+                        cursor: deleteConfirmEmailInput.trim().toLowerCase() === deletingAttendee.email.trim().toLowerCase() ? "pointer" : "not-allowed"
+                      }}
+                    >
+                      {isDeletingAttendee ? "Deleting..." : "🗑️ Delete Permanently"}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

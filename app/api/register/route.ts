@@ -55,6 +55,39 @@ export async function POST(request: Request) {
     },
   });
 
+  // 1. Check existing email
+  const { data: existingEmail } = await supabase
+    .from("registrations")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (existingEmail) {
+    return NextResponse.json(
+      { error: "That email is already registered." },
+      { status: 400 },
+    );
+  }
+
+  // 2. Check existing mobile phone number (normalized digits)
+  const newPhoneNorm = phone.replace(/[^\d]/g, "").replace(/^(63|0)/, "");
+  const { data: existingPhones } = await supabase
+    .from("registrations")
+    .select("id, phone");
+
+  const phoneDuplicate = existingPhones?.some((r) => {
+    const existingNorm = (r.phone || "").replace(/[^\d]/g, "").replace(/^(63|0)/, "");
+    return existingNorm && newPhoneNorm && existingNorm === newPhoneNorm;
+  });
+
+  if (phoneDuplicate) {
+    return NextResponse.json(
+      { error: "That mobile phone number is already registered to another attendee account." },
+      { status: 400 },
+    );
+  }
+
+  // 3. Insert registration record
   const { error } = await supabase.from("registrations").insert({
     full_name: fullName,
     email,
@@ -69,7 +102,7 @@ export async function POST(request: Request) {
   if (error) {
     const message =
       error.code === "23505"
-        ? "That email is already registered."
+        ? "That email or phone number is already registered."
         : error.message || "Unable to store registration.";
 
     return NextResponse.json({ error: message }, { status: 400 });
