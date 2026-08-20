@@ -466,9 +466,12 @@ export default function AdminPage() {
       if (tab === "attendees") fetchAttendees();
       else if (tab === "quests") fetchQuests();
       else if (tab === "verifications") fetchVerifications();
+      else if (tab === "messages") fetchMessageNotes();
+      else if (tab === "staff") fetchAdminUsers();
+      else if (tab === "socials") fetchSocialMissions();
     }, 10000);
     return () => clearInterval(interval);
-  }, [authed, autoRefresh, tab, fetchAttendees, fetchQuests, fetchVerifications]);
+  }, [authed, autoRefresh, tab, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes, fetchAdminUsers, fetchSocialMissions]);
 
   const [rejectingItem, setRejectingItem] = useState<QuestVerification | null>(null);
   const [rejectionReasonInput, setRejectionReasonInput] = useState("");
@@ -2078,7 +2081,19 @@ export default function AdminPage() {
                 <option value="Rejected">✕ Rejected Only</option>
               </select>
 
-              <button className="admin-refresh-btn" onClick={fetchVerifications} title="Refresh Messages">
+              <button
+                className={`admin-refresh-btn ${autoRefresh ? "admin-refresh-btn--active" : ""}`}
+                onClick={() => setAutoRefresh((prev) => !prev)}
+                title="Toggle 10s auto refresh"
+                style={{
+                  borderColor: autoRefresh ? "rgba(245,166,35,0.6)" : undefined,
+                  color: autoRefresh ? "var(--gold-light)" : undefined,
+                }}
+              >
+                {autoRefresh ? "⏱️ Auto (10s On)" : "⏱️ Auto (Off)"}
+              </button>
+
+              <button className="admin-refresh-btn" onClick={fetchMessageNotes} title="Refresh Messages">
                 ↻ Refresh
               </button>
             </div>
