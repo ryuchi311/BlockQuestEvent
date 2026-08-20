@@ -2191,6 +2191,7 @@ export default function AdminPage() {
                               <img
                                 src={v.proof_url}
                                 alt="Proof thumbnail"
+                                loading="lazy"
                                 onError={(e) => {
                                   e.currentTarget.onerror = null;
                                   e.currentTarget.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100%' height='100%' fill='%231e1e2e'/><text x='50%' y='40%' dominant-baseline='middle' text-anchor='middle' font-size='22'>🖼️</text><text x='50%' y='70%' dominant-baseline='middle' text-anchor='middle' fill='%23ef4444' font-size='9' font-family='sans-serif' font-weight='bold'>Image Error</text></svg>";
