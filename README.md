@@ -109,7 +109,7 @@ npm run dev
 npm run build
 npm start
 ```
-Open [http://localhost:3010](http://localhost:3010) in your browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
