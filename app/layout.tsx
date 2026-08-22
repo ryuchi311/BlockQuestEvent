@@ -4,8 +4,13 @@ import "./globals.css";
 import ClientBodyCleanup from "../components/client-body-cleanup";
 
 export const metadata: Metadata = {
-  title: "BlockQuest Fiesta PH — Registration",
-  description: "Register for BlockQuest Fiesta PH and receive your QR pass.",
+  title: "BlockQuest Fiesta PH",
+  description: "BlockQuest Fiesta PH Web Platform & Event Suite",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
