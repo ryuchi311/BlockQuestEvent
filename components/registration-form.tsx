@@ -50,9 +50,16 @@ export default function RegistrationForm() {
   useEffect(() => {
     setMounted(true);
     fetch("/api/social-missions")
-      .then(res => res.json())
+      .then(async (res) => {
+        if (!res.ok) return null;
+        try {
+          return await res.json();
+        } catch {
+          return null;
+        }
+      })
       .then(data => {
-        if (data.missions) {
+        if (data && data.missions) {
           setSocialMissions(data.missions);
           // Restore completed timers from localStorage
           try {
@@ -69,7 +76,7 @@ export default function RegistrationForm() {
           } catch {}
         }
       })
-      .catch(console.error);
+      .catch((err) => console.warn("Could not load social missions:", err));
   }, []);
 
   // Generic timer countdown & persist completion
