@@ -5,9 +5,14 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:cf": "npx @opennextjs/cloudflare",
+    "build:cf": "opennextjs-cloudflare build",
+    "preview:cf": "opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare deploy",
+    "deploy:cf": "opennextjs-cloudflare deploy",
     "start": "next start",
-    "stress-test": "node stress-test.mjs"
+    "stress-test": "node stress-test.mjs",
+    "seed:admin": "node seed_admin.mjs",
+    "seed:socials": "node seed-socials.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
