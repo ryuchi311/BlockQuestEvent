@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { hashPassword } from "../../../utils/registration-password";
+import { getClientIp, checkRateLimit } from "../../../utils/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,15 @@ type RegistrationPayload = {
 };
 
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const rateLimit = checkRateLimit(`register:${ip}`, 10, 60000);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: `Too many registration attempts. Please wait ${rateLimit.resetInSeconds} seconds before trying again.` },
+      { status: 429 }
+    );
+  }
+
   const supabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 

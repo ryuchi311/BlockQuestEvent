@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { verifyAdminAuth, unauthorizedResponse } from "../../../../utils/admin-auth";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,11 @@ function getSupabase() {
 
 // GET — look up a ticket code without marking as checked in (preview)
 export async function GET(request: Request) {
+  const auth = verifyAdminAuth(request, ["superadmin", "admin", "manage_attendees", "gate", "viewer"]);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error, auth.status);
+  }
+
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code")?.trim().toUpperCase();
 
@@ -39,8 +45,13 @@ export async function GET(request: Request) {
   }
 }
 
-// POST — mark attendee as checked in
+// POST — mark attendee as checked in (Restricted to gate staff & admins)
 export async function POST(request: Request) {
+  const auth = verifyAdminAuth(request, ["superadmin", "admin", "manage_attendees", "gate"]);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error, auth.status);
+  }
+
   try {
     const { ticket_code } = await request.json();
     const code = ticket_code?.trim().toUpperCase();

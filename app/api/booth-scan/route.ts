@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { verifyAdminAuth, unauthorizedResponse } from "../../../utils/admin-auth";
 
 export const runtime = "nodejs";
 
@@ -12,16 +13,13 @@ function getSupabase() {
   });
 }
 
-// In-memory fallback tracking when table migrations are not present
-let memoryBoothScans: Array<{
-  booth_id: string;
-  user_email: string;
-  points: number;
-  scanned_at: string;
-}> = [];
-
 // GET — preview attendee and check if booth points were already awarded
 export async function GET(request: Request) {
+  const auth = verifyAdminAuth(request, ["superadmin", "admin", "booth_staff"]);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error, auth.status);
+  }
+
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code")?.trim().toUpperCase();
   const boothId = searchParams.get("booth_id")?.trim().toLowerCase() || "general-booth";
@@ -48,29 +46,17 @@ export async function GET(request: Request) {
     let awardedAt: string | null = null;
     let awardedXp = 0;
 
-    try {
-      const { data: comp } = await supabase
-        .from("quest_completions")
-        .select("id, xp_awarded, created_at")
-        .eq("quest_id", questId)
-        .eq("registration_id", attendee.id)
-        .maybeSingle();
+    const { data: comp } = await supabase
+      .from("quest_completions")
+      .select("id, xp_awarded, created_at")
+      .eq("quest_id", questId)
+      .eq("registration_id", attendee.id)
+      .maybeSingle();
 
-      if (comp) {
-        alreadyVisited = true;
-        awardedAt = comp.created_at;
-        awardedXp = comp.xp_awarded || 0;
-      }
-    } catch {
-      // Memory fallback check
-      const mem = memoryBoothScans.find(
-        (m) => m.booth_id === boothId && m.user_email === attendee.email
-      );
-      if (mem) {
-        alreadyVisited = true;
-        awardedAt = mem.scanned_at;
-        awardedXp = mem.points;
-      }
+    if (comp) {
+      alreadyVisited = true;
+      awardedAt = comp.created_at;
+      awardedXp = comp.xp_awarded || 0;
     }
 
     return NextResponse.json({
@@ -87,6 +73,11 @@ export async function GET(request: Request) {
 
 // POST — award booth visit points to the attendee
 export async function POST(request: Request) {
+  const auth = verifyAdminAuth(request, ["superadmin", "admin", "booth_staff"]);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error, auth.status);
+  }
+
   try {
     const body = await request.json();
     const code = body.ticket_code?.trim().toUpperCase();
@@ -114,116 +105,79 @@ export async function POST(request: Request) {
     const questId = `booth-${boothId}`;
 
     // 2. Check if already claimed from database
-    try {
-      const { data: existingComp } = await supabase
-        .from("quest_completions")
-        .select("id, xp_awarded, created_at")
-        .eq("quest_id", questId)
-        .eq("registration_id", attendee.id)
-        .maybeSingle();
+    const { data: existingComp } = await supabase
+      .from("quest_completions")
+      .select("id, xp_awarded, created_at")
+      .eq("quest_id", questId)
+      .eq("registration_id", attendee.id)
+      .maybeSingle();
 
-      if (existingComp) {
-        return NextResponse.json({
-          valid: true,
-          already_visited: true,
-          attendee,
-          booth_name: boothName,
-          xp_awarded: existingComp.xp_awarded,
-          awarded_at: existingComp.created_at,
-          message: `Already visited this booth! Points (+${existingComp.xp_awarded} XP) were awarded earlier.`,
-        });
-      }
-
-      // 3. Record quest completion (atomic unique constraint ensures single claim)
-      const { error: insertError } = await supabase
-        .from("quest_completions")
-        .insert({
-          quest_id: questId,
-          registration_id: attendee.id,
-          xp_awarded: points,
-        });
-
-      if (insertError) {
-        if (insertError.code === "23505") {
-          return NextResponse.json({
-            valid: true,
-            already_visited: true,
-            attendee,
-            booth_name: boothName,
-            xp_awarded: points,
-            message: `Already scanned at this booth! Points already recorded.`,
-          });
-        }
-        throw insertError;
-      }
-
-      // 4. Recalculate exact total XP
-      const { data: compList } = await supabase
-        .from("quest_completions")
-        .select("xp_awarded")
-        .eq("registration_id", attendee.id);
-
-      const { data: verifList } = await supabase
-        .from("quest_verifications")
-        .select("xp")
-        .eq("user_email", attendee.email)
-        .eq("status", "Approved");
-
-      const compXp = (compList || []).reduce((sum, c) => sum + (c.xp_awarded || 0), 0);
-      const verifXp = (verifList || []).reduce((sum, v) => sum + (v.xp || 0), 0);
-      const newTotalXp = compXp + verifXp;
-
-      await supabase
-        .from("registrations")
-        .update({ total_xp: newTotalXp })
-        .eq("id", attendee.id);
-
+    if (existingComp) {
       return NextResponse.json({
         valid: true,
-        already_visited: false,
-        attendee: { ...attendee, total_xp: newTotalXp },
+        already_visited: true,
+        attendee,
         booth_name: boothName,
-        xp_awarded: points,
-        total_xp: newTotalXp,
-        message: `Success! +${points} XP awarded to ${attendee.full_name} for visiting ${boothName}! 🎉`,
-      });
-    } catch (dbErr: any) {
-      console.warn("DB operation failed, using in-memory tracker:", dbErr.message);
-
-      const existingMem = memoryBoothScans.find(
-        (m) => m.booth_id === boothId && m.user_email === attendee.email
-      );
-      if (existingMem) {
-        return NextResponse.json({
-          valid: true,
-          already_visited: true,
-          attendee,
-          booth_name: boothName,
-          xp_awarded: existingMem.points,
-          awarded_at: existingMem.scanned_at,
-          message: `Already visited this booth! Points were awarded earlier.`,
-        });
-      }
-
-      memoryBoothScans.push({
-        booth_id: boothId,
-        user_email: attendee.email,
-        points,
-        scanned_at: new Date().toISOString(),
-      });
-
-      const updatedTotal = (attendee.total_xp || 0) + points;
-
-      return NextResponse.json({
-        valid: true,
-        already_visited: false,
-        attendee: { ...attendee, total_xp: updatedTotal },
-        booth_name: boothName,
-        xp_awarded: points,
-        total_xp: updatedTotal,
-        message: `Success! +${points} XP awarded to ${attendee.full_name}! 🎉`,
+        xp_awarded: existingComp.xp_awarded,
+        awarded_at: existingComp.created_at,
+        message: `Already visited this booth! Points (+${existingComp.xp_awarded} XP) were awarded earlier.`,
       });
     }
+
+    // 3. Record quest completion (atomic unique constraint ensures single claim)
+    const { error: insertError } = await supabase
+      .from("quest_completions")
+      .insert({
+        quest_id: questId,
+        registration_id: attendee.id,
+        user_email: attendee.email,
+        xp_awarded: points,
+      });
+
+    if (insertError) {
+      if (insertError.code === "23505") {
+        return NextResponse.json({
+          valid: true,
+          already_visited: true,
+          attendee,
+          booth_name: boothName,
+          xp_awarded: points,
+          message: `Already scanned at this booth! Points already recorded.`,
+        });
+      }
+      return NextResponse.json({ error: insertError.message }, { status: 500 });
+    }
+
+    // 4. Recalculate exact total XP
+    const { data: compList } = await supabase
+      .from("quest_completions")
+      .select("xp_awarded")
+      .eq("registration_id", attendee.id);
+
+    const { data: verifList } = await supabase
+      .from("quest_verifications")
+      .select("xp")
+      .eq("user_email", attendee.email)
+      .eq("status", "Approved");
+
+    const compXp = (compList || []).reduce((sum, c) => sum + (c.xp_awarded || 0), 0);
+    const verifXp = (verifList || []).reduce((sum, v) => sum + (v.xp || 0), 0);
+    const newTotalXp = compXp + verifXp;
+
+    await supabase
+      .from("registrations")
+      .update({ total_xp: newTotalXp })
+      .eq("id", attendee.id);
+
+    return NextResponse.json({
+      valid: true,
+      already_visited: false,
+      attendee: { ...attendee, total_xp: newTotalXp },
+      booth_name: boothName,
+      xp_awarded: points,
+      total_xp: newTotalXp,
+      message: `Success! +${points} XP awarded to ${attendee.full_name} for visiting ${boothName}! 🎉`,
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

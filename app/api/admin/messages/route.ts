@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { verifyAdminAuth, unauthorizedResponse } from "../../../../utils/admin-auth";
 
 export const runtime = "nodejs";
 
@@ -12,35 +13,31 @@ function getSupabase() {
   });
 }
 
-// In-memory fallback array for dev/demo when Supabase table isn't migrated yet
-let memoryMessageNotes: any[] = [];
-
-// GET — list all message notes (optional ?email= filter)
+// GET — list all message notes (Admin requires auth, optional ?email= filter for quester status)
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const email = searchParams.get("email")?.trim().toLowerCase();
 
-    try {
-      const supabase = getSupabase();
-      let query = supabase.from("quest_message_notes").select("*").order("created_at", { ascending: false });
-
-      if (email) {
-        query = query.ilike("user_email", email);
+    if (!email) {
+      const auth = verifyAdminAuth(request, ["superadmin", "admin", "verifier"]);
+      if (!auth.authorized) {
+        return unauthorizedResponse(auth.error, auth.status);
       }
-
-      const { data, error } = await query;
-      if (!error && data) {
-        return NextResponse.json({ messages: data });
-      }
-    } catch (dbErr: any) {
-      console.warn("DB query warning for quest_message_notes:", dbErr.message);
     }
 
-    const filtered = email
-      ? memoryMessageNotes.filter((v) => v.user_email?.toLowerCase() === email)
-      : memoryMessageNotes;
-    return NextResponse.json({ messages: filtered });
+    const supabase = getSupabase();
+    let query = supabase.from("quest_message_notes").select("*").order("created_at", { ascending: false });
+
+    if (email) {
+      query = query.ilike("user_email", email);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ messages: data || [] });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
@@ -71,61 +68,59 @@ export async function POST(request: Request) {
       created_at: new Date().toISOString(),
     };
 
-    try {
-      const supabase = getSupabase();
+    const supabase = getSupabase();
 
-      // Check for existing record for this quest+user, update if found
-      const { data: existing } = await supabase
+    // Check for existing record for this quest+user, update if found
+    const { data: existing } = await supabase
+      .from("quest_message_notes")
+      .select("id")
+      .eq("quest_id", quest_id)
+      .ilike("user_email", newRecord.user_email)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    let data, error;
+    if (existing && existing.length > 0) {
+      const res = await supabase
         .from("quest_message_notes")
-        .select("id")
-        .eq("quest_id", quest_id)
-        .ilike("user_email", newRecord.user_email)
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      let data, error;
-      if (existing && existing.length > 0) {
-        const res = await supabase
-          .from("quest_message_notes")
-          .update({
-            user_message: trimmedMsg,
-            status: "Pending",
-            rejection_reason: null,
-            created_at: new Date().toISOString(),
-          })
-          .eq("id", existing[0].id)
-          .select()
-          .single();
-        data = res.data;
-        error = res.error;
-      } else {
-        const res = await supabase
-          .from("quest_message_notes")
-          .insert(newRecord)
-          .select()
-          .single();
-        data = res.data;
-        error = res.error;
-      }
-
-      if (error) {
-        console.error("quest_message_notes upsert error:", error);
-        return NextResponse.json({ error: error.message || "Database error" }, { status: 500 });
-      }
-      if (data) {
-        return NextResponse.json({ messageNote: data }, { status: 201 });
-      }
-    } catch (err: any) {
-      console.error("DB error in messages POST:", err.message);
-      return NextResponse.json({ error: err.message }, { status: 500 });
+        .update({
+          user_message: trimmedMsg,
+          status: "Pending",
+          rejection_reason: null,
+          created_at: new Date().toISOString(),
+        })
+        .eq("id", existing[0].id)
+        .select()
+        .single();
+      data = res.data;
+      error = res.error;
+    } else {
+      const res = await supabase
+        .from("quest_message_notes")
+        .insert(newRecord)
+        .select()
+        .single();
+      data = res.data;
+      error = res.error;
     }
+
+    if (error) {
+      console.error("quest_message_notes upsert error:", error);
+      return NextResponse.json({ error: error.message || "Database error" }, { status: 500 });
+    }
+    return NextResponse.json({ messageNote: data }, { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
-// PATCH — admin approves or rejects a message note submission (with optional rejection reason & admin attribution)
+// PATCH — admin approves or rejects a message note submission
 export async function PATCH(request: Request) {
+  const auth = verifyAdminAuth(request, ["superadmin", "admin", "verifier"]);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error, auth.status);
+  }
+
   try {
     const { id, status, rejection_reason, approved_by, admin_email } = await request.json();
 
@@ -133,7 +128,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "id and status are required." }, { status: 400 });
     }
 
-    const reviewer = approved_by || admin_email || "Admin";
+    const reviewer = approved_by || admin_email || auth.user?.fullName || "Admin";
     const updatePayload: Record<string, any> = {
       status,
       approved_by: reviewer,
@@ -143,94 +138,86 @@ export async function PATCH(request: Request) {
       updatePayload.rejection_reason = rejection_reason;
     }
 
-    try {
-      const supabase = getSupabase();
+    const supabase = getSupabase();
 
-      // 1. Fetch from quest_message_notes
-      let currentMsg: any = null;
+    // 1. Fetch from quest_message_notes
+    const { data: msgData, error: fetchErr } = await supabase
+      .from("quest_message_notes")
+      .select("user_email, xp, status, quest_id")
+      .eq("id", id)
+      .single();
 
-      const { data: msgData } = await supabase
-        .from("quest_message_notes")
-        .select("user_email, xp, status, quest_id")
-        .eq("id", id)
+    if (fetchErr || !msgData) {
+      return NextResponse.json({ error: "Message note not found in database." }, { status: 404 });
+    }
+
+    if (msgData.status === status) {
+      return NextResponse.json({ messageNote: msgData });
+    }
+
+    // 2. Update status in quest_message_notes
+    const { data, error } = await supabase
+      .from("quest_message_notes")
+      .update(updatePayload)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error || !data) {
+      return NextResponse.json({ error: error?.message || "Failed to update status." }, { status: 500 });
+    }
+
+    if (status === "Approved" && msgData) {
+      const { data: user } = await supabase
+        .from("registrations")
+        .select("id, total_xp")
+        .eq("email", msgData.user_email)
         .single();
 
-      if (msgData) {
-        currentMsg = msgData;
-      }
-
-      if (!currentMsg) {
-        return NextResponse.json({ error: "Message note not found in database." }, { status: 404 });
-      }
-
-      if (currentMsg.status === status) {
-        return NextResponse.json({ messageNote: currentMsg });
-      }
-
-      // 2. Update status in quest_message_notes
-      const { data, error } = await supabase
-        .from("quest_message_notes")
-        .update(updatePayload)
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (!error && data) {
-        if (status === "Approved" && currentMsg) {
-          const { data: user } = await supabase
+      if (user) {
+        if (msgData.status !== "Approved") {
+          await supabase
             .from("registrations")
-            .select("id, total_xp")
-            .eq("email", currentMsg.user_email)
-            .single();
-
-          if (user) {
-            if (currentMsg.status !== "Approved") {
-              await supabase
-                .from("registrations")
-                .update({ total_xp: (user.total_xp || 0) + (currentMsg.xp || 0) })
-                .eq("id", user.id);
-            }
-
-            // Use registration_id (not user_email) for quest_completions
-            const { error: compErr } = await supabase
-              .from("quest_completions")
-              .insert({
-                quest_id: currentMsg.quest_id,
-                registration_id: user.id,
-                xp_awarded: currentMsg.xp,
-              });
-            if (compErr && compErr.code !== "23505") {
-              console.warn("quest_completions insert notice:", compErr.message);
-            }
-          }
-        } else if ((status === "Rejected" || status === "Pending") && currentMsg && currentMsg.status === "Approved") {
-          const { data: user } = await supabase
-            .from("registrations")
-            .select("id, total_xp")
-            .eq("email", currentMsg.user_email)
-            .single();
-
-          if (user) {
-            await supabase
-              .from("registrations")
-              .update({ total_xp: Math.max(0, (user.total_xp || 0) - (currentMsg.xp || 0)) })
-              .eq("id", user.id);
-
-            await supabase
-              .from("quest_completions")
-              .delete()
-              .eq("quest_id", currentMsg.quest_id)
-              .eq("registration_id", user.id);
-          }
+            .update({ total_xp: (user.total_xp || 0) + (msgData.xp || 0) })
+            .eq("id", user.id);
         }
 
-        return NextResponse.json({ messageNote: data });
+        const { error: compErr } = await supabase
+          .from("quest_completions")
+          .insert({
+            quest_id: msgData.quest_id,
+            registration_id: user.id,
+            user_email: msgData.user_email,
+            xp_awarded: msgData.xp,
+          });
+        if (compErr && compErr.code !== "23505") {
+          console.warn("quest_completions insert notice:", compErr.message);
+        }
       }
-    } catch (err: any) {
-      console.error("PATCH error in messages:", err.message);
-      return NextResponse.json({ error: err.message }, { status: 500 });
+    } else if ((status === "Rejected" || status === "Pending") && msgData && msgData.status === "Approved") {
+      const { data: user } = await supabase
+        .from("registrations")
+        .select("id, total_xp")
+        .eq("email", msgData.user_email)
+        .single();
+
+      if (user) {
+        await supabase
+          .from("registrations")
+          .update({ total_xp: Math.max(0, (user.total_xp || 0) - (msgData.xp || 0)) })
+          .eq("id", user.id);
+
+        await supabase
+          .from("quest_completions")
+          .delete()
+          .eq("quest_id", msgData.quest_id)
+          .eq("registration_id", user.id);
+      }
     }
+
+    return NextResponse.json({ messageNote: data });
   } catch (err: any) {
+    console.error("PATCH error in messages:", err.message);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

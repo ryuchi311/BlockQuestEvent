@@ -18,6 +18,7 @@ interface Quest {
   quiz_options?: string[];
   correct_option_index?: number;
   passcode?: string;
+  has_passcode?: boolean;
   expires_at?: string;
   depends_on_quest_id?: string;
 }
@@ -354,6 +355,7 @@ export default function ZealyMobileApp() {
             requiresProof: !!q.requires_proof,
             requiresMessage: !!q.requires_message,
             passcode: q.passcode || undefined,
+            has_passcode: !!q.has_passcode || !!q.passcode,
             is_quiz: !!q.is_quiz,
             sort_order: q.sort_order ?? 999,
             created_at: q.created_at || undefined,
@@ -642,9 +644,9 @@ export default function ZealyMobileApp() {
       return;
     }
 
-    if (selectedQuest.passcode) {
-      if (!passcodeAnswer.trim() || passcodeAnswer.trim().toUpperCase() !== selectedQuest.passcode.trim().toUpperCase()) {
-        alert("🔑 Incorrect secret passcode! Please ask the booth staff or stage presenter for the valid code.");
+    if (selectedQuest.has_passcode || selectedQuest.passcode) {
+      if (!passcodeAnswer.trim()) {
+        alert("🔑 Passcode is required! Please ask the booth staff or stage presenter for the secret code.");
         return;
       }
     }
@@ -652,7 +654,7 @@ export default function ZealyMobileApp() {
     setClaiming(true);
     try {
       const email = ticketEmail || authenticatedUser?.email || qrPass?.email || "quester@blockquest.ph";
-      await fetch("/api/user/claim", {
+      const res = await fetch("/api/user/claim", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -660,8 +662,14 @@ export default function ZealyMobileApp() {
           user_email: email,
           xp: selectedQuest.xp,
           answer: selectedQuest.is_quiz ? quizAnswer : undefined,
+          passcode: (selectedQuest.has_passcode || selectedQuest.passcode) ? passcodeAnswer : undefined,
         }),
       });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || "Claim error. Please try again.");
+      }
 
       if (selectedQuest.requiresProof) {
         setClaimedQuestIds((prev) => [...prev, selectedQuest.id]);
@@ -673,11 +681,13 @@ export default function ZealyMobileApp() {
       if (selectedQuest.id === "register" || selectedQuest.id === "checkin") {
         setUserRank(6);
       }
+      setPasscodeAnswer("");
+      setQuizAnswer("");
+      setSelectedQuest(null);
     } catch (err: any) {
       alert(err.message || "Claim error. Please try again.");
     } finally {
       setClaiming(false);
-      setSelectedQuest(null);
       fetchLeaderboard();
     }
   };
@@ -2161,7 +2171,7 @@ export default function ZealyMobileApp() {
                                   {claiming ? "Claiming..." : isActionCompleted ? "Submit Answer & Claim XP" : "🔒 Complete Task First"}
                                 </button>
                               </div>
-                            ) : selectedQuest.passcode ? (
+                            ) : (selectedQuest.has_passcode || selectedQuest.passcode) ? (
                               <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
                                 <div style={{ background: "rgba(245, 158, 11, 0.12)", border: "1px solid rgba(245, 158, 11, 0.3)", borderRadius: 10, padding: 10, fontSize: "0.82rem", color: "#fbbf24" }}>
                                   🔑 <strong>Passcode Required:</strong> Ask the booth staff or stage presenter for the secret code.

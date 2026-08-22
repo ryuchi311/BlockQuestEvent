@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { verifyAdminAuth, unauthorizedResponse } from "../../../../utils/admin-auth";
 
 export const runtime = "nodejs";
 
@@ -12,7 +13,12 @@ function getSupabase() {
   });
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const auth = verifyAdminAuth(request);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error, auth.status);
+  }
+
   try {
     const supabase = getSupabase();
     const { data, error } = await supabase
@@ -28,6 +34,11 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
+  const auth = verifyAdminAuth(request, ["superadmin", "admin", "manage_attendees"]);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error, auth.status);
+  }
+
   try {
     const body = await request.json();
     const { id, tempPin } = body;
@@ -61,6 +72,11 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const auth = verifyAdminAuth(request, ["superadmin", "admin"]);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error, auth.status);
+  }
+
   try {
     const body = await request.json();
     const { id } = body;

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { verifyAdminAuth, unauthorizedResponse } from "../../../../utils/admin-auth";
 
 export const runtime = "nodejs";
 
@@ -12,9 +13,6 @@ function getSupabase() {
   });
 }
 
-// In-memory fallback array for dev/demo when Supabase table isn't migrated yet
-let memoryVerifications: any[] = [];
-
 const QUEST_TITLES: Record<string, string> = {
   "register": "Register for BlockQuest Fiesta PH",
   "checkin": "Complete physical check-in",
@@ -23,11 +21,19 @@ const QUEST_TITLES: Record<string, string> = {
   "daily-claim": "Daily Check-in"
 };
 
-// GET — fetch all verifications or filter by user email
+// GET — fetch all verifications (Admin queue requires auth, public ?email= filter for quester status)
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const email = searchParams.get("email")?.trim().toLowerCase();
+
+    // If fetching global queue without user email, require verifier/admin auth
+    if (!email) {
+      const auth = verifyAdminAuth(request, ["superadmin", "admin", "verifier"]);
+      if (!auth.authorized) {
+        return unauthorizedResponse(auth.error, auth.status);
+      }
+    }
 
     const supabase = getSupabase();
 
@@ -89,17 +95,12 @@ export async function GET(request: Request) {
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (error || !data) {
-      return NextResponse.json({ verifications: memoryVerifications });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    return NextResponse.json({ verifications: data });
-  } catch {
-    const { searchParams } = new URL(request.url);
-    const email = searchParams.get("email")?.trim().toLowerCase();
-    const filtered = email
-      ? memoryVerifications.filter((v) => v.user_email?.toLowerCase() === email)
-      : memoryVerifications;
-    return NextResponse.json({ verifications: filtered });
+    return NextResponse.json({ verifications: data || [] });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
@@ -229,6 +230,11 @@ export async function POST(request: Request) {
 
 // PATCH — admin approves or rejects a submission (with optional rejection reason & admin attribution)
 export async function PATCH(request: Request) {
+  const auth = verifyAdminAuth(request, ["superadmin", "admin", "verifier"]);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error, auth.status);
+  }
+
   try {
     const { id, status, rejection_reason, approved_by, admin_email } = await request.json();
 
@@ -236,7 +242,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "id and status are required." }, { status: 400 });
     }
 
-    const reviewer = approved_by || admin_email || "Admin";
+    const reviewer = approved_by || admin_email || auth.user?.fullName || "Admin";
     const updatePayload: Record<string, any> = {
       status,
       approved_by: reviewer,
@@ -246,91 +252,89 @@ export async function PATCH(request: Request) {
       updatePayload.rejection_reason = rejection_reason;
     }
 
-    try {
-      const supabase = getSupabase();
+    const supabase = getSupabase();
 
-      // 1. Fetch current verification to know the XP and User
-      const { data: currentVerif } = await supabase
-        .from("quest_verifications")
-        .select("user_email, xp, status, quest_id")
-        .eq("id", id)
-        .single();
+    // 1. Fetch current verification to know the XP and User
+    const { data: currentVerif, error: fetchErr } = await supabase
+      .from("quest_verifications")
+      .select("user_email, xp, status, quest_id")
+      .eq("id", id)
+      .single();
 
-      if (currentVerif && currentVerif.status === status) {
-        return NextResponse.json({ verification: currentVerif });
-      }
-
-      // 2. Update the verification status
-      const { data, error } = await supabase
-        .from("quest_verifications")
-        .update(updatePayload)
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (!error && data) {
-        // 3. If transitioning to Approved, award XP & record completion in database
-        if (status === "Approved" && currentVerif) {
-          const { data: user } = await supabase
-            .from("registrations")
-            .select("id, total_xp")
-            .eq("email", currentVerif.user_email)
-            .single();
-
-          if (user) {
-            // Only increment XP if it was not already Approved
-            if (currentVerif.status !== "Approved") {
-              await supabase
-                .from("registrations")
-                .update({ total_xp: (user.total_xp || 0) + (currentVerif.xp || 0) })
-                .eq("id", user.id);
-            }
-
-            // Ensure record is inserted into quest_completions DB table
-            const { error: compErr } = await supabase
-              .from("quest_completions")
-              .insert({
-                quest_id: currentVerif.quest_id,
-                registration_id: user.id,
-                xp_awarded: currentVerif.xp
-              });
-
-            if (compErr && compErr.code !== "23505") { // Ignore 23505 duplicate key if already present
-              console.warn("quest_completions insert notice:", compErr.message);
-            }
-          }
-        } else if ((status === "Rejected" || status === "Pending") && currentVerif && currentVerif.status === "Approved") {
-          // If revoked from Approved -> Rejected/Pending, deduct XP & remove completion
-          const { data: user } = await supabase
-            .from("registrations")
-            .select("id, total_xp")
-            .eq("email", currentVerif.user_email)
-            .single();
-
-          if (user) {
-            await supabase
-              .from("registrations")
-              .update({ total_xp: Math.max(0, (user.total_xp || 0) - (currentVerif.xp || 0)) })
-              .eq("id", user.id);
-
-            await supabase
-              .from("quest_completions")
-              .delete()
-              .eq("quest_id", currentVerif.quest_id)
-              .eq("registration_id", user.id);
-          }
-        }
-        return NextResponse.json({ verification: data });
-      }
-    } catch {
-      // Fallback
+    if (fetchErr || !currentVerif) {
+      return NextResponse.json({ error: "Verification record not found." }, { status: 404 });
     }
 
-    memoryVerifications = memoryVerifications.map((item) =>
-      item.id === id ? { ...item, status, rejection_reason: rejection_reason || null } : item
-    );
-    const updatedItem = memoryVerifications.find((item) => item.id === id);
-    return NextResponse.json({ verification: updatedItem });
+    if (currentVerif.status === status) {
+      return NextResponse.json({ verification: currentVerif });
+    }
+
+    // 2. Update the verification status
+    const { data, error } = await supabase
+      .from("quest_verifications")
+      .update(updatePayload)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error || !data) {
+      return NextResponse.json({ error: error?.message || "Update failed" }, { status: 500 });
+    }
+
+    // 3. If transitioning to Approved, award XP & record completion in database
+    if (status === "Approved" && currentVerif) {
+      const { data: user } = await supabase
+        .from("registrations")
+        .select("id, total_xp")
+        .eq("email", currentVerif.user_email)
+        .single();
+
+      if (user) {
+        // Only increment XP if it was not already Approved
+        if (currentVerif.status !== "Approved") {
+          await supabase
+            .from("registrations")
+            .update({ total_xp: (user.total_xp || 0) + (currentVerif.xp || 0) })
+            .eq("id", user.id);
+        }
+
+        // Ensure record is inserted into quest_completions DB table
+        const { error: compErr } = await supabase
+          .from("quest_completions")
+          .insert({
+            quest_id: currentVerif.quest_id,
+            registration_id: user.id,
+            user_email: currentVerif.user_email,
+            xp_awarded: currentVerif.xp
+          });
+
+        if (compErr && compErr.code !== "23505") {
+          console.warn("quest_completions insert notice:", compErr.message);
+        }
+      }
+    } else if ((status === "Rejected" || status === "Pending") && currentVerif && currentVerif.status === "Approved") {
+      // If revoked from Approved -> Rejected/Pending, deduct XP & remove completion
+      const { data: user } = await supabase
+        .from("registrations")
+        .select("id, total_xp")
+        .eq("email", currentVerif.user_email)
+        .single();
+
+      if (user) {
+        await supabase
+          .from("registrations")
+          .update({ total_xp: Math.max(0, (user.total_xp || 0) - (currentVerif.xp || 0)) })
+          .eq("id", user.id);
+
+        await supabase
+          .from("quest_completions")
+          .delete()
+          .eq("quest_id", currentVerif.quest_id)
+          .eq("registration_id", user.id);
+      }
+    }
+
+    return NextResponse.json({ verification: data });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

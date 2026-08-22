@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { verifyAdminAuth, unauthorizedResponse } from "../../../../utils/admin-auth";
 
 export const runtime = "nodejs";
 
@@ -12,9 +13,12 @@ function getSupabase() {
   });
 }
 
-// GET — fetch all quests ordered by sort_order
-export async function GET() {
+// GET — fetch all quests ordered by sort_order (redacts secrets if not admin)
+export async function GET(request: Request) {
   try {
+    const auth = verifyAdminAuth(request);
+    const isAdmin = auth.authorized;
+
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("fiesta_event_quests")
@@ -22,14 +26,33 @@ export async function GET() {
       .order("sort_order", { ascending: true });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ quests: data });
+
+    if (isAdmin) {
+      return NextResponse.json({ quests: data });
+    }
+
+    // Public view: Redact passcode and quiz answers
+    const sanitizedQuests = (data || []).map((q: any) => ({
+      ...q,
+      has_passcode: !!q.passcode,
+      passcode: undefined,
+      quiz_answer: undefined,
+      correct_option_index: undefined,
+    }));
+
+    return NextResponse.json({ quests: sanitizedQuests });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
-// POST — create a new quest
+// POST — create a new quest (Restricted to superadmin / admin)
 export async function POST(request: Request) {
+  const auth = verifyAdminAuth(request, ["superadmin", "admin"]);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error, auth.status);
+  }
+
   try {
     const body = await request.json();
     const {
@@ -80,8 +103,8 @@ export async function POST(request: Request) {
         expires_at: expires_at || null,
         depends_on_quest_id: depends_on_quest_id || null,
         sort_order: sort_order ?? 99,
-        created_by: body.admin_name || admin_email || "System",
-        updated_by: body.admin_name || admin_email || "System",
+        created_by: body.admin_name || admin_email || auth.user?.fullName || "System",
+        updated_by: body.admin_name || admin_email || auth.user?.fullName || "System",
       })
       .select()
       .single();
@@ -93,16 +116,21 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH — update an existing quest
+// PATCH — update an existing quest (Restricted to superadmin / admin)
 export async function PATCH(request: Request) {
+  const auth = verifyAdminAuth(request, ["superadmin", "admin"]);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error, auth.status);
+  }
+
   try {
     const body = await request.json();
     const { id, admin_email, admin_name, ...updates } = body;
 
     if (!id) return NextResponse.json({ error: "Quest id is required." }, { status: 400 });
 
-    if (admin_name || admin_email) {
-      updates.updated_by = admin_name || admin_email;
+    if (admin_name || admin_email || auth.user?.fullName) {
+      updates.updated_by = admin_name || admin_email || auth.user?.fullName;
     }
 
     const supabase = getSupabase();
@@ -120,8 +148,13 @@ export async function PATCH(request: Request) {
   }
 }
 
-// DELETE — remove a quest
+// DELETE — remove a quest (Restricted to superadmin / admin)
 export async function DELETE(request: Request) {
+  const auth = verifyAdminAuth(request, ["superadmin", "admin"]);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error, auth.status);
+  }
+
   try {
     const { id } = await request.json();
     if (!id) return NextResponse.json({ error: "Quest id is required." }, { status: 400 });

@@ -1,10 +1,21 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { verifyPassword } from "../../../../utils/registration-password";
+import { generateAdminToken } from "../../../../utils/admin-auth";
+import { getClientIp, checkRateLimit } from "../../../../utils/rate-limit";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const rateLimit = checkRateLimit(`admin-login:${ip}`, 6, 60000);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: `Too many login attempts. Please wait ${rateLimit.resetInSeconds} seconds before trying again.` },
+      { status: 429 }
+    );
+  }
+
   const supabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -49,9 +60,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
   }
 
+  const token = generateAdminToken({
+    id: data.id,
+    email: data.email,
+    fullName: data.full_name,
+    role: data.role,
+  });
+
   // Do not send password_hash back to the client
   return NextResponse.json({
     message: "Login successful.",
+    token,
     adminUser: {
       id: data.id,
       email: data.email,

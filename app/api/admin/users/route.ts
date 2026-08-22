@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { randomBytes, scryptSync } from "node:crypto";
+import { verifyAdminAuth, unauthorizedResponse } from "../../../../utils/admin-auth";
 
 export const runtime = "nodejs";
 
@@ -21,6 +22,11 @@ function hashPassword(password: string) {
 
 // GET - fetch all admin users (except password hash) and booth scan statistics
 export async function GET(request: Request) {
+  const auth = verifyAdminAuth(request);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error, auth.status);
+  }
+
   try {
     const supabase = getSupabase();
     // We only select the fields we need, omitting password_hash
@@ -64,8 +70,13 @@ export async function GET(request: Request) {
   }
 }
 
-// POST - create a new admin user
+// POST - create a new admin user (Restricted to superadmin)
 export async function POST(request: Request) {
+  const auth = verifyAdminAuth(request, ["superadmin"]);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error, auth.status);
+  }
+
   try {
     const body = await request.json();
     const { email, password, full_name, role } = body;
@@ -102,8 +113,13 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH - update an existing admin user
+// PATCH - update an existing admin user (Restricted to superadmin)
 export async function PATCH(request: Request) {
+  const auth = verifyAdminAuth(request, ["superadmin"]);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error, auth.status);
+  }
+
   try {
     const body = await request.json();
     const { id, full_name, email, role, password } = body;
@@ -145,8 +161,13 @@ export async function PATCH(request: Request) {
   }
 }
 
-// DELETE - remove an admin user
+// DELETE - remove an admin user (Restricted to superadmin)
 export async function DELETE(request: Request) {
+  const auth = verifyAdminAuth(request, ["superadmin"]);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error, auth.status);
+  }
+
   try {
     const { id } = await request.json();
     if (!id) return NextResponse.json({ error: "Admin id is required." }, { status: 400 });

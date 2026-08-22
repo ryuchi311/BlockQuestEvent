@@ -244,12 +244,25 @@ export default function ScanPage() {
       sessionStorage.setItem("blockquest_gate_session", JSON.stringify({
         authed: true,
         user: json.adminUser,
+        token: json.token,
       }));
     } catch (err: any) {
       setAuthError(err.message || "Invalid credentials.");
     } finally {
       setLoginLoading(false);
     }
+  }
+
+  function getGateToken(): string {
+    if (typeof window === "undefined") return "";
+    try {
+      const saved = sessionStorage.getItem("blockquest_gate_session");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.token || "";
+      }
+    } catch {}
+    return "";
   }
 
   // ── Lookup + auto check-in ────────────────────────────────────
@@ -263,7 +276,13 @@ export default function ScanPage() {
     setShowSheet(true);
 
     try {
-      const res = await fetch(`/api/admin/checkin?code=${encodeURIComponent(cleaned)}`);
+      const token = getGateToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`/api/admin/checkin?code=${encodeURIComponent(cleaned)}`, {
+        headers,
+      });
       const json = await res.json();
 
       if (!res.ok || !json.valid) {
@@ -299,7 +318,7 @@ export default function ScanPage() {
       try {
         const res2 = await fetch("/api/admin/checkin", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({ ticket_code: a.ticket_code }),
         });
         const json2 = await res2.json();

@@ -192,13 +192,26 @@ export default function BoothScanPage() {
       setAuthed(true);
       sessionStorage.setItem("blockquest_booth_session", JSON.stringify({
         authed: true,
-        user: json.adminUser
+        user: json.adminUser,
+        token: json.token,
       }));
     } catch (err: any) {
       setAuthError(err.message || "Invalid booth email or password.");
     } finally {
       setLoginLoading(false);
     }
+  }
+
+  function getBoothToken(): string {
+    if (typeof window === "undefined") return "";
+    try {
+      const saved = sessionStorage.getItem("blockquest_booth_session");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.token || "";
+      }
+    } catch {}
+    return "";
   }
 
   function handleLogout() {
@@ -227,9 +240,13 @@ export default function BoothScanPage() {
       const boothName = currentUser.fullName;
 
       try {
+        const token = getBoothToken();
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
         const res = await fetch("/api/booth-scan", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             ticket_code: cleaned,
             booth_id: boothSlug,

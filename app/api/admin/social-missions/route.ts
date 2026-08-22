@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { verifyAdminAuth, unauthorizedResponse } from "../../../../utils/admin-auth";
 
 export const runtime = "nodejs";
 
@@ -12,8 +13,13 @@ function getSupabase() {
   });
 }
 
-// POST - Create a new social mission
+// POST - Create a new social mission (Restricted to superadmin / admin)
 export async function POST(request: Request) {
+  const auth = verifyAdminAuth(request, ["superadmin", "admin"]);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error, auth.status);
+  }
+
   try {
     const body = await request.json();
     const { platform, title, description, url, button_text, button_color, sort_order, is_active } = body;
@@ -47,8 +53,13 @@ export async function POST(request: Request) {
   }
 }
 
-// DELETE - Remove a social mission
+// DELETE - Remove a social mission (Restricted to superadmin / admin)
 export async function DELETE(request: Request) {
+  const auth = verifyAdminAuth(request, ["superadmin", "admin"]);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error, auth.status);
+  }
+
   try {
     const body = await request.json();
     if (!body.id) {
@@ -65,8 +76,13 @@ export async function DELETE(request: Request) {
   }
 }
 
-// PATCH - Update an existing social mission
+// PATCH - Update an existing social mission (Restricted to superadmin / admin)
 export async function PATCH(request: Request) {
+  const auth = verifyAdminAuth(request, ["superadmin", "admin"]);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error, auth.status);
+  }
+
   try {
     const body = await request.json();
     const { id, platform, title, description, url, button_text, button_color, sort_order, is_active } = body;

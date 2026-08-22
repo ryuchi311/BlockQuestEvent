@@ -420,6 +420,28 @@ export default function AdminPage() {
   // ── Copy tooltip ──
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
+  // ─── Token & Admin Fetch Helper ──────────────────────────────────────────
+  function getAdminToken(): string {
+    if (typeof window === "undefined") return "";
+    try {
+      const savedSession = localStorage.getItem("blockquest_admin_session");
+      if (savedSession) {
+        const session = JSON.parse(savedSession);
+        return session.token || "";
+      }
+    } catch {}
+    return "";
+  }
+
+  const adminFetch = useCallback(async (url: string, options: RequestInit = {}) => {
+    const token = getAdminToken();
+    const headers = new Headers(options.headers || {});
+    if (token && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+    return fetch(url, { ...options, headers });
+  }, []);
+
   // ─── Auth ────────────────────────────────────────────────────────────────
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -445,7 +467,8 @@ export default function AdminPage() {
       }
       localStorage.setItem("blockquest_admin_session", JSON.stringify({
         authed: true,
-        adminUser: json.adminUser
+        adminUser: json.adminUser,
+        token: json.token,
       }));
     } catch (err: any) {
       setAuthError(err.message);
@@ -488,7 +511,7 @@ export default function AdminPage() {
         if (changePasswordForm.newPassword !== changePasswordForm.confirmPassword) {
             throw new Error("New passwords do not match.");
         }
-        const res = await fetch("/api/admin/change-password", {
+        const res = await adminFetch("/api/admin/change-password", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -507,7 +530,10 @@ export default function AdminPage() {
         if (adminUser) {
             const updatedUser = { ...adminUser, requires_password_change: false };
             setAdminUser(updatedUser);
+            const savedSession = localStorage.getItem("blockquest_admin_session");
+            const parsedSession = savedSession ? JSON.parse(savedSession) : {};
             localStorage.setItem("blockquest_admin_session", JSON.stringify({
+                ...parsedSession,
                 authed: true,
                 adminUser: updatedUser
             }));
@@ -525,7 +551,7 @@ export default function AdminPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/admin/attendees");
+      const res = await adminFetch("/api/admin/attendees");
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load attendees.");
       setAttendees(json.attendees ?? []);
@@ -534,13 +560,13 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [adminFetch]);
 
   const fetchQuests = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/admin/quests");
+      const res = await adminFetch("/api/admin/quests");
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load quests.");
       setQuests(json.quests ?? []);
@@ -549,13 +575,13 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [adminFetch]);
 
   const fetchVerifications = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/admin/verifications");
+      const res = await adminFetch("/api/admin/verifications");
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load verifications.");
       setVerifications(json.verifications ?? []);
@@ -564,13 +590,13 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [adminFetch]);
 
   const fetchMessageNotes = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/admin/messages");
+      const res = await adminFetch("/api/admin/messages");
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load message notes.");
       setMessageNotes(json.messages ?? []);
@@ -579,14 +605,14 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [adminFetch]);
 
   const fetchAdminUsers = useCallback(async () => {
     if (adminUser?.role !== "superadmin" && adminUser?.role !== "admin") return;
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/admin/users");
+      const res = await adminFetch("/api/admin/users");
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load admin users.");
       setAdminUsersList(json.adminUsers ?? []);
@@ -595,14 +621,14 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  }, [adminUser]);
+  }, [adminUser, adminFetch]);
 
   const fetchSocialMissions = useCallback(async () => {
     if (adminUser?.role !== "superadmin") return;
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/social-missions");
+      const res = await adminFetch("/api/social-missions");
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load social missions.");
       setSocialMissions(json.missions ?? []);
@@ -611,7 +637,7 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  }, [adminUser]);
+  }, [adminUser, adminFetch]);
 
   // Load ALL data immediately on auth so stat cards are always accurate
   useEffect(() => {
@@ -656,7 +682,7 @@ export default function AdminPage() {
   async function handleVerifyQuest(id: number, newStatus: "Approved" | "Rejected" | "Pending", reason?: string) {
     const reviewer = adminUser?.email || "Admin";
     try {
-      const res = await fetch("/api/admin/verifications", {
+      const res = await adminFetch("/api/admin/verifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status: newStatus, rejection_reason: reason, approved_by: reviewer }),
@@ -678,7 +704,7 @@ export default function AdminPage() {
   async function handleVerifyMessage(id: number, newStatus: "Approved" | "Rejected" | "Pending", reason?: string) {
     const reviewer = adminUser?.email || "Admin";
     try {
-      const res = await fetch("/api/admin/messages", {
+      const res = await adminFetch("/api/admin/messages", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status: newStatus, rejection_reason: reason, approved_by: reviewer }),
@@ -799,7 +825,7 @@ export default function AdminPage() {
     if (!attendee.ticket_code) return;
     setCheckingInId(attendee.id);
     try {
-      const res = await fetch("/api/admin/checkin", {
+      const res = await adminFetch("/api/admin/checkin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ticket_code: attendee.ticket_code }),
@@ -833,7 +859,7 @@ export default function AdminPage() {
     setIsResettingPin(true);
     try {
       const pinToUse = customPin !== undefined ? customPin : resetPinInput.trim();
-      const res = await fetch("/api/admin/attendees", {
+      const res = await adminFetch("/api/admin/attendees", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: resetPinAttendee.id, tempPin: pinToUse }),
@@ -857,7 +883,7 @@ export default function AdminPage() {
     if (!deletingAttendee) return;
     setIsDeletingAttendee(true);
     try {
-      const res = await fetch("/api/admin/attendees", {
+      const res = await adminFetch("/api/admin/attendees", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: deletingAttendee.id }),
@@ -1091,7 +1117,7 @@ export default function AdminPage() {
         admin_email: adminUser?.email,
         admin_name: adminUser?.fullName || adminUser?.email || "Admin",
       };
-      const res = await fetch("/api/admin/quests", {
+      const res = await adminFetch("/api/admin/quests", {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -1121,7 +1147,7 @@ export default function AdminPage() {
     }
     setIsDeleting(true);
     try {
-      const res = await fetch("/api/admin/quests", {
+      const res = await adminFetch("/api/admin/quests", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: deletingQuestId }),
@@ -1144,7 +1170,7 @@ export default function AdminPage() {
     setIsUpdatingStatus(true);
     try {
       const reviewer = adminUser?.fullName || adminUser?.email || "Admin";
-      const res = await fetch("/api/admin/quests", {
+      const res = await adminFetch("/api/admin/quests", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: statusModalQuest.id, status: newStatus, admin_email: adminUser?.email, admin_name: reviewer }),
@@ -1162,7 +1188,7 @@ export default function AdminPage() {
   async function publishQuest(quest: Quest) {
     try {
       const reviewer = adminUser?.fullName || adminUser?.email || "Admin";
-      const res = await fetch("/api/admin/quests", {
+      const res = await adminFetch("/api/admin/quests", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: quest.id, status: "Live", admin_email: adminUser?.email, admin_name: reviewer }),
@@ -1190,7 +1216,7 @@ export default function AdminPage() {
         action_url: questForm.action_url || null,
         description: questForm.description || null,
       };
-      const res = await fetch("/api/admin/quests", {
+      const res = await adminFetch("/api/admin/quests", {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -1234,7 +1260,7 @@ export default function AdminPage() {
         payload.password = editAdminForm.password;
       }
 
-      const res = await fetch("/api/admin/users", {
+      const res = await adminFetch("/api/admin/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -1250,9 +1276,11 @@ export default function AdminPage() {
       if (adminUser && adminUser.id === json.adminUser.id) {
         const updatedSelf = { ...adminUser, ...json.adminUser };
         setAdminUser(updatedSelf);
+        const savedSession = localStorage.getItem("blockquest_admin_session");
+        const parsedSession = savedSession ? JSON.parse(savedSession) : {};
         localStorage.setItem(
           "blockquest_admin_session",
-          JSON.stringify({ authed: true, adminUser: updatedSelf })
+          JSON.stringify({ ...parsedSession, authed: true, adminUser: updatedSelf })
         );
       }
 
@@ -1270,7 +1298,7 @@ export default function AdminPage() {
     setIsCreatingBooth(true);
     try {
       // 1. Create admin user with booth_staff role
-      const res = await fetch("/api/admin/users", {
+      const res = await adminFetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1326,7 +1354,7 @@ export default function AdminPage() {
           payload.password = editBoothForm.password.trim();
         }
 
-        const res = await fetch("/api/admin/users", {
+        const res = await adminFetch("/api/admin/users", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -1352,7 +1380,7 @@ export default function AdminPage() {
     e.preventDefault();
     setIsCreatingAdmin(true);
     try {
-      const res = await fetch("/api/admin/users", {
+      const res = await adminFetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newAdminForm),
@@ -1374,7 +1402,7 @@ export default function AdminPage() {
     if (!deletingAdminUser) return;
     setIsDeletingAdmin(true);
     try {
-      const res = await fetch("/api/admin/users", {
+      const res = await adminFetch("/api/admin/users", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: deletingAdminUser.id }),
@@ -1395,7 +1423,7 @@ export default function AdminPage() {
     e.preventDefault();
     setIsCreatingMission(true);
     try {
-      const res = await fetch("/api/admin/social-missions", {
+      const res = await adminFetch("/api/admin/social-missions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newSocialMissionForm),
@@ -1417,7 +1445,7 @@ export default function AdminPage() {
   async function handleToggleSocialMissionActive(mission: any) {
     const nextStatus = mission.is_active === false ? true : false;
     try {
-      const res = await fetch("/api/admin/social-missions", {
+      const res = await adminFetch("/api/admin/social-missions", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: mission.id, is_active: nextStatus }),
@@ -1434,7 +1462,7 @@ export default function AdminPage() {
   async function handleDeleteSocialMission(id: number) {
     if (!window.confirm(`Are you sure you want to delete this social mission?`)) return;
     try {
-      const res = await fetch("/api/admin/social-missions", {
+      const res = await adminFetch("/api/admin/social-missions", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
