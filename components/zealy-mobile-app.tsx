@@ -136,6 +136,7 @@ export default function ZealyMobileApp() {
     return {};
   });
   const [userVerifications, setUserVerifications] = useState<any[]>([]);
+  const [completedQuestRecords, setCompletedQuestRecords] = useState<any[]>([]);
   const [showCompletedQuests, setShowCompletedQuests] = useState(false);
 
   // Load ticket if user was registered/logged in in this session
@@ -209,6 +210,7 @@ export default function ZealyMobileApp() {
       localStorage.removeItem("bq_claimed");
     }
     setClaimedQuestIds([]);
+    setCompletedQuestRecords([]);
   }
 
   const resetInactivityTimer = React.useCallback(() => {
@@ -443,6 +445,10 @@ export default function ZealyMobileApp() {
 
       if (typeof totalXp === "number") {
         setUserXp(totalXp);
+      }
+
+      if (Array.isArray(completedQuestDetails)) {
+        setCompletedQuestRecords(completedQuestDetails);
       }
 
       const compMap = new Map<string, string>();
@@ -1525,114 +1531,166 @@ export default function ZealyMobileApp() {
                     </button>
                   </div>
 
-                  {userVerifications.length === 0 ? (
-                    <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: "4px 0" }}>
-                      No quest proof submissions yet. Complete proof-required quests to track verification status here!
-                    </p>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: "240px", overflowY: "auto", paddingRight: 4 }}>
-                      {userVerifications.map((v, idx) => (
-                        <div
-                          key={v.uniqueKey || `${v.id}_${idx}`}
-                          style={{
-                            background: "rgba(12, 12, 22, 0.7)",
-                            border: "1px solid rgba(255, 255, 255, 0.08)",
-                            borderRadius: 12,
-                            padding: 12,
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 8,
-                          }}
-                        >
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                            <div>
-                              <strong style={{ fontSize: "0.88rem", color: "#fff", display: "block" }}>{v.quest_title}</strong>
-                              <span style={{ fontSize: "0.72rem", color: "var(--gold-light)" }}>+{v.xp} XP Reward</span>
-                            </div>
-                            <span
-                              style={{
-                                fontSize: "0.7rem",
-                                fontWeight: 800,
-                                padding: "3px 8px",
-                                borderRadius: 10,
-                                background:
-                                  v.status === "Approved"
-                                    ? "rgba(16, 185, 129, 0.18)"
-                                    : v.status === "Rejected"
-                                      ? "rgba(239, 68, 68, 0.18)"
-                                      : "rgba(245, 158, 11, 0.18)",
-                                color:
-                                  v.status === "Approved"
-                                    ? "#34d399"
-                                    : v.status === "Rejected"
-                                      ? "#f87171"
-                                      : "#fbbf24",
-                                border:
-                                  v.status === "Approved"
-                                    ? "1px solid rgba(16, 185, 129, 0.3)"
-                                    : v.status === "Rejected"
-                                      ? "1px solid rgba(239, 68, 68, 0.3)"
-                                      : "1px solid rgba(245, 158, 11, 0.3)",
-                              }}
-                            >
-                              {v.status === "Approved" ? "✓ Approved" : v.status === "Rejected" ? "✕ Rejected" : "⏳ Pending Review"}
-                            </span>
-                          </div>
+                  {(() => {
+                    const instantLogs = (completedQuestRecords || []).map((c: any) => {
+                      const matchingQuest = quests.find((q) => q.id === c.quest_id);
+                      const title =
+                        c.quest_id === "register"
+                          ? "⚡ Register for BlockQuest Fiesta PH"
+                          : c.quest_id === "checkin"
+                            ? "🎟️ Gate Entrance Check-in"
+                            : matchingQuest?.title || `Quest: ${c.quest_id}`;
+                      const xp = c.xp_awarded || matchingQuest?.xp || (c.quest_id === "register" ? 250 : 100);
+                      return {
+                        uniqueKey: `instant_${c.quest_id}`,
+                        quest_id: c.quest_id,
+                        quest_title: title,
+                        xp,
+                        status: "Approved",
+                        displayStatus: "✓ Claimed",
+                        created_at: c.completed_at || new Date().toISOString(),
+                        is_instant: true,
+                      };
+                    });
 
-                          {v.status === "Rejected" && (
-                            <div style={{ background: "rgba(239, 68, 68, 0.08)", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: 8, padding: 8 }}>
-                              <p style={{ fontSize: "0.75rem", color: "#f87171", margin: 0, fontWeight: 600 }}>
-                                🔴 <strong>Reason:</strong> {v.rejection_reason || "Proof did not satisfy requirements."}
-                              </p>
-                              <button
-                                onClick={() => {
-                                  const questToRetry = quests.find((q) => q.id === v.quest_id) || {
-                                    id: v.quest_id,
-                                    title: v.quest_title,
-                                    description: "Resubmit proof screenshot for admin verification.",
-                                    xp: v.xp,
-                                    status: "Live" as const,
-                                    category: "social" as const,
-                                    requiresProof: true,
-                                  };
-                                  setSelectedQuest(questToRetry as any);
-                                  setActiveTab("quests");
-                                }}
+                    // Ensure registration reward appears for logged-in attendees
+                    if (
+                      (authenticatedUser || qrPass || ticketEmail) &&
+                      !instantLogs.some((l) => l.quest_id === "register")
+                    ) {
+                      instantLogs.unshift({
+                        uniqueKey: "instant_register_default",
+                        quest_id: "register",
+                        quest_title: "⚡ Register for BlockQuest Fiesta PH",
+                        xp: 250,
+                        status: "Approved",
+                        displayStatus: "✓ Claimed",
+                        created_at: new Date().toISOString(),
+                        is_instant: true,
+                      });
+                    }
+
+                    const filteredVerifs = (userVerifications || []).filter(
+                      (v: any) => !instantLogs.some((l) => l.quest_id === v.quest_id && l.status === "Approved")
+                    );
+
+                    const displayLogs = [...instantLogs, ...filteredVerifs].sort(
+                      (a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+                    );
+
+                    if (displayLogs.length === 0) {
+                      return (
+                        <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: "4px 0" }}>
+                          No quest activities recorded yet. Complete quests to track XP rewards here!
+                        </p>
+                      );
+                    }
+
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: "280px", overflowY: "auto", paddingRight: 4 }}>
+                        {displayLogs.map((v, idx) => (
+                          <div
+                            key={v.uniqueKey || `${v.id || v.quest_id}_${idx}`}
+                            style={{
+                              background: "rgba(12, 12, 22, 0.7)",
+                              border: "1px solid rgba(255, 255, 255, 0.08)",
+                              borderRadius: 12,
+                              padding: 12,
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 8,
+                            }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                              <div>
+                                <strong style={{ fontSize: "0.88rem", color: "#fff", display: "block" }}>{v.quest_title}</strong>
+                                <span style={{ fontSize: "0.72rem", color: "var(--gold-light)" }}>+{v.xp} XP Reward</span>
+                              </div>
+                              <span
                                 style={{
-                                  marginTop: 8,
-                                  width: "100%",
-                                  padding: "7px 10px",
-                                  borderRadius: 8,
-                                  border: "1px solid rgba(245, 166, 35, 0.5)",
-                                  background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
-                                  color: "#100b02",
-                                  fontSize: "0.78rem",
+                                  fontSize: "0.7rem",
                                   fontWeight: 800,
-                                  cursor: "pointer",
+                                  padding: "3px 8px",
+                                  borderRadius: 10,
+                                  background:
+                                    v.status === "Approved"
+                                      ? "rgba(16, 185, 129, 0.18)"
+                                      : v.status === "Rejected"
+                                        ? "rgba(239, 68, 68, 0.18)"
+                                        : "rgba(245, 158, 11, 0.18)",
+                                  color:
+                                    v.status === "Approved"
+                                      ? "#34d399"
+                                      : v.status === "Rejected"
+                                        ? "#f87171"
+                                        : "#fbbf24",
+                                  border:
+                                    v.status === "Approved"
+                                      ? "1px solid rgba(16, 185, 129, 0.3)"
+                                      : v.status === "Rejected"
+                                        ? "1px solid rgba(239, 68, 68, 0.3)"
+                                        : "1px solid rgba(245, 158, 11, 0.3)",
                                 }}
                               >
-                                🔄 Try Again & Resubmit Proof
-                              </button>
+                                {v.status === "Approved" ? (v.displayStatus || "✓ Approved") : v.status === "Rejected" ? "✕ Rejected" : "⏳ Pending Review"}
+                              </span>
                             </div>
-                          )}
-                          {v.user_message && (
-                            <div style={{ fontSize: "0.76rem", color: "rgba(255,255,255,0.75)", background: "rgba(255,255,255,0.04)", padding: "6px 8px", borderRadius: 6, fontStyle: "italic" }}>
-                              💬 "{v.user_message}"
-                            </div>
-                          )}
 
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.68rem", color: "var(--text-muted)", marginTop: 2 }}>
-                            <span>
-                              {v.created_at
-                                ? new Date(v.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
-                                : "Completed"}
-                            </span>
-                            {v.is_instant && <span style={{ color: "#38bdf8" }}>⚡ Instant Claim</span>}
+                            {v.status === "Rejected" && (
+                              <div style={{ background: "rgba(239, 68, 68, 0.08)", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: 8, padding: 8 }}>
+                                <p style={{ fontSize: "0.75rem", color: "#f87171", margin: 0, fontWeight: 600 }}>
+                                  🔴 <strong>Reason:</strong> {v.rejection_reason || "Proof did not satisfy requirements."}
+                                </p>
+                                <button
+                                  onClick={() => {
+                                    const questToRetry = quests.find((q) => q.id === v.quest_id) || {
+                                      id: v.quest_id,
+                                      title: v.quest_title,
+                                      description: "Resubmit proof screenshot for admin verification.",
+                                      xp: v.xp,
+                                      status: "Live" as const,
+                                      category: "social" as const,
+                                      requiresProof: true,
+                                    };
+                                    setSelectedQuest(questToRetry as any);
+                                    setActiveTab("quests");
+                                  }}
+                                  style={{
+                                    marginTop: 8,
+                                    width: "100%",
+                                    padding: "7px 10px",
+                                    borderRadius: 8,
+                                    border: "1px solid rgba(245, 166, 35, 0.5)",
+                                    background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                                    color: "#100b02",
+                                    fontSize: "0.78rem",
+                                    fontWeight: 800,
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  🔄 Try Again & Resubmit Proof
+                                </button>
+                              </div>
+                            )}
+                            {v.user_message && (
+                              <div style={{ fontSize: "0.76rem", color: "rgba(255,255,255,0.75)", background: "rgba(255,255,255,0.04)", padding: "6px 8px", borderRadius: 6, fontStyle: "italic" }}>
+                                💬 "{v.user_message}"
+                              </div>
+                            )}
+
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.68rem", color: "var(--text-muted)", marginTop: 2 }}>
+                              <span>
+                                {v.created_at
+                                  ? new Date(v.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+                                  : "Completed"}
+                              </span>
+                              {v.is_instant && <span style={{ color: "#38bdf8" }}>⚡ Instant Claim</span>}
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
                 {qrPass && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>

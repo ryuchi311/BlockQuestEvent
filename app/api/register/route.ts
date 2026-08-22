@@ -87,17 +87,22 @@ export async function POST(request: Request) {
     );
   }
 
-  // 3. Insert registration record
-  const { error } = await supabase.from("registrations").insert({
-    full_name: fullName,
-    email,
-    phone,
-    organization,
-    password_hash: hashPassword(password),
-    agreed_to_terms: true,
-    agreed_to_data_gathering: true,
-    agreed_at: new Date().toISOString(),
-  });
+  // 3. Insert registration record with initial 250 XP bonus
+  const { data: newReg, error } = await supabase
+    .from("registrations")
+    .insert({
+      full_name: fullName,
+      email,
+      phone,
+      organization,
+      password_hash: hashPassword(password),
+      agreed_to_terms: true,
+      agreed_to_data_gathering: true,
+      agreed_at: new Date().toISOString(),
+      total_xp: 250,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     const message =
@@ -108,8 +113,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
+  // 4. Record registration completion in quest_completions
+  try {
+    const completionPayload: Record<string, any> = {
+      quest_id: "register",
+      xp_awarded: 250,
+    };
+    if (newReg?.id) completionPayload.registration_id = newReg.id;
+    if (email) completionPayload.user_email = email;
+
+    await supabase.from("quest_completions").insert(completionPayload);
+  } catch (compErr) {
+    console.warn("Could not record quest completion for registration:", compErr);
+  }
+
   return NextResponse.json(
-    { message: "Registration saved successfully." },
+    { message: "Registration saved successfully. +250 XP awarded!", totalXp: 250 },
     { status: 201 },
   );
 }

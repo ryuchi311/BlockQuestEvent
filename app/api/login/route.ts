@@ -84,11 +84,38 @@ export async function POST(request: Request) {
     }
   }
 
-  // Fetch completed quests to restore UI state
-  const { data: completions } = await supabase
+  // Fetch completed quests to restore UI state (support both registration_id and user_email)
+  const { data: completionsData } = await supabase
     .from("quest_completions")
-    .select("quest_id, xp_awarded")
-    .eq("registration_id", data.id);
+    .select("*")
+    .or(`registration_id.eq.${data.id},user_email.ilike.${email}`);
+
+  let completions = completionsData || [];
+  const hasRegister = completions.some((c: any) => c.quest_id === "register");
+
+  if (!hasRegister) {
+    try {
+      const newComp: Record<string, any> = {
+        quest_id: "register",
+        xp_awarded: 250,
+        user_email: email,
+        registration_id: data.id,
+      };
+      const { data: inserted } = await supabase
+        .from("quest_completions")
+        .insert(newComp)
+        .select()
+        .single();
+
+      if (inserted) {
+        completions = [...completions, inserted];
+      } else {
+        completions = [...completions, { ...newComp, created_at: new Date().toISOString() }];
+      }
+    } catch {
+      completions = [...completions, { quest_id: "register", xp_awarded: 250, created_at: new Date().toISOString() }];
+    }
+  }
 
   const { data: verifications } = await supabase
     .from("quest_verifications")
@@ -113,7 +140,7 @@ export async function POST(request: Request) {
     fullName: data.full_name,
     email: data.email,
     totalXp: exactTotalXp,
-    completedQuests: (completions || []).map((c: any) => c.quest_id),
+    completedQuests: completions.map((c: any) => c.quest_id),
     hasPin,
     requiresPinSetup: !hasPin,
   });

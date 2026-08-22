@@ -40,17 +40,47 @@ export async function GET(request: Request) {
 
     if (user) {
       isCheckedIn = user.checked_in || !!user.checked_in_at;
-      // 2. Fetch completed instant quests
+      // 2. Fetch completed instant quests (support both registration_id and user_email)
       const { data: compData } = await supabase
         .from("quest_completions")
-        .select("quest_id, xp_awarded, completed_at")
-        .eq("registration_id", user.id);
+        .select("*")
+        .or(`registration_id.eq.${user.id},user_email.ilike.${email}`);
 
-      if (compData) {
-        completions = compData.map((c) => c.quest_id);
-        completedDetails = compData.map((c) => ({ quest_id: c.quest_id, completed_at: c.completed_at }));
-        compXp = compData.reduce((sum, c) => sum + (c.xp_awarded || 0), 0);
+      let list = compData || [];
+      const hasRegister = list.some((c: any) => c.quest_id === "register");
+
+      // Auto-grant the 250 XP registration quest if missing for registered users
+      if (!hasRegister) {
+        try {
+          const newComp: Record<string, any> = {
+            quest_id: "register",
+            xp_awarded: 250,
+            user_email: email,
+            registration_id: user.id,
+          };
+          const { data: inserted } = await supabase
+            .from("quest_completions")
+            .insert(newComp)
+            .select()
+            .single();
+
+          if (inserted) {
+            list = [...list, inserted];
+          } else {
+            list = [...list, { ...newComp, created_at: new Date().toISOString() }];
+          }
+        } catch {
+          list = [...list, { quest_id: "register", xp_awarded: 250, created_at: new Date().toISOString() }];
+        }
       }
+
+      completions = list.map((c: any) => c.quest_id);
+      completedDetails = list.map((c: any) => ({
+        quest_id: c.quest_id,
+        xp_awarded: c.xp_awarded || 0,
+        completed_at: c.created_at || c.completed_at || new Date().toISOString(),
+      }));
+      compXp = list.reduce((sum: number, c: any) => sum + (c.xp_awarded || 0), 0);
     }
 
     // 3. Fetch quest verifications & message notes
