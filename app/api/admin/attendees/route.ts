@@ -20,11 +20,25 @@ export async function GET(request: Request) {
   }
 
   try {
+    const { searchParams } = new URL(request.url);
+    const limitParam = searchParams.get("limit");
+    const statusParam = searchParams.get("status")?.trim();
+    const fetchLimit = limitParam ? Math.min(Math.max(1, Number(limitParam)), 10000) : 3000;
+
     const supabase = getSupabase();
-    const { data, error } = await supabase
+    let query = supabase
       .from("registrations")
       .select("id, full_name, email, phone, organization, ticket_code, checked_in, checked_in_at, agreed_at, created_at, pincode")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(fetchLimit);
+
+    if (statusParam === "checked_in") {
+      query = query.or("checked_in.eq.true,checked_in_at.not.is.null");
+    } else if (statusParam === "pending") {
+      query = query.is("checked_in", false).is("checked_in_at", null);
+    }
+
+    const { data, error } = await query;
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ attendees: data });

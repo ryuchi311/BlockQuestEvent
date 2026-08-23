@@ -27,10 +27,21 @@ export async function GET(request: Request) {
     }
 
     const supabase = getSupabase();
-    let query = supabase.from("quest_message_notes").select("*").order("created_at", { ascending: false });
+    const limitParam = searchParams.get("limit");
+    const statusParam = searchParams.get("status")?.trim();
+    const fetchLimit = limitParam ? Math.min(Math.max(1, Number(limitParam)), 5000) : 1500;
+
+    let query = supabase
+      .from("quest_message_notes")
+      .select("id, quest_id, quest_title, user_name, user_email, ticket_code, xp, user_message, status, rejection_reason, approved_by, created_at, reviewed_at")
+      .order("created_at", { ascending: false })
+      .limit(fetchLimit);
 
     if (email) {
       query = query.ilike("user_email", email);
+    }
+    if (statusParam && statusParam !== "all") {
+      query = query.eq("status", statusParam);
     }
 
     const { data, error } = await query;

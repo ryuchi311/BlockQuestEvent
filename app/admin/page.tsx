@@ -601,95 +601,113 @@ export default function AdminPage() {
   }
 
   // ─── Fetch data ──────────────────────────────────────────────────────────
-  const fetchAttendees = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  const fetchAttendees = useCallback(async (isBackground?: any) => {
+    const isBg = isBackground === true;
+    if (!isBg) {
+      setLoading(true);
+      setError("");
+    }
     try {
-      const res = await adminFetch("/api/admin/attendees");
+      const res = await adminFetch("/api/admin/attendees?limit=3000");
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load attendees.");
       setAttendees(json.attendees ?? []);
     } catch (err: any) {
-      setError(err.message);
+      if (!isBg) setError(err.message);
     } finally {
-      setLoading(false);
+      if (!isBg) setLoading(false);
     }
   }, [adminFetch]);
 
-  const fetchQuests = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  const fetchQuests = useCallback(async (isBackground?: any) => {
+    const isBg = isBackground === true;
+    if (!isBg) {
+      setLoading(true);
+      setError("");
+    }
     try {
       const res = await adminFetch("/api/admin/quests");
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load quests.");
       setQuests(json.quests ?? []);
     } catch (err: any) {
-      setError(err.message);
+      if (!isBg) setError(err.message);
     } finally {
-      setLoading(false);
+      if (!isBg) setLoading(false);
     }
   }, [adminFetch]);
 
-  const fetchVerifications = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  const fetchVerifications = useCallback(async (isBackground?: any) => {
+    const isBg = isBackground === true;
+    if (!isBg) {
+      setLoading(true);
+      setError("");
+    }
     try {
-      const res = await adminFetch("/api/admin/verifications");
+      const res = await adminFetch("/api/admin/verifications?limit=1500");
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load verifications.");
       setVerifications(json.verifications ?? []);
     } catch (err: any) {
-      setError(err.message);
+      if (!isBg) setError(err.message);
     } finally {
-      setLoading(false);
+      if (!isBg) setLoading(false);
     }
   }, [adminFetch]);
 
-  const fetchMessageNotes = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  const fetchMessageNotes = useCallback(async (isBackground?: any) => {
+    const isBg = isBackground === true;
+    if (!isBg) {
+      setLoading(true);
+      setError("");
+    }
     try {
-      const res = await adminFetch("/api/admin/messages");
+      const res = await adminFetch("/api/admin/messages?limit=1500");
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load message notes.");
       setMessageNotes(json.messages ?? []);
     } catch (err: any) {
-      setError(err.message);
+      if (!isBg) setError(err.message);
     } finally {
-      setLoading(false);
+      if (!isBg) setLoading(false);
     }
   }, [adminFetch]);
 
-  const fetchAdminUsers = useCallback(async () => {
+  const fetchAdminUsers = useCallback(async (isBackground?: any) => {
     if (adminUser?.role !== "superadmin" && adminUser?.role !== "admin") return;
-    setLoading(true);
-    setError("");
+    const isBg = isBackground === true;
+    if (!isBg) {
+      setLoading(true);
+      setError("");
+    }
     try {
       const res = await adminFetch("/api/admin/users");
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load admin users.");
       setAdminUsersList(json.adminUsers ?? []);
     } catch (err: any) {
-      setError(err.message);
+      if (!isBg) setError(err.message);
     } finally {
-      setLoading(false);
+      if (!isBg) setLoading(false);
     }
   }, [adminUser, adminFetch]);
 
-  const fetchSocialMissions = useCallback(async () => {
+  const fetchSocialMissions = useCallback(async (isBackground?: any) => {
     if (adminUser?.role !== "superadmin") return;
-    setLoading(true);
-    setError("");
+    const isBg = isBackground === true;
+    if (!isBg) {
+      setLoading(true);
+      setError("");
+    }
     try {
       const res = await adminFetch("/api/social-missions");
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load social missions.");
       setSocialMissions(json.missions ?? []);
     } catch (err: any) {
-      setError(err.message);
+      if (!isBg) setError(err.message);
     } finally {
-      setLoading(false);
+      if (!isBg) setLoading(false);
     }
   }, [adminUser, adminFetch]);
 
@@ -708,20 +726,29 @@ export default function AdminPage() {
     if (tab === "attendees") fetchAttendees();
     else if (tab === "quests") fetchQuests();
     else if (tab === "verifications") fetchVerifications();
+    else if (tab === "messages") fetchMessageNotes();
+    else if (tab === "questlog") {
+      fetchVerifications();
+      fetchMessageNotes();
+    }
     else if (tab === "staff") fetchAdminUsers();
     else if (tab === "socials") fetchSocialMissions();
-  }, [tab, fetchAttendees, fetchQuests, fetchVerifications, fetchAdminUsers, fetchSocialMissions]);
+  }, [tab, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes, fetchAdminUsers, fetchSocialMissions]);
 
-  // ── Auto Refresh ──
+  // ── Auto Refresh (Background Silent Polling - No UI Flickering) ──
   useEffect(() => {
     if (!authed || !autoRefresh || tab === "scanner") return;
     const interval = setInterval(() => {
-      if (tab === "attendees") fetchAttendees();
-      else if (tab === "quests") fetchQuests();
-      else if (tab === "verifications") fetchVerifications();
-      else if (tab === "messages") fetchMessageNotes();
-      else if (tab === "staff") fetchAdminUsers();
-      else if (tab === "socials") fetchSocialMissions();
+      if (tab === "attendees") fetchAttendees(true);
+      else if (tab === "quests") fetchQuests(true);
+      else if (tab === "verifications") fetchVerifications(true);
+      else if (tab === "messages") fetchMessageNotes(true);
+      else if (tab === "questlog") {
+        fetchVerifications(true);
+        fetchMessageNotes(true);
+      }
+      else if (tab === "staff") fetchAdminUsers(true);
+      else if (tab === "socials") fetchSocialMissions(true);
     }, 10000);
     return () => clearInterval(interval);
   }, [authed, autoRefresh, tab, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes, fetchAdminUsers, fetchSocialMissions]);
@@ -729,12 +756,18 @@ export default function AdminPage() {
   const [rejectingItem, setRejectingItem] = useState<QuestVerification | null>(null);
   const [rejectionReasonInput, setRejectionReasonInput] = useState("");
 
+  // ── Quest Verification Action Modal State ──
+  const [actionModalVerification, setActionModalVerification] = useState<QuestVerification | null>(null);
+  const [verificationActionReason, setVerificationActionReason] = useState("");
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
+
   const [deletingQuestId, setDeletingQuestId] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
   async function handleVerifyQuest(id: number, newStatus: "Approved" | "Rejected" | "Pending", reason?: string) {
     const reviewer = adminUser?.email || "Admin";
+    setIsProcessingAction(true);
     try {
       const res = await adminFetch("/api/admin/verifications", {
         method: "PATCH",
@@ -750,8 +783,14 @@ export default function AdminPage() {
             : item
         )
       );
+      if (actionModalVerification?.id === id) {
+        setActionModalVerification(null);
+        setVerificationActionReason("");
+      }
     } catch (err: any) {
       alert("Verification Error: " + err.message);
+    } finally {
+      setIsProcessingAction(false);
     }
   }
 
@@ -2999,45 +3038,38 @@ export default function AdminPage() {
                             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                               <button
                                 className="admin-edit-btn"
-                                onClick={() => handleVerifyQuest(v.id, "Approved")}
-                                style={{
-                                  background: v.status === "Approved" ? "rgba(16, 185, 129, 0.35)" : "rgba(16, 185, 129, 0.15)",
-                                  borderColor: "rgba(16, 185, 129, 0.4)",
-                                  color: "#34d399",
-                                  padding: "6px 12px",
-                                  fontSize: "0.78rem",
-                                  cursor: "pointer"
-                                }}
-                              >
-                                {v.status === "Approved" ? "✓ Approved (Re-approve)" : "✓ Approve"}
-                              </button>
-                              <button
-                                className="admin-delete-btn"
                                 onClick={() => {
-                                  setRejectingItem(v);
-                                  setRejectionReasonInput(v.rejection_reason || "");
+                                  setActionModalVerification(v);
+                                  setVerificationActionReason(v.rejection_reason || "");
                                 }}
                                 style={{
-                                  background: v.status === "Rejected" ? "rgba(239, 68, 68, 0.35)" : "rgba(239, 68, 68, 0.15)",
-                                  borderColor: "rgba(239, 68, 68, 0.4)",
-                                  color: "#ef4444",
-                                  padding: "6px 12px",
-                                  fontSize: "0.78rem",
-                                  cursor: "pointer"
+                                  background: v.status === "Pending"
+                                    ? "linear-gradient(135deg, rgba(245, 166, 35, 0.25) 0%, rgba(217, 119, 6, 0.25) 100%)"
+                                    : v.status === "Approved"
+                                    ? "rgba(16, 185, 129, 0.18)"
+                                    : "rgba(239, 68, 68, 0.18)",
+                                  borderColor: v.status === "Pending"
+                                    ? "rgba(245, 166, 35, 0.6)"
+                                    : v.status === "Approved"
+                                    ? "rgba(16, 185, 129, 0.4)"
+                                    : "rgba(239, 68, 68, 0.4)",
+                                  color: v.status === "Pending"
+                                    ? "#fbbf24"
+                                    : v.status === "Approved"
+                                    ? "#34d399"
+                                    : "#f87171",
+                                  padding: "6px 14px",
+                                  fontSize: "0.8rem",
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 6
                                 }}
+                                title="Open Quest Verification Action Modal"
                               >
-                                {v.status === "Rejected" ? "✕ Rejected" : "✕ Reject"}
+                                {v.status === "Pending" ? "⚡ Review & Action" : v.status === "Approved" ? "✓ Edit Action" : "✕ Edit Action"}
                               </button>
-                              {v.status !== "Pending" && (
-                                <button
-                                  className="admin-refresh-btn"
-                                  onClick={() => handleVerifyQuest(v.id, "Pending")}
-                                  title="Reset status back to Pending"
-                                  style={{ padding: "6px 10px", fontSize: "0.75rem" }}
-                                >
-                                  🔄 Reset to Pending
-                                </button>
-                              )}
                             </div>
                           )}
                         </td>
@@ -5408,6 +5440,321 @@ export default function AdminPage() {
               >
                 Close Preview
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Quest Verification Action & Review Modal ── */}
+      {actionModalVerification && (
+        <div
+          className="admin-modal-overlay"
+          onClick={() => {
+            if (!isProcessingAction) {
+              setActionModalVerification(null);
+              setVerificationActionReason("");
+            }
+          }}
+          style={{ zIndex: 1000, background: "rgba(0,0,0,0.85)" }}
+        >
+          <div
+            className="admin-modal"
+            style={{ maxWidth: 580, width: "94%", padding: "24px 28px", maxHeight: "90vh", overflowY: "auto" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18, borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 14 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: "1.2rem", color: "var(--gold-light)", display: "flex", alignItems: "center", gap: 8, fontWeight: 800 }}>
+                  <span>⚡</span> Quest Verification Action
+                </h3>
+                <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
+                  Review submitted proof and take administrative action
+                </p>
+              </div>
+              <button
+                className="admin-modal__close"
+                onClick={() => {
+                  if (!isProcessingAction) {
+                    setActionModalVerification(null);
+                    setVerificationActionReason("");
+                  }
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Quester & Quest Info Card */}
+            <div style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(245,166,35,0.2)",
+              borderRadius: 12,
+              padding: "14px 16px",
+              marginBottom: 18,
+              display: "flex",
+              flexDirection: "column",
+              gap: 8
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                <div>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block" }}>Quester / Attendee:</span>
+                  <strong style={{ fontSize: "0.95rem", color: "#fff" }}>{actionModalVerification.user_name}</strong>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginLeft: 8 }}>({actionModalVerification.user_email})</span>
+                </div>
+                {actionModalVerification.ticket_code && (
+                  <span style={{
+                    padding: "3px 8px",
+                    background: "rgba(245,166,35,0.15)",
+                    border: "1px solid rgba(245,166,35,0.3)",
+                    borderRadius: 6,
+                    fontSize: "0.75rem",
+                    color: "var(--gold-light)",
+                    fontWeight: 700
+                  }}>
+                    🎫 {actionModalVerification.ticket_code}
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, paddingTop: 6, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                <div>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block" }}>Quest Title:</span>
+                  <span style={{ fontSize: "0.9rem", color: "#c084fc", fontWeight: 700 }}>{actionModalVerification.quest_title}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span className="admin-xp-badge" style={{ fontSize: "0.85rem", padding: "4px 10px" }}>
+                    ⭐ +{actionModalVerification.xp} XP
+                  </span>
+                  <span className={`admin-status-badge ${actionModalVerification.status === "Approved" ? "admin-status-badge--live" : actionModalVerification.status === "Rejected" ? "admin-status-badge--done" : "admin-status-badge--soon"}`}>
+                    {actionModalVerification.status === "Approved" ? "✓ Approved" : actionModalVerification.status === "Rejected" ? "✕ Rejected" : "⏳ Pending"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Submitted Proof Section */}
+            <div style={{ marginBottom: 20 }}>
+              <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                📸 Submitted Proof
+              </span>
+
+              {actionModalVerification.proof_url && actionModalVerification.proof_url !== "Text Submission" ? (
+                <div style={{
+                  position: "relative",
+                  borderRadius: 10,
+                  overflow: "hidden",
+                  border: "1px solid rgba(245, 166, 35, 0.4)",
+                  background: "#050508",
+                  textAlign: "center",
+                  padding: 10
+                }}>
+                  <img
+                    src={actionModalVerification.proof_url}
+                    alt="Proof full"
+                    style={{
+                      maxHeight: 220,
+                      maxWidth: "100%",
+                      objectFit: "contain",
+                      borderRadius: 6,
+                      cursor: "pointer"
+                    }}
+                    onClick={() => setSelectedProofImage(actionModalVerification.proof_url)}
+                    title="Click to view high-res zoom preview"
+                  />
+                  <div style={{ marginTop: 6 }}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProofImage(actionModalVerification.proof_url)}
+                      style={{
+                        background: "rgba(245, 166, 35, 0.15)",
+                        border: "1px solid rgba(245, 166, 35, 0.3)",
+                        color: "var(--gold-light)",
+                        padding: "4px 12px",
+                        borderRadius: 8,
+                        fontSize: "0.76rem",
+                        cursor: "pointer",
+                        fontWeight: 600
+                      }}
+                    >
+                      🔍 Click to Zoom / Inspect Image
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: "12px 14px", background: "rgba(255,255,255,0.04)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", color: "var(--text-muted)", fontSize: "0.82rem" }}>
+                  💬 No screenshot required for this verification (Text / Instant submission).
+                </div>
+              )}
+
+              {actionModalVerification.user_message && (
+                <div style={{
+                  marginTop: 12,
+                  padding: "10px 14px",
+                  background: "rgba(245, 166, 35, 0.08)",
+                  border: "1px solid rgba(245, 166, 35, 0.25)",
+                  borderRadius: 8
+                }}>
+                  <span style={{ fontSize: "0.75rem", color: "var(--gold-light)", fontWeight: 700, display: "block", marginBottom: 4 }}>
+                    💬 Quester Note / Message:
+                  </span>
+                  <p style={{ margin: 0, fontSize: "0.85rem", color: "#fff", whiteSpace: "pre-wrap" }}>
+                    "{actionModalVerification.user_message}"
+                  </p>
+                </div>
+              )}
+
+              {actionModalVerification.rejection_reason && (
+                <div style={{
+                  marginTop: 10,
+                  padding: "8px 12px",
+                  background: "rgba(239, 68, 68, 0.1)",
+                  border: "1px solid rgba(239, 68, 68, 0.3)",
+                  borderRadius: 8,
+                  fontSize: "0.8rem",
+                  color: "#f87171"
+                }}>
+                  <strong>Previous Rejection Reason:</strong> "{actionModalVerification.rejection_reason}"
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons Section */}
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 18 }}>
+              <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                ⚡ Administrative Action
+              </span>
+
+              {/* Approve Button */}
+              <button
+                type="button"
+                disabled={isProcessingAction}
+                onClick={() => handleVerifyQuest(actionModalVerification.id, "Approved")}
+                style={{
+                  width: "100%",
+                  padding: "12px 18px",
+                  background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  border: "1px solid #10b981",
+                  borderRadius: 10,
+                  color: "#fff",
+                  fontWeight: 800,
+                  fontSize: "0.95rem",
+                  cursor: isProcessingAction ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  boxShadow: "0 4px 14px rgba(16, 185, 129, 0.35)",
+                  marginBottom: 16
+                }}
+              >
+                {isProcessingAction ? "Processing..." : `🎉 Approve & Award +${actionModalVerification.xp} XP`}
+              </button>
+
+              {/* Reject Section with presets */}
+              <div style={{
+                background: "rgba(239, 68, 68, 0.05)",
+                border: "1px solid rgba(239, 68, 68, 0.2)",
+                borderRadius: 10,
+                padding: "12px 14px",
+                marginBottom: 16
+              }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#f87171", display: "block", marginBottom: 8 }}>
+                  ✕ Or Reject with Reason:
+                </span>
+
+                {/* Quick Presets */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                  {[
+                    "📷 Unclear / Blurry Image",
+                    "🚫 Incorrect Quest Mission",
+                    "📑 Duplicate Proof",
+                    "❓ Ineligible Screenshot"
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setVerificationActionReason(preset)}
+                      style={{
+                        padding: "3px 8px",
+                        borderRadius: 6,
+                        background: "rgba(255,255,255,0.06)",
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        color: "#e2e8f0",
+                        fontSize: "0.72rem",
+                        cursor: "pointer"
+                      }}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+
+                <textarea
+                  className="qf-input"
+                  rows={2}
+                  placeholder="Type rejection reason (optional)..."
+                  value={verificationActionReason}
+                  onChange={(e) => setVerificationActionReason(e.target.value)}
+                  style={{ width: "100%", fontSize: "0.82rem", resize: "vertical", marginBottom: 10 }}
+                />
+
+                <button
+                  type="button"
+                  disabled={isProcessingAction}
+                  onClick={() => handleVerifyQuest(actionModalVerification.id, "Rejected", verificationActionReason.trim())}
+                  style={{
+                    width: "100%",
+                    padding: "9px 16px",
+                    background: "rgba(239, 68, 68, 0.2)",
+                    border: "1px solid rgba(239, 68, 68, 0.4)",
+                    borderRadius: 8,
+                    color: "#ef4444",
+                    fontWeight: 700,
+                    fontSize: "0.88rem",
+                    cursor: isProcessingAction ? "not-allowed" : "pointer"
+                  }}
+                >
+                  {isProcessingAction ? "Processing..." : "✕ Confirm Reject Submission"}
+                </button>
+              </div>
+
+              {/* Reset to Pending (if already verified) */}
+              {actionModalVerification.status !== "Pending" && (
+                <button
+                  type="button"
+                  disabled={isProcessingAction}
+                  onClick={() => handleVerifyQuest(actionModalVerification.id, "Pending")}
+                  style={{
+                    width: "100%",
+                    padding: "8px 14px",
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    borderRadius: 8,
+                    color: "var(--text-secondary)",
+                    fontSize: "0.8rem",
+                    cursor: isProcessingAction ? "not-allowed" : "pointer",
+                    marginBottom: 12
+                  }}
+                >
+                  🔄 Reset Status Back to Pending
+                </button>
+              )}
+
+              {/* Cancel Button */}
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  className="admin-cancel-btn"
+                  onClick={() => {
+                    setActionModalVerification(null);
+                    setVerificationActionReason("");
+                  }}
+                  style={{ width: "100%", padding: "10px", textAlign: "center" }}
+                >
+                  Close Modal
+                </button>
+              </div>
             </div>
           </div>
         </div>

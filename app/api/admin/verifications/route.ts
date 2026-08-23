@@ -90,10 +90,21 @@ export async function GET(request: Request) {
     }
 
     // Admin view: fetch strictly from quest_verifications table (DESC - newest first)
-    const { data, error } = await supabase
+    const limitParam = searchParams.get("limit");
+    const statusParam = searchParams.get("status")?.trim();
+    const fetchLimit = limitParam ? Math.min(Math.max(1, Number(limitParam)), 5000) : 1500;
+
+    let query = supabase
       .from("quest_verifications")
-      .select("*")
-      .order("created_at", { ascending: false });
+      .select("id, quest_id, quest_title, user_name, user_email, ticket_code, xp, proof_url, user_message, status, rejection_reason, approved_by, created_at, reviewed_at")
+      .order("created_at", { ascending: false })
+      .limit(fetchLimit);
+
+    if (statusParam && statusParam !== "all") {
+      query = query.eq("status", statusParam);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
