@@ -420,6 +420,60 @@ export default function AdminPage() {
   // ── Copy tooltip ──
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
+  // ── Privacy / Masking for Attendees Contact Info ──
+  const [revealEmails, setRevealEmails] = useState(false);
+  const [revealPhones, setRevealPhones] = useState(false);
+  const [revealedEmailIds, setRevealedEmailIds] = useState<Set<number>>(new Set());
+  const [revealedPhoneIds, setRevealedPhoneIds] = useState<Set<number>>(new Set());
+
+  // ── Privacy / Masking for Quest Log Emails ──
+  const [revealQuestLogEmails, setRevealQuestLogEmails] = useState(false);
+  const [revealedQuestLogKeys, setRevealedQuestLogKeys] = useState<Set<string>>(new Set());
+
+  const toggleRevealEmail = (id: number) => {
+    setRevealedEmailIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleRevealPhone = (id: number) => {
+    setRevealedPhoneIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleRevealQuestLogEmail = (key: string) => {
+    setRevealedQuestLogKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const maskEmail = (em: string) => {
+    if (!em) return "—";
+    const parts = em.split("@");
+    if (parts.length < 2) return "••••••••";
+    const name = parts[0];
+    const domain = parts[1];
+    const maskedName = name.length <= 2 ? name[0] + "***" : name.slice(0, 2) + "***" + name.slice(-1);
+    return `${maskedName}@${domain}`;
+  };
+
+  const maskPhone = (ph: string) => {
+    if (!ph) return "—";
+    const clean = ph.trim();
+    if (clean.length <= 5) return "•••••";
+    return clean.slice(0, 4) + " ••• " + clean.slice(-2);
+  };
+
   // ─── Token & Admin Fetch Helper ──────────────────────────────────────────
   function getAdminToken(): string {
     if (typeof window === "undefined") return "";
@@ -1826,6 +1880,42 @@ export default function AdminPage() {
                 ↻ Refresh
               </button>
 
+              <button
+                className={`admin-refresh-btn ${revealEmails ? "admin-refresh-btn--active" : ""}`}
+                onClick={() => {
+                  setRevealEmails((prev) => !prev);
+                  setRevealedEmailIds(new Set());
+                }}
+                title={revealEmails ? "Hide / Mask all attendee emails" : "Reveal all attendee emails"}
+                style={{
+                  borderColor: revealEmails ? "rgba(245,166,35,0.6)" : undefined,
+                  color: revealEmails ? "var(--gold-light)" : undefined,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6
+                }}
+              >
+                {revealEmails ? "🙈 Mask Emails" : "📧 Reveal Emails"}
+              </button>
+
+              <button
+                className={`admin-refresh-btn ${revealPhones ? "admin-refresh-btn--active" : ""}`}
+                onClick={() => {
+                  setRevealPhones((prev) => !prev);
+                  setRevealedPhoneIds(new Set());
+                }}
+                title={revealPhones ? "Hide / Mask all attendee phone numbers" : "Reveal all attendee phone numbers"}
+                style={{
+                  borderColor: revealPhones ? "rgba(245,166,35,0.6)" : undefined,
+                  color: revealPhones ? "var(--gold-light)" : undefined,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6
+                }}
+              >
+                {revealPhones ? "🙈 Mask Phones" : "📱 Reveal Phones"}
+              </button>
+
               {adminUser?.role === 'superadmin' && (
                 <button
                   className="admin-add-btn"
@@ -1844,8 +1934,52 @@ export default function AdminPage() {
                   <tr>
                     <th>#</th>
                     <th>Name</th>
-                    <th>Email</th>
-                    <th>Phone</th>
+                    <th>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        <span>Email</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRevealEmails((prev) => !prev);
+                            setRevealedEmailIds(new Set());
+                          }}
+                          title={revealEmails ? "Mask all emails" : "Reveal all emails"}
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            padding: 0,
+                            fontSize: "0.85rem",
+                            opacity: 0.8,
+                          }}
+                        >
+                          {revealEmails ? "🙈" : "👁️"}
+                        </button>
+                      </div>
+                    </th>
+                    <th>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        <span>Phone</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRevealPhones((prev) => !prev);
+                            setRevealedPhoneIds(new Set());
+                          }}
+                          title={revealPhones ? "Mask all phone numbers" : "Reveal all phone numbers"}
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            padding: 0,
+                            fontSize: "0.85rem",
+                            opacity: 0.8,
+                          }}
+                        >
+                          {revealPhones ? "🙈" : "👁️"}
+                        </button>
+                      </div>
+                    </th>
                     <th>Organization</th>
                     <th>Ticket Code</th>
                     <th>Check-in Status</th>
@@ -1863,21 +1997,66 @@ export default function AdminPage() {
                       </td>
                     </tr>
                   ) : (
-                    paginatedAttendees.map((a, i) => (
-                      <tr key={a.id} className="admin-table__row">
-                        <td className="admin-table__num">{attendeeStartIndex + i + 1}</td>
-                        <td className="admin-table__name">{a.full_name}</td>
-                        <td className="admin-table__email">{a.email}</td>
-                        <td>{a.phone}</td>
-                        <td>{a.organization || <span className="admin-table__muted">—</span>}</td>
-                        <td>
-                          {a.ticket_code ? (
-                            <button
-                              className="admin-ticket-code-btn"
-                              onClick={() => copyTicket(a)}
-                              title="Click to copy ticket code"
-                            >
-                              {a.ticket_code}
+                    paginatedAttendees.map((a, i) => {
+                      const isEmailRevealed = revealEmails || revealedEmailIds.has(a.id);
+                      const isPhoneRevealed = revealPhones || revealedPhoneIds.has(a.id);
+                      return (
+                        <tr key={a.id} className="admin-table__row">
+                          <td className="admin-table__num">{attendeeStartIndex + i + 1}</td>
+                          <td className="admin-table__name">{a.full_name}</td>
+                          <td className="admin-table__email">
+                            <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                              <span>{isEmailRevealed ? a.email : maskEmail(a.email)}</span>
+                              <button
+                                type="button"
+                                onClick={() => toggleRevealEmail(a.id)}
+                                title={isEmailRevealed ? "Hide email" : "Reveal email"}
+                                style={{
+                                  background: "transparent",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  padding: 0,
+                                  fontSize: "0.85rem",
+                                  opacity: 0.7,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                }}
+                              >
+                                {isEmailRevealed ? "🙈" : "👁️"}
+                              </button>
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                              <span>{isPhoneRevealed ? a.phone : maskPhone(a.phone)}</span>
+                              <button
+                                type="button"
+                                onClick={() => toggleRevealPhone(a.id)}
+                                title={isPhoneRevealed ? "Hide phone" : "Reveal phone"}
+                                style={{
+                                  background: "transparent",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  padding: 0,
+                                  fontSize: "0.85rem",
+                                  opacity: 0.7,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                }}
+                              >
+                                {isPhoneRevealed ? "🙈" : "👁️"}
+                              </button>
+                            </div>
+                          </td>
+                          <td>{a.organization || <span className="admin-table__muted">—</span>}</td>
+                          <td>
+                            {a.ticket_code ? (
+                              <button
+                                className="admin-ticket-code-btn"
+                                onClick={() => copyTicket(a)}
+                                title="Click to copy ticket code"
+                              >
+                                {a.ticket_code}
                               <span className="admin-ticket-code-btn__copy">
                                 {copiedId === a.id ? "✓" : "⧉"}
                               </span>
@@ -1961,8 +2140,9 @@ export default function AdminPage() {
                           )}
                         </td>
                       </tr>
-                    ))
-                  )}
+                    );
+                  })
+                )}
                 </tbody>
               </table>
             </div>
@@ -3193,6 +3373,24 @@ export default function AdminPage() {
                 </div>
                 <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                   <button
+                    onClick={() => {
+                      setRevealQuestLogEmails((prev) => !prev);
+                      setRevealedQuestLogKeys(new Set());
+                    }}
+                    className={`admin-refresh-btn ${revealQuestLogEmails ? "admin-refresh-btn--active" : ""}`}
+                    title={revealQuestLogEmails ? "Hide / Mask all emails in Quest Log" : "Reveal all emails in Quest Log"}
+                    style={{
+                      borderColor: revealQuestLogEmails ? "rgba(245,166,35,0.6)" : undefined,
+                      color: revealQuestLogEmails ? "var(--gold-light)" : undefined,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6
+                    }}
+                  >
+                    {revealQuestLogEmails ? "🙈 Mask Emails" : "📧 Reveal Emails"}
+                  </button>
+
+                  <button
                     onClick={exportToCSV}
                     className="admin-action-btn"
                     style={{
@@ -3261,7 +3459,31 @@ export default function AdminPage() {
                   <thead>
                     <tr>
                       {visibleColumns.quester && <th>👤 Quester Name</th>}
-                      {visibleColumns.email && <th>📧 Email</th>}
+                      {visibleColumns.email && (
+                        <th>
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                            <span>📧 Email</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRevealQuestLogEmails((prev) => !prev);
+                                setRevealedQuestLogKeys(new Set());
+                              }}
+                              title={revealQuestLogEmails ? "Mask all emails" : "Reveal all emails"}
+                              style={{
+                                background: "transparent",
+                                border: "none",
+                                cursor: "pointer",
+                                padding: 0,
+                                fontSize: "0.85rem",
+                                opacity: 0.8,
+                              }}
+                            >
+                              {revealQuestLogEmails ? "🙈" : "👁️"}
+                            </button>
+                          </div>
+                        </th>
+                      )}
                       {visibleColumns.ticket && <th>🎫 Ticket</th>}
                       {visibleColumns.quest && <th>⚡ Quest Title</th>}
                       {visibleColumns.xp && <th>⭐ XP</th>}
@@ -3279,10 +3501,36 @@ export default function AdminPage() {
                         </td>
                       </tr>
                     ) : (
-                      filteredLogs.slice((questLogPage - 1) * questLogPageSize, (questLogPage - 1) * questLogPageSize + questLogPageSize).map((item) => (
-                        <tr key={`${item.logType}-${item.id}`}>
-                          {visibleColumns.quester && <td style={{ fontWeight: 700, color: "#fff" }}>{item.user_name}</td>}
-                          {visibleColumns.email && <td style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>{item.user_email}</td>}
+                      filteredLogs.slice((questLogPage - 1) * questLogPageSize, (questLogPage - 1) * questLogPageSize + questLogPageSize).map((item) => {
+                        const logKey = `${item.logType}-${item.id}`;
+                        const isLogEmailRevealed = revealQuestLogEmails || revealedQuestLogKeys.has(logKey);
+                        return (
+                          <tr key={logKey}>
+                            {visibleColumns.quester && <td style={{ fontWeight: 700, color: "#fff" }}>{item.user_name}</td>}
+                            {visibleColumns.email && (
+                              <td style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
+                                <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                                  <span>{isLogEmailRevealed ? item.user_email : maskEmail(item.user_email)}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleRevealQuestLogEmail(logKey)}
+                                    title={isLogEmailRevealed ? "Hide email" : "Reveal email"}
+                                    style={{
+                                      background: "transparent",
+                                      border: "none",
+                                      cursor: "pointer",
+                                      padding: 0,
+                                      fontSize: "0.85rem",
+                                      opacity: 0.7,
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                    }}
+                                  >
+                                    {isLogEmailRevealed ? "🙈" : "👁️"}
+                                  </button>
+                                </div>
+                              </td>
+                            )}
                           {visibleColumns.ticket && <td style={{ color: "var(--gold-light)", fontSize: "0.82rem" }}>{item.ticket_code || "N/A"}</td>}
                           {visibleColumns.quest && <td style={{ fontWeight: 700, color: "#c084fc" }}>{item.quest_title}</td>}
                           {visibleColumns.xp && <td><span className="admin-xp-badge">+{item.xp} XP</span></td>}
@@ -3328,8 +3576,9 @@ export default function AdminPage() {
                             </td>
                           )}
                         </tr>
-                      ))
-                    )}
+                      );
+                    })
+                  )}
                   </tbody>
                 </table>
               </div>
