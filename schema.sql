@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS public.quest_verifications (
   ticket_code TEXT,
   xp INTEGER NOT NULL DEFAULT 0,
   proof_url TEXT NOT NULL,
+  proof_hash TEXT,
   user_message TEXT,
   status TEXT NOT NULL DEFAULT 'Pending', -- 'Pending', 'Approved', 'Rejected'
   rejection_reason TEXT,
@@ -120,6 +121,7 @@ ALTER TABLE public.admin_users ADD COLUMN IF NOT EXISTS requires_password_change
 -- Optional migration statement if table was created in an earlier version:
 ALTER TABLE public.quest_verifications ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
 ALTER TABLE public.quest_verifications ADD COLUMN IF NOT EXISTS user_message TEXT;
+ALTER TABLE public.quest_verifications ADD COLUMN IF NOT EXISTS proof_hash TEXT;
 
 
 -- Quest Completions table to track claimed XP

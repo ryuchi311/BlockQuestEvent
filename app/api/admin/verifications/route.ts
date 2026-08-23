@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { verifyAdminAuth, unauthorizedResponse } from "../../../../utils/admin-auth";
+import crypto from "crypto";
 
 export const runtime = "nodejs";
 
@@ -126,6 +127,7 @@ export async function POST(request: Request) {
     }
 
     let finalProofUrl = proof_url || "Text Submission";
+    let proofHash: string | null = null;
 
     // Upload Base64 image to Supabase Storage bucket if provided
     if (proof_url && proof_url.startsWith("data:image/")) {
@@ -137,7 +139,26 @@ export async function POST(request: Request) {
         if (matches) {
           const contentType = matches[1];
           const ext = contentType.split("/")[1] || "png";
-          const buffer = Buffer.from(matches[2], "base64");
+          const base64Data = matches[2];
+          
+          // Compute SHA-256 hash to prevent duplicate approved images
+          const hashSum = crypto.createHash('sha256');
+          hashSum.update(base64Data);
+          proofHash = hashSum.digest('hex');
+
+          // Check if this image was already approved
+          const { data: existingProof } = await supabase
+            .from("quest_verifications")
+            .select("id")
+            .eq("proof_hash", proofHash)
+            .eq("status", "Approved")
+            .limit(1);
+
+          if (existingProof && existingProof.length > 0) {
+            return NextResponse.json({ error: "This image has already been used and approved." }, { status: 400 });
+          }
+
+          const buffer = Buffer.from(base64Data, "base64");
           const fileName = `proof_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
 
           const { data: storageData, error: storageError } = await supabase.storage
@@ -194,6 +215,7 @@ export async function POST(request: Request) {
           .from("quest_verifications")
           .update({
             proof_url: finalProofUrl,
+            proof_hash: proofHash,
             user_message: user_message || null,
             status: "Pending",
             rejection_reason: null,
@@ -215,6 +237,7 @@ export async function POST(request: Request) {
             ticket_code: newRecord.ticket_code,
             xp: newRecord.xp,
             proof_url: finalProofUrl,
+            proof_hash: proofHash,
             user_message: user_message || null,
             status: "Pending",
           })
