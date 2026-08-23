@@ -890,7 +890,16 @@ export default function AdminPage() {
     if (verificationModeFilter === "photo_only" && v.user_message) return false;
     if (verificationModeFilter === "photo_and_message" && !v.user_message) return false;
     return true;
-  }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }).sort((a, b) => {
+    const getPriority = (st: string) => {
+      if (st === "Pending") return 0;
+      if (st === "Rejected") return 1;
+      return 2; // "Approved" at the bottom
+    };
+    const diff = getPriority(a.status) - getPriority(b.status);
+    if (diff !== 0) return diff;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 
   // ─── Message Notes helpers (Text Notes ONLY) ───────────────────────────────
   const filteredMessageVerifications = messageNotes.filter((v) => {
@@ -906,7 +915,16 @@ export default function AdminPage() {
     if (!matchesQuery) return false;
     if (messageStatusFilter !== "all" && v.status !== messageStatusFilter) return false;
     return true;
-  }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }).sort((a, b) => {
+    const getPriority = (st: string) => {
+      if (st === "Pending") return 0;
+      if (st === "Rejected") return 1;
+      return 2; // "Approved" at the bottom
+    };
+    const diff = getPriority(a.status) - getPriority(b.status);
+    if (diff !== 0) return diff;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 
   function copyTicket(attendee: Attendee) {
     navigator.clipboard.writeText(attendee.ticket_code ?? "");
@@ -2812,6 +2830,142 @@ export default function AdminPage() {
         {/* ─── VERIFICATIONS TAB ─── */}
         {tab === "verifications" && !loading && (
           <>
+            {/* Compact Live Status Filters / Metric Pills */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              flexWrap: "wrap",
+              marginBottom: 14
+            }}>
+              {/* All / Total Pill */}
+              <button
+                type="button"
+                onClick={() => setVerificationStatusFilter("all")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "5px 12px",
+                  borderRadius: 20,
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  background: verificationStatusFilter === "all" ? "rgba(255, 255, 255, 0.15)" : "rgba(15, 23, 42, 0.6)",
+                  border: verificationStatusFilter === "all" ? "1px solid rgba(255, 255, 255, 0.5)" : "1px solid rgba(255, 255, 255, 0.1)",
+                  color: "#fff",
+                  boxShadow: verificationStatusFilter === "all" ? "0 0 10px rgba(255, 255, 255, 0.15)" : "none"
+                }}
+              >
+                <span>📊 All</span>
+                <span style={{
+                  background: "rgba(255, 255, 255, 0.15)",
+                  padding: "1px 7px",
+                  borderRadius: 10,
+                  fontSize: "0.76rem"
+                }}>
+                  {verifications.length}
+                </span>
+              </button>
+
+              {/* Pending Pill */}
+              <button
+                type="button"
+                onClick={() => setVerificationStatusFilter("Pending")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "5px 12px",
+                  borderRadius: 20,
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  background: verificationStatusFilter === "Pending" ? "rgba(245, 158, 11, 0.25)" : "rgba(245, 158, 11, 0.08)",
+                  border: verificationStatusFilter === "Pending" ? "1px solid rgba(245, 158, 11, 0.8)" : "1px solid rgba(245, 158, 11, 0.25)",
+                  color: "#fbbf24",
+                  boxShadow: verificationStatusFilter === "Pending" ? "0 0 12px rgba(245, 158, 11, 0.3)" : "none"
+                }}
+              >
+                <span>⏳ Pending</span>
+                <span style={{
+                  background: "rgba(245, 158, 11, 0.25)",
+                  padding: "1px 7px",
+                  borderRadius: 10,
+                  fontSize: "0.76rem",
+                  color: "#fef3c7"
+                }}>
+                  {verifications.filter((v) => v.status === "Pending").length}
+                </span>
+              </button>
+
+              {/* Approved Pill */}
+              <button
+                type="button"
+                onClick={() => setVerificationStatusFilter("Approved")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "5px 12px",
+                  borderRadius: 20,
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  background: verificationStatusFilter === "Approved" ? "rgba(16, 185, 129, 0.25)" : "rgba(16, 185, 129, 0.08)",
+                  border: verificationStatusFilter === "Approved" ? "1px solid rgba(16, 185, 129, 0.8)" : "1px solid rgba(16, 185, 129, 0.25)",
+                  color: "#34d399",
+                  boxShadow: verificationStatusFilter === "Approved" ? "0 0 12px rgba(16, 185, 129, 0.3)" : "none"
+                }}
+              >
+                <span>✓ Approved</span>
+                <span style={{
+                  background: "rgba(16, 185, 129, 0.25)",
+                  padding: "1px 7px",
+                  borderRadius: 10,
+                  fontSize: "0.76rem",
+                  color: "#d1fae5"
+                }}>
+                  {verifications.filter((v) => v.status === "Approved").length}
+                </span>
+              </button>
+
+              {/* Rejected Pill */}
+              <button
+                type="button"
+                onClick={() => setVerificationStatusFilter("Rejected")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "5px 12px",
+                  borderRadius: 20,
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  background: verificationStatusFilter === "Rejected" ? "rgba(239, 68, 68, 0.25)" : "rgba(239, 68, 68, 0.08)",
+                  border: verificationStatusFilter === "Rejected" ? "1px solid rgba(239, 68, 68, 0.8)" : "1px solid rgba(239, 68, 68, 0.25)",
+                  color: "#f87171",
+                  boxShadow: verificationStatusFilter === "Rejected" ? "0 0 12px rgba(239, 68, 68, 0.3)" : "none"
+                }}
+              >
+                <span>✕ Rejected</span>
+                <span style={{
+                  background: "rgba(239, 68, 68, 0.25)",
+                  padding: "1px 7px",
+                  borderRadius: 10,
+                  fontSize: "0.76rem",
+                  color: "#fee2e2"
+                }}>
+                  {verifications.filter((v) => v.status === "Rejected").length}
+                </span>
+              </button>
+            </div>
+
             <div className="admin-toolbar" style={{ flexWrap: "wrap", gap: 10 }}>
               <input
                 type="search"
@@ -3093,6 +3247,142 @@ export default function AdminPage() {
         {/* ─── MESSAGES TAB ─── */}
         {tab === "messages" && !loading && (
           <>
+            {/* Compact Live Status Filters / Metric Pills */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              flexWrap: "wrap",
+              marginBottom: 14
+            }}>
+              {/* All / Total Pill */}
+              <button
+                type="button"
+                onClick={() => setMessageStatusFilter("all")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "5px 12px",
+                  borderRadius: 20,
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  background: messageStatusFilter === "all" ? "rgba(255, 255, 255, 0.15)" : "rgba(15, 23, 42, 0.6)",
+                  border: messageStatusFilter === "all" ? "1px solid rgba(255, 255, 255, 0.5)" : "1px solid rgba(255, 255, 255, 0.1)",
+                  color: "#fff",
+                  boxShadow: messageStatusFilter === "all" ? "0 0 10px rgba(255, 255, 255, 0.15)" : "none"
+                }}
+              >
+                <span>💬 All</span>
+                <span style={{
+                  background: "rgba(255, 255, 255, 0.15)",
+                  padding: "1px 7px",
+                  borderRadius: 10,
+                  fontSize: "0.76rem"
+                }}>
+                  {messageNotes.length}
+                </span>
+              </button>
+
+              {/* Pending Pill */}
+              <button
+                type="button"
+                onClick={() => setMessageStatusFilter("Pending")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "5px 12px",
+                  borderRadius: 20,
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  background: messageStatusFilter === "Pending" ? "rgba(245, 158, 11, 0.25)" : "rgba(245, 158, 11, 0.08)",
+                  border: messageStatusFilter === "Pending" ? "1px solid rgba(245, 158, 11, 0.8)" : "1px solid rgba(245, 158, 11, 0.25)",
+                  color: "#fbbf24",
+                  boxShadow: messageStatusFilter === "Pending" ? "0 0 12px rgba(245, 158, 11, 0.3)" : "none"
+                }}
+              >
+                <span>⏳ Pending</span>
+                <span style={{
+                  background: "rgba(245, 158, 11, 0.25)",
+                  padding: "1px 7px",
+                  borderRadius: 10,
+                  fontSize: "0.76rem",
+                  color: "#fef3c7"
+                }}>
+                  {messageNotes.filter((m) => m.status === "Pending").length}
+                </span>
+              </button>
+
+              {/* Approved Pill */}
+              <button
+                type="button"
+                onClick={() => setMessageStatusFilter("Approved")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "5px 12px",
+                  borderRadius: 20,
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  background: messageStatusFilter === "Approved" ? "rgba(16, 185, 129, 0.25)" : "rgba(16, 185, 129, 0.08)",
+                  border: messageStatusFilter === "Approved" ? "1px solid rgba(16, 185, 129, 0.8)" : "1px solid rgba(16, 185, 129, 0.25)",
+                  color: "#34d399",
+                  boxShadow: messageStatusFilter === "Approved" ? "0 0 12px rgba(16, 185, 129, 0.3)" : "none"
+                }}
+              >
+                <span>✓ Approved</span>
+                <span style={{
+                  background: "rgba(16, 185, 129, 0.25)",
+                  padding: "1px 7px",
+                  borderRadius: 10,
+                  fontSize: "0.76rem",
+                  color: "#d1fae5"
+                }}>
+                  {messageNotes.filter((m) => m.status === "Approved").length}
+                </span>
+              </button>
+
+              {/* Rejected Pill */}
+              <button
+                type="button"
+                onClick={() => setMessageStatusFilter("Rejected")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "5px 12px",
+                  borderRadius: 20,
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  background: messageStatusFilter === "Rejected" ? "rgba(239, 68, 68, 0.25)" : "rgba(239, 68, 68, 0.08)",
+                  border: messageStatusFilter === "Rejected" ? "1px solid rgba(239, 68, 68, 0.8)" : "1px solid rgba(239, 68, 68, 0.25)",
+                  color: "#f87171",
+                  boxShadow: messageStatusFilter === "Rejected" ? "0 0 12px rgba(239, 68, 68, 0.3)" : "none"
+                }}
+              >
+                <span>✕ Rejected</span>
+                <span style={{
+                  background: "rgba(239, 68, 68, 0.25)",
+                  padding: "1px 7px",
+                  borderRadius: 10,
+                  fontSize: "0.76rem",
+                  color: "#fee2e2"
+                }}>
+                  {messageNotes.filter((m) => m.status === "Rejected").length}
+                </span>
+              </button>
+            </div>
+
             <div className="admin-toolbar" style={{ flexWrap: "wrap", gap: 10 }}>
               <input
                 type="search"
