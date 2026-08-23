@@ -167,6 +167,18 @@ export default function BoothScanPage() {
   }, [getAudioContext]);
 
   // ── Login Handler ──
+  async function safeJson<T = any>(res: Response): Promise<T> {
+    const text = await res.text();
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      if (!res.ok) {
+        throw new Error(`Server error HTTP ${res.status}`);
+      }
+      throw new Error(`Invalid response format from server`);
+    }
+  }
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoginLoading(true);
@@ -179,7 +191,7 @@ export default function BoothScanPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: loginEmail, password: loginPassword }),
       });
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Login failed.");
 
       const role = json.adminUser?.role;
@@ -255,7 +267,7 @@ export default function BoothScanPage() {
           }),
         });
 
-        const json = await res.json();
+        const json = await safeJson(res);
 
         if (!res.ok || !json.valid) {
           setStatus("invalid");

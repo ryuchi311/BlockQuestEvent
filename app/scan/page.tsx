@@ -209,6 +209,18 @@ export default function ScanPage() {
     }
   }, []);
 
+  async function safeJson<T = any>(res: Response): Promise<T> {
+    const text = await res.text();
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      if (!res.ok) {
+        throw new Error(`Server error HTTP ${res.status}`);
+      }
+      throw new Error(`Invalid response format from server`);
+    }
+  }
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoginLoading(true);
@@ -228,7 +240,7 @@ export default function ScanPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: loginEmail, password }),
       });
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Login failed.");
 
       const role = json.adminUser?.role;
@@ -283,7 +295,7 @@ export default function ScanPage() {
       const res = await fetch(`/api/admin/checkin?code=${encodeURIComponent(cleaned)}`, {
         headers,
       });
-      const json = await res.json();
+      const json = await safeJson(res);
 
       if (!res.ok || !json.valid) {
         setStatus("invalid");
@@ -321,7 +333,7 @@ export default function ScanPage() {
           headers,
           body: JSON.stringify({ ticket_code: a.ticket_code }),
         });
-        const json2 = await res2.json();
+        const json2 = await safeJson(res2);
         if (json2.valid) {
           setAttendee({ ...a, checked_in: true, checked_in_at: new Date().toISOString() });
           setStatus("success");

@@ -236,6 +236,18 @@ export default function ZealyMobileApp() {
     setMounted(true);
   }, []);
 
+  async function safeJson<T = any>(res: Response): Promise<T> {
+    const text = await res.text();
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      if (!res.ok) {
+        throw new Error(`Server error HTTP ${res.status}`);
+      }
+      throw new Error(`Invalid response format from server`);
+    }
+  }
+
   // Save states to localStorage when they change
   React.useEffect(() => {
     if (!mounted) return;
@@ -341,7 +353,7 @@ export default function ZealyMobileApp() {
   const loadApiQuests = React.useCallback(async () => {
     try {
       const res = await fetch("/api/admin/quests");
-      const json = await res.json();
+      const json = await safeJson(res);
       if (res.ok && Array.isArray(json.quests)) {
         const mappedQuests: Quest[] = json.quests
           .filter((q: any) => String(q.status || "").toLowerCase() !== "draft")
@@ -405,8 +417,8 @@ export default function ZealyMobileApp() {
         fetch(`/api/admin/verifications?email=${encodeURIComponent(email)}`),
         fetch(`/api/admin/messages?email=${encodeURIComponent(email)}`)
       ]);
-      const verifJson = await verifRes.json();
-      const msgJson = await msgRes.json();
+      const verifJson = await safeJson(verifRes);
+      const msgJson = await safeJson(msgRes);
 
       const vList = verifRes.ok && Array.isArray(verifJson.verifications)
         ? verifJson.verifications.map((v: any) => ({ ...v, uniqueKey: `verif_${v.id || v.quest_id}` }))
@@ -427,7 +439,7 @@ export default function ZealyMobileApp() {
   const fetchLeaderboard = React.useCallback(async () => {
     try {
       const res = await fetch("/api/leaderboard");
-      const json = await res.json();
+      const json = await safeJson(res);
       if (res.ok && Array.isArray(json.leaderboard)) {
         setLeaderboard(json.leaderboard);
         const myEmail = ticketEmail || authenticatedUser?.email || qrPass?.email;
@@ -447,7 +459,7 @@ export default function ZealyMobileApp() {
 
     try {
       const res = await fetch(`/api/user/sync?email=${encodeURIComponent(email)}`);
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) return;
 
       const { totalXp, completedQuests, completedQuestDetails, verifications, isCheckedIn } = json;
@@ -593,6 +605,42 @@ export default function ZealyMobileApp() {
 
   // Supabase syncUserData handles total XP and quest status sync seamlessly
 
+  function isStrictSocialLink(url: string): { valid: boolean; platform: "facebook" | "instagram" | null } {
+    if (!url || typeof url !== "string") return { valid: false, platform: null };
+    const trimmed = url.trim();
+    if (!trimmed) return { valid: false, platform: null };
+    try {
+      const parsed = new URL(trimmed.startsWith("http://") || trimmed.startsWith("https://") ? trimmed : `https://${trimmed}`);
+      const host = parsed.hostname.toLowerCase();
+      const isFb = host === "facebook.com" || host.endsWith(".facebook.com") || host === "fb.com" || host === "fb.watch";
+      const isIg = host === "instagram.com" || host.endsWith(".instagram.com") || host === "instagr.am";
+      if (isFb) return { valid: true, platform: "facebook" };
+      if (isIg) return { valid: true, platform: "instagram" };
+      return { valid: false, platform: null };
+    } catch {
+      return { valid: false, platform: null };
+    }
+  }
+
+  function isSocialLinkQuest(q?: Quest | null): boolean {
+    if (!q) return false;
+    const text = `${q.title} ${q.description || ""} ${q.actionLabel || ""} ${q.actionUrl || ""}`.toLowerCase();
+    return Boolean(
+      q.requiresMessage &&
+      !q.requiresProof &&
+      (
+        q.category === "social" ||
+        text.includes("facebook") ||
+        text.includes("instagram") ||
+        text.includes("feed") ||
+        text.includes("selfie") ||
+        text.includes("post link") ||
+        text.includes("fb/ig") ||
+        text.includes("hashtag")
+      )
+    );
+  }
+
   const handleSubmitProof = async () => {
     if (!selectedQuest || selectedQuest.status === "Done" || selectedQuest.status === "Pending Verification") return;
 
@@ -602,13 +650,25 @@ export default function ZealyMobileApp() {
 
     if (selectedQuest.requiresProof && !hasProof) return;
     if (selectedQuest.requiresMessage && !hasMessage) {
-      alert("💬 Please enter a message / note before submitting!");
+      if (isSocialLinkQuest(selectedQuest)) {
+        alert("🔗 Please paste your public Facebook or Instagram post link before submitting!");
+      } else {
+        alert("💬 Please enter a message / note before submitting!");
+      }
       return;
     }
-    if (userMessageInput.trim().length > 50) {
-      alert("💬 Message note cannot exceed 50 characters!");
+
+    if (isSocialLinkQuest(selectedQuest)) {
+      const check = isStrictSocialLink(userMessageInput);
+      if (!check.valid) {
+        alert("⚠️ Invalid Link: Strictly only public Facebook or Instagram post links are allowed!\n\nExamples:\n• https://www.facebook.com/...\n• https://www.instagram.com/p/...");
+        return;
+      }
+    } else if (userMessageInput.trim().length > 250) {
+      alert("💬 Message note cannot exceed 250 characters!");
       return;
     }
+
     if (!hasProof && !hasMessage) return;
 
     setProofSubmitting(true);
@@ -624,11 +684,11 @@ export default function ZealyMobileApp() {
           user_email: ticketEmail || authenticatedUser?.email || "quester@blockquest.ph",
           ticket_code: qrPass?.passCode || "BQF-GUEST",
           xp: selectedQuest.xp,
-          proof_url: proofImage || "Message Submission",
+          proof_url: proofImage || "Social Post Link",
           user_message: userMessageInput.trim() || null,
         }),
       });
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) {
         alert("❌ Submission Failed: " + (json.error || "Could not save to database."));
         return;
@@ -677,7 +737,7 @@ export default function ZealyMobileApp() {
         }),
       });
 
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) {
         throw new Error(json.error || "Claim error. Please try again.");
       }
@@ -724,7 +784,7 @@ export default function ZealyMobileApp() {
           pincode: ticketPinCode.trim(),
         }),
       });
-      const loginResult = await loginResponse.json();
+      const loginResult = await safeJson(loginResponse);
       if (!loginResponse.ok || !loginResult?.fullName || !loginResult.email) {
         if (loginResult?.requiresPin) {
           setShowPinInput(true);
@@ -738,7 +798,7 @@ export default function ZealyMobileApp() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: ticketEmail.trim(), password: ticketPassword }),
       });
-      const qrResult = await qrResponse.json();
+      const qrResult = await safeJson(qrResponse);
       if (!qrResponse.ok || !qrResult?.qrDataUrl || !qrResult.passCode) {
         setTicketError("Failed to fetch ticket credentials.");
         setTicketLoading(false);
@@ -817,7 +877,7 @@ export default function ZealyMobileApp() {
           pincode: cleanPin
         }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error || "Failed to set PIN code.");
 
       setShowPinSetupModal(false);
@@ -855,7 +915,7 @@ export default function ZealyMobileApp() {
           pincode: cleanNew
         }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error || "Failed to update Security PIN.");
 
       setShowChangePinModal(false);
@@ -1948,41 +2008,155 @@ export default function ZealyMobileApp() {
                                 border: "1px solid rgba(245, 166, 35, 0.25)",
                                 boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)"
                               }}>
-                                {/* Messagebox Input Note */}
-                                {selectedQuest.requiresMessage && (
-                                  <div style={{ marginBottom: selectedQuest.requiresProof ? 14 : 0 }}>
-                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                        <span style={{ fontSize: "1.1rem" }}>💬</span>
-                                        <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--gold-light)" }}>
-                                          Messagebox (Required)
+                                {/* Messagebox or Social Post Link Input */}
+                                {selectedQuest.requiresMessage && (() => {
+                                  const isSocial = isSocialLinkQuest(selectedQuest);
+                                  const socialCheck = isSocial ? isStrictSocialLink(userMessageInput) : null;
+
+                                  if (isSocial) {
+                                    return (
+                                      <div style={{ marginBottom: selectedQuest.requiresProof ? 14 : 0 }}>
+                                        <div style={{
+                                          background: "linear-gradient(135deg, rgba(24, 119, 242, 0.1) 0%, rgba(225, 48, 108, 0.1) 100%)",
+                                          border: "1px solid rgba(24, 119, 242, 0.3)",
+                                          borderRadius: 14,
+                                          padding: "14px 14px",
+                                          marginBottom: 12
+                                        }}>
+                                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                                            <span style={{ fontSize: "1.2rem" }}>🤳</span>
+                                            <strong style={{ fontSize: "0.88rem", color: "#fff" }}>
+                                              Selfie Post Verification (FB / IG)
+                                            </strong>
+                                          </div>
+                                          <p style={{ fontSize: "0.76rem", color: "rgba(255, 255, 255, 0.8)", margin: "0 0 10px 0", lineHeight: 1.4 }}>
+                                            1. Take a selfie with the speaker.<br />
+                                            2. Post it publicly on your <strong>Facebook</strong> or <strong>Instagram</strong> feed with photo, caption & hashtag <strong>#BlockQuestFiestaPH</strong>.<br />
+                                            3. Paste your public post link below.
+                                          </p>
+                                          <div style={{ display: "flex", gap: 8 }}>
+                                            <a
+                                              href="https://www.facebook.com"
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              style={{
+                                                display: "inline-flex",
+                                                alignItems: "center",
+                                                gap: 4,
+                                                padding: "4px 10px",
+                                                borderRadius: 8,
+                                                background: "rgba(24, 119, 242, 0.25)",
+                                                border: "1px solid rgba(24, 119, 242, 0.5)",
+                                                color: "#60a5fa",
+                                                fontSize: "0.72rem",
+                                                fontWeight: 700,
+                                                textDecoration: "none"
+                                              }}
+                                            >
+                                              📘 Open Facebook ↗
+                                            </a>
+                                            <a
+                                              href="https://www.instagram.com"
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              style={{
+                                                display: "inline-flex",
+                                                alignItems: "center",
+                                                gap: 4,
+                                                padding: "4px 10px",
+                                                borderRadius: 8,
+                                                background: "rgba(225, 48, 108, 0.25)",
+                                                border: "1px solid rgba(225, 48, 108, 0.5)",
+                                                color: "#f472b6",
+                                                fontSize: "0.72rem",
+                                                fontWeight: 700,
+                                                textDecoration: "none"
+                                              }}
+                                            >
+                                              📷 Open Instagram ↗
+                                            </a>
+                                          </div>
+                                        </div>
+
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                                          <span style={{ fontSize: "0.82rem", fontWeight: 800, color: "var(--gold-light)", display: "flex", alignItems: "center", gap: 6 }}>
+                                            <span>🔗</span> Paste Post Link (Required)
+                                          </span>
+                                          {userMessageInput.trim() && (
+                                            <span style={{
+                                              fontSize: "0.7rem",
+                                              fontWeight: 700,
+                                              color: socialCheck?.valid ? "#34d399" : "#f87171"
+                                            }}>
+                                              {socialCheck?.valid
+                                                ? socialCheck.platform === "facebook" ? "✓ Valid Facebook Link" : "✓ Valid Instagram Link"
+                                                : "✕ Only FB/IG links allowed"}
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        <input
+                                          type="url"
+                                          value={userMessageInput}
+                                          onChange={(e) => setUserMessageInput(e.target.value)}
+                                          placeholder="https://www.facebook.com/... or https://www.instagram.com/p/..."
+                                          disabled={!isActionCompleted}
+                                          style={{
+                                            width: "100%",
+                                            padding: "12px 14px",
+                                            borderRadius: 12,
+                                            background: "rgba(11, 15, 25, 0.9)",
+                                            border: userMessageInput.trim()
+                                              ? (socialCheck?.valid ? "1px solid #10b981" : "1px solid #ef4444")
+                                              : "1px solid rgba(245, 166, 35, 0.35)",
+                                            color: "#fff",
+                                            fontSize: "0.88rem",
+                                            outline: "none",
+                                            boxSizing: "border-box"
+                                          }}
+                                        />
+                                        <small style={{ display: "block", marginTop: 4, fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                                          🔒 Strictly accepts public posts on facebook.com or instagram.com only.
+                                        </small>
+                                      </div>
+                                    );
+                                  }
+
+                                  return (
+                                    <div style={{ marginBottom: selectedQuest.requiresProof ? 14 : 0 }}>
+                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                          <span style={{ fontSize: "1.1rem" }}>💬</span>
+                                          <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--gold-light)" }}>
+                                            Messagebox (Required)
+                                          </span>
+                                        </div>
+                                        <span style={{ fontSize: "0.72rem", color: userMessageInput.length >= 250 ? "#ef4444" : "var(--text-muted)", fontWeight: 700 }}>
+                                          {userMessageInput.length}/250
                                         </span>
                                       </div>
-                                      <span style={{ fontSize: "0.72rem", color: userMessageInput.length >= 50 ? "#ef4444" : "var(--text-muted)", fontWeight: 700 }}>
-                                        {userMessageInput.length}/50
-                                      </span>
+                                      <textarea
+                                        rows={2}
+                                        maxLength={250}
+                                        value={userMessageInput}
+                                        onChange={(e) => setUserMessageInput(e.target.value.slice(0, 250))}
+                                        placeholder="Type your note for the admin..."
+                                        style={{
+                                          width: "100%",
+                                          padding: "10px 14px",
+                                          borderRadius: 12,
+                                          background: "rgba(11, 15, 25, 0.85)",
+                                          border: userMessageInput.length >= 250 ? "1px solid #ef4444" : "1px solid rgba(245, 166, 35, 0.3)",
+                                          color: "#fff",
+                                          fontSize: "0.85rem",
+                                          outline: "none",
+                                          resize: "vertical",
+                                          boxSizing: "border-box"
+                                        }}
+                                      />
                                     </div>
-                                    <textarea
-                                      rows={2}
-                                      maxLength={50}
-                                      value={userMessageInput}
-                                      onChange={(e) => setUserMessageInput(e.target.value.slice(0, 50))}
-                                      placeholder="Type your note for the admin (max 50 chars)..."
-                                      style={{
-                                        width: "100%",
-                                        padding: "10px 14px",
-                                        borderRadius: 12,
-                                        background: "rgba(11, 15, 25, 0.85)",
-                                        border: userMessageInput.length >= 50 ? "1px solid #ef4444" : "1px solid rgba(245, 166, 35, 0.3)",
-                                        color: "#fff",
-                                        fontSize: "0.85rem",
-                                        outline: "none",
-                                        resize: "vertical",
-                                        boxSizing: "border-box"
-                                      }}
-                                    />
-                                  </div>
-                                )}
+                                  );
+                                })()}
 
                                 {selectedQuest.requiresProof && (
                                   <>
@@ -2112,9 +2286,13 @@ export default function ZealyMobileApp() {
 
                                 {/* Submit Proof / Message Button */}
                                 {(() => {
+                                  const isSocial = isSocialLinkQuest(selectedQuest);
+                                  const socialCheck = isSocial ? isStrictSocialLink(userMessageInput) : null;
                                   const isReady = isActionCompleted && (
                                     (selectedQuest.requiresProof ? !!proofImage : true) &&
-                                    (selectedQuest.requiresMessage ? !!userMessageInput.trim() : (!!proofImage || !!userMessageInput.trim()))
+                                    (selectedQuest.requiresMessage
+                                      ? (isSocial ? (socialCheck?.valid ?? false) : !!userMessageInput.trim())
+                                      : (!!proofImage || !!userMessageInput.trim()))
                                   );
 
                                   return (
@@ -2146,9 +2324,11 @@ export default function ZealyMobileApp() {
                                           ? selectedQuest.status === "Rejected" ? "📤 Resubmit for Verification →" : "📤 Submit Verification →"
                                           : !isActionCompleted
                                             ? "🔒 Complete Task First"
-                                            : selectedQuest.requiresMessage && !userMessageInput.trim()
-                                              ? "💬 Please Enter Your Message Above"
-                                              : "📷 Select Screenshot / Fill Message"}
+                                            : isSocial
+                                              ? (userMessageInput.trim() ? "⚠️ Paste Valid Facebook/Instagram Post Link" : "🔗 Paste Public Post Link Above")
+                                              : selectedQuest.requiresMessage && !userMessageInput.trim()
+                                                ? "💬 Please Enter Your Message Above"
+                                                : "📷 Select Screenshot / Fill Message"}
                                     </button>
                                   );
                                 })()}

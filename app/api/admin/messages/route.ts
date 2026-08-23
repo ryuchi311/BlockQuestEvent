@@ -64,7 +64,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "quest_id and user_message are required." }, { status: 400 });
     }
 
-    const trimmedMsg = String(user_message).trim().slice(0, 50);
+    const trimmedMsg = String(user_message).trim().slice(0, 1000);
 
     const newRecord = {
       quest_id,

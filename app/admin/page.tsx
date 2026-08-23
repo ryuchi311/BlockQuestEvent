@@ -429,6 +429,13 @@ export default function AdminPage() {
   // ── Privacy / Masking for Quest Log Emails ──
   const [revealQuestLogEmails, setRevealQuestLogEmails] = useState(false);
   const [revealedQuestLogKeys, setRevealedQuestLogKeys] = useState<Set<string>>(new Set());
+  const [copiedMsgId, setCopiedMsgId] = useState<number | null>(null);
+
+  const copyMessageContent = (id: number, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedMsgId(id);
+    setTimeout(() => setCopiedMsgId(null), 2000);
+  };
 
   const toggleRevealEmail = (id: number) => {
     setRevealedEmailIds((prev) => {
@@ -496,6 +503,18 @@ export default function AdminPage() {
     return fetch(url, { ...options, headers });
   }, []);
 
+  async function safeJson<T = any>(res: Response): Promise<T> {
+    const text = await res.text();
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      if (!res.ok) {
+        throw new Error(`Server returned error HTTP ${res.status} (${res.statusText || "Request failed"}). Please try again.`);
+      }
+      throw new Error(`Invalid response received from server (HTTP ${res.status}).`);
+    }
+  }
+
   // ─── Auth ────────────────────────────────────────────────────────────────
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -507,7 +526,7 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Login failed");
       const role = json.adminUser?.role;
       if (role === "booth_staff") {
@@ -574,7 +593,7 @@ export default function AdminPage() {
                 newPassword: changePasswordForm.newPassword
             })
         });
-        const json = await res.json();
+        const json = await safeJson(res);
         if (!res.ok) throw new Error(json.error || "Failed to change password");
         
         setShowChangePasswordModal(false);
@@ -609,7 +628,7 @@ export default function AdminPage() {
     }
     try {
       const res = await adminFetch("/api/admin/attendees?limit=3000");
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to load attendees.");
       setAttendees(json.attendees ?? []);
     } catch (err: any) {
@@ -627,7 +646,7 @@ export default function AdminPage() {
     }
     try {
       const res = await adminFetch("/api/admin/quests");
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to load quests.");
       setQuests(json.quests ?? []);
     } catch (err: any) {
@@ -645,7 +664,7 @@ export default function AdminPage() {
     }
     try {
       const res = await adminFetch("/api/admin/verifications?limit=1500");
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to load verifications.");
       setVerifications(json.verifications ?? []);
     } catch (err: any) {
@@ -663,7 +682,7 @@ export default function AdminPage() {
     }
     try {
       const res = await adminFetch("/api/admin/messages?limit=1500");
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to load message notes.");
       setMessageNotes(json.messages ?? []);
     } catch (err: any) {
@@ -682,7 +701,7 @@ export default function AdminPage() {
     }
     try {
       const res = await adminFetch("/api/admin/users");
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to load admin users.");
       setAdminUsersList(json.adminUsers ?? []);
     } catch (err: any) {
@@ -701,7 +720,7 @@ export default function AdminPage() {
     }
     try {
       const res = await adminFetch("/api/social-missions");
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to load social missions.");
       setSocialMissions(json.missions ?? []);
     } catch (err: any) {
@@ -761,6 +780,10 @@ export default function AdminPage() {
   const [verificationActionReason, setVerificationActionReason] = useState("");
   const [isProcessingAction, setIsProcessingAction] = useState(false);
 
+  // ── Message Note Action Modal State ──
+  const [actionModalMessage, setActionModalMessage] = useState<QuestVerification | null>(null);
+  const [messageActionReason, setMessageActionReason] = useState("");
+
   const [deletingQuestId, setDeletingQuestId] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -774,7 +797,7 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status: newStatus, rejection_reason: reason, approved_by: reviewer }),
       });
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to update verification.");
       setVerifications((prev) =>
         prev.map((item) =>
@@ -796,13 +819,14 @@ export default function AdminPage() {
 
   async function handleVerifyMessage(id: number, newStatus: "Approved" | "Rejected" | "Pending", reason?: string) {
     const reviewer = adminUser?.email || "Admin";
+    setIsProcessingAction(true);
     try {
       const res = await adminFetch("/api/admin/messages", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status: newStatus, rejection_reason: reason, approved_by: reviewer }),
       });
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to update message note.");
       setMessageNotes((prev) =>
         prev.map((item) =>
@@ -811,8 +835,14 @@ export default function AdminPage() {
             : item
         )
       );
+      if (actionModalMessage?.id === id) {
+        setActionModalMessage(null);
+        setMessageActionReason("");
+      }
     } catch (err: any) {
       alert("Message Note Verification Error: " + err.message);
+    } finally {
+      setIsProcessingAction(false);
     }
   }
 
@@ -941,7 +971,7 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ticket_code: attendee.ticket_code }),
       });
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to check in attendee.");
       setAttendees((prev) =>
         prev.map((item) =>
@@ -975,7 +1005,7 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: resetPinAttendee.id, tempPin: pinToUse }),
       });
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to reset PIN");
 
       setAttendees((prev) =>
@@ -999,7 +1029,7 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: deletingAttendee.id }),
       });
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to delete attendee");
 
       setAttendees((prev) => prev.filter((item) => item.id !== deletingAttendee.id));
@@ -1233,7 +1263,7 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to save quest.");
       clearDraft();
       setShowQuestModal(false);
@@ -1264,8 +1294,8 @@ export default function AdminPage() {
         body: JSON.stringify({ id: deletingQuestId }),
       });
       if (!res.ok) {
-        const j = await res.json();
-        throw new Error(j.error);
+        const j = await safeJson(res);
+        throw new Error(j.error || "Failed to delete quest.");
       }
       setQuests((prev) => prev.filter((q) => q.id !== deletingQuestId));
       setDeletingQuestId(null);
@@ -1332,7 +1362,7 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to save draft.");
       clearDraft();
       setShowQuestModal(false);
@@ -1376,7 +1406,7 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to update admin");
 
       setAdminUsersList(prev =>
@@ -1419,7 +1449,7 @@ export default function AdminPage() {
           role: "booth_staff",
         }),
       });
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to create booth account");
 
       const newId = newBoothForm.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
@@ -1470,7 +1500,7 @@ export default function AdminPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        const json = await res.json();
+        const json = await safeJson(res);
         if (!res.ok) throw new Error(json.error || "Failed to update booth station");
 
         setAdminUsersList(prev => prev.map(u => u.id === editBoothForm.id ? { ...u, full_name: editBoothForm.name, email: editBoothForm.email } : u));
@@ -1496,7 +1526,7 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newAdminForm),
       });
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to create admin");
 
       setAdminUsersList(prev => [json.adminUser, ...prev]);
@@ -1518,7 +1548,7 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: deletingAdminUser.id }),
       });
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to delete admin");
 
       setAdminUsersList(prev => prev.filter(u => u.id !== deletingAdminUser.id));
@@ -1539,7 +1569,7 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newSocialMissionForm),
       });
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to create social mission");
 
       setSocialMissions(prev => [...prev, json.mission]);
@@ -1561,7 +1591,7 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: mission.id, is_active: nextStatus }),
       });
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to update mission status");
 
       setSocialMissions(prev => prev.map(m => m.id === mission.id ? { ...m, is_active: nextStatus } : m));
@@ -1578,7 +1608,7 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to delete mission");
 
       setSocialMissions(prev => prev.filter(m => m.id !== id));
@@ -1612,7 +1642,7 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editSocialMissionForm),
       });
-      const json = await res.json();
+      const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to update mission");
 
       setSocialMissions(prev => prev.map(m => m.id === editSocialMissionForm.id ? (json.mission || editSocialMissionForm) : m));
@@ -3478,21 +3508,122 @@ export default function AdminPage() {
                           <div style={{ fontWeight: 700, color: "#c084fc", fontSize: "0.9rem" }}>⚡ {v.quest_title}</div>
                           <span className="admin-xp-badge" style={{ marginTop: 4, display: "inline-block" }}>+{v.xp} XP</span>
                         </td>
-                        <td>
-                          <div style={{
-                            background: "radial-gradient(ellipse at 50% 0%, rgba(245, 166, 35, 0.14) 0%, rgba(14, 19, 31, 0.95) 100%)",
-                            border: "1px solid rgba(245, 166, 35, 0.4)",
-                            borderRadius: 10,
-                            padding: "10px 14px",
-                            color: "#f8fafc",
-                            fontSize: "0.88rem",
-                            lineHeight: 1.5,
-                            maxWidth: 380,
-                            wordBreak: "break-word",
-                            boxShadow: "0 4px 14px rgba(0,0,0,0.3)"
-                          }}>
-                            💬 "{v.user_message}"
-                          </div>
+                        <td style={{ maxWidth: 380, minWidth: 220, overflowWrap: "anywhere", wordBreak: "break-all" }}>
+                          {(() => {
+                            const msg = v.user_message || "";
+                            const isFb = msg.includes("facebook.com") || msg.includes("fb.com") || msg.includes("fb.watch");
+                            const isIg = msg.includes("instagram.com") || msg.includes("instagr.am");
+                            const isUrl = msg.startsWith("http://") || msg.startsWith("https://") || isFb || isIg;
+                            const isCopied = copiedMsgId === v.id;
+
+                            if (isFb || isIg || isUrl) {
+                              const finalUrl = msg.startsWith("http") ? msg : `https://${msg}`;
+                              return (
+                                <div
+                                  title={`Submitted Link: ${finalUrl}`}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 8,
+                                    background: isFb ? "rgba(24, 119, 242, 0.12)" : isIg ? "rgba(225, 48, 108, 0.12)" : "rgba(245, 166, 35, 0.1)",
+                                    border: isFb ? "1px solid rgba(24, 119, 242, 0.4)" : isIg ? "1px solid rgba(225, 48, 108, 0.4)" : "1px solid rgba(245, 166, 35, 0.35)",
+                                    borderRadius: 10,
+                                    padding: "6px 10px",
+                                    maxWidth: "100%",
+                                    boxSizing: "border-box"
+                                  }}
+                                >
+                                  <a
+                                    href={finalUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={`Click to open link in new tab:\n${finalUrl}`}
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: 6,
+                                      padding: "6px 12px",
+                                      borderRadius: 8,
+                                      background: isFb ? "#1877f2" : isIg ? "linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)" : "rgba(255,255,255,0.15)",
+                                      color: "#fff",
+                                      fontSize: "0.8rem",
+                                      fontWeight: 700,
+                                      textDecoration: "none",
+                                      boxShadow: "0 2px 8px rgba(0,0,0,0.3)"
+                                    }}
+                                  >
+                                    <span>{isFb ? "📘 Open FB Post ↗" : isIg ? "📷 Open IG Post ↗" : "🔗 Open Link ↗"}</span>
+                                  </a>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => copyMessageContent(v.id, finalUrl)}
+                                    title={`Copy link to clipboard:\n${finalUrl}`}
+                                    style={{
+                                      background: isCopied ? "rgba(16, 185, 129, 0.25)" : "rgba(255,255,255,0.08)",
+                                      border: isCopied ? "1px solid rgba(16, 185, 129, 0.6)" : "1px solid rgba(255,255,255,0.15)",
+                                      color: isCopied ? "#34d399" : "#e2e8f0",
+                                      padding: "5px 10px",
+                                      borderRadius: 6,
+                                      fontSize: "0.74rem",
+                                      fontWeight: 700,
+                                      cursor: "pointer",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: 4
+                                    }}
+                                  >
+                                    <span>{isCopied ? "✓" : "📋"}</span>
+                                    <span>{isCopied ? "Copied!" : "Copy Link"}</span>
+                                  </button>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <div
+                                title={msg}
+                                style={{
+                                  background: "radial-gradient(ellipse at 50% 0%, rgba(245, 166, 35, 0.14) 0%, rgba(14, 19, 31, 0.95) 100%)",
+                                  border: "1px solid rgba(245, 166, 35, 0.4)",
+                                  borderRadius: 10,
+                                  padding: "8px 12px",
+                                  color: "#f8fafc",
+                                  fontSize: "0.85rem",
+                                  lineHeight: 1.4,
+                                  maxWidth: "100%",
+                                  wordBreak: "break-word",
+                                  overflowWrap: "anywhere",
+                                  boxSizing: "border-box",
+                                  boxShadow: "0 4px 14px rgba(0,0,0,0.3)"
+                                }}
+                              >
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                                  <span style={{ flex: 1, wordBreak: "break-word", overflowWrap: "anywhere" }}>
+                                    💬 "{msg}"
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => copyMessageContent(v.id, msg)}
+                                    title="Copy note text to clipboard"
+                                    style={{
+                                      background: isCopied ? "rgba(16, 185, 129, 0.2)" : "rgba(255,255,255,0.06)",
+                                      border: isCopied ? "1px solid rgba(16, 185, 129, 0.5)" : "1px solid rgba(255,255,255,0.12)",
+                                      color: isCopied ? "#34d399" : "#94a3b8",
+                                      padding: "3px 7px",
+                                      borderRadius: 4,
+                                      fontSize: "0.7rem",
+                                      fontWeight: 600,
+                                      cursor: "pointer",
+                                      flexShrink: 0
+                                    }}
+                                  >
+                                    {isCopied ? "✓ Copied" : "📋 Copy"}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })()}
                           {v.proof_url && (v.proof_url.startsWith("http") || v.proof_url.startsWith("data:image/")) && (
                             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
                               <img
@@ -3549,48 +3680,41 @@ export default function AdminPage() {
                           {adminUser?.role === "viewer" ? (
                             <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>Read-only</span>
                           ) : (
-                            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                               <button
                                 className="admin-edit-btn"
-                                onClick={() => handleVerifyMessage(v.id, "Approved")}
-                                style={{
-                                  background: v.status === "Approved" ? "rgba(16, 185, 129, 0.35)" : "rgba(16, 185, 129, 0.15)",
-                                  borderColor: "rgba(16, 185, 129, 0.4)",
-                                  color: "#34d399",
-                                  padding: "6px 12px",
-                                  fontSize: "0.78rem",
-                                  cursor: "pointer"
-                                }}
-                              >
-                                {v.status === "Approved" ? "✓ Approved" : "✓ Approve"}
-                              </button>
-                              <button
-                                className="admin-delete-btn"
                                 onClick={() => {
-                                  setRejectingItem(v);
-                                  setRejectionReasonInput(v.rejection_reason || "");
+                                  setActionModalMessage(v);
+                                  setMessageActionReason(v.rejection_reason || "");
                                 }}
                                 style={{
-                                  background: v.status === "Rejected" ? "rgba(239, 68, 68, 0.35)" : "rgba(239, 68, 68, 0.15)",
-                                  borderColor: "rgba(239, 68, 68, 0.4)",
-                                  color: "#ef4444",
-                                  padding: "6px 12px",
-                                  fontSize: "0.78rem",
-                                  cursor: "pointer"
+                                  background: v.status === "Pending"
+                                    ? "linear-gradient(135deg, rgba(245, 166, 35, 0.25) 0%, rgba(217, 119, 6, 0.25) 100%)"
+                                    : v.status === "Approved"
+                                    ? "rgba(16, 185, 129, 0.18)"
+                                    : "rgba(239, 68, 68, 0.18)",
+                                  borderColor: v.status === "Pending"
+                                    ? "rgba(245, 166, 35, 0.6)"
+                                    : v.status === "Approved"
+                                    ? "rgba(16, 185, 129, 0.4)"
+                                    : "rgba(239, 68, 68, 0.4)",
+                                  color: v.status === "Pending"
+                                    ? "#fbbf24"
+                                    : v.status === "Approved"
+                                    ? "#34d399"
+                                    : "#f87171",
+                                  padding: "6px 14px",
+                                  fontSize: "0.8rem",
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 6
                                 }}
+                                title="Open Message Note Action & Review Modal"
                               >
-                                {v.status === "Rejected" ? "✕ Rejected" : "✕ Reject"}
+                                {v.status === "Pending" ? "⚡ Review & Action" : v.status === "Approved" ? "✓ Edit Action" : "✕ Edit Action"}
                               </button>
-                              {v.status !== "Pending" && (
-                                <button
-                                  className="admin-refresh-btn"
-                                  onClick={() => handleVerifyMessage(v.id, "Pending")}
-                                  title="Reset status back to Pending"
-                                  style={{ padding: "6px 10px", fontSize: "0.75rem" }}
-                                >
-                                  🔄 Reset
-                                </button>
-                              )}
                             </div>
                           )}
                         </td>
@@ -4948,6 +5072,22 @@ export default function AdminPage() {
                         }
                       },
                       {
+                        icon: "🤳",
+                        name: "Speaker Selfie Post (FB/IG)",
+                        data: {
+                          title: "Selfie with Speaker & Public Post",
+                          description: "1. Take a selfie with any speaker during or after their talk\n2. Post it publicly on your Facebook or Instagram feed with a photo, caption & hashtag #BlockQuestFiestaPH\n3. Paste your public post link below (Facebook / Instagram link strictly required)",
+                          category: "social" as const,
+                          xp: 300,
+                          requires_proof: false,
+                          requires_message: true,
+                          is_quiz: false,
+                          passcode: "",
+                          action_label: "📸 Post on Facebook / Instagram",
+                          action_url: "https://www.facebook.com",
+                        }
+                      },
+                      {
                         icon: "💬",
                         name: "Event Feedback Note",
                         data: {
@@ -5331,13 +5471,25 @@ export default function AdminPage() {
 
                     {/* Messagebox Note */}
                     <div
-                      className={`qf-mode-card${questForm.requires_message && !questForm.requires_proof ? " qf-mode-card--active" : ""}`}
+                      className={`qf-mode-card${questForm.requires_message && !questForm.requires_proof && questForm.category !== "social" && !(questForm.title || "").toLowerCase().includes("post") && !(questForm.title || "").toLowerCase().includes("selfie") ? " qf-mode-card--active" : ""}`}
                       onClick={() => setQuestForm((f) => ({ ...f, requires_message: true, requires_proof: false, is_quiz: false, passcode: "" }))}
                     >
                       <span className="qf-mode-card__icon">💬</span>
                       <div className="qf-mode-card__info">
                         <span className="qf-mode-card__title">Messagebox Note</span>
                         <span className="qf-mode-card__desc">Quester submits a text message for admin review.</span>
+                      </div>
+                    </div>
+
+                    {/* FB / IG Social Post Link */}
+                    <div
+                      className={`qf-mode-card${questForm.requires_message && !questForm.requires_proof && (questForm.category === "social" || (questForm.title || "").toLowerCase().includes("post") || (questForm.title || "").toLowerCase().includes("selfie") || (questForm.title || "").toLowerCase().includes("facebook") || (questForm.title || "").toLowerCase().includes("instagram")) ? " qf-mode-card--active" : ""}`}
+                      onClick={() => setQuestForm((f) => ({ ...f, requires_message: true, requires_proof: false, is_quiz: false, passcode: "", category: "social", action_label: f.action_label || "📸 Post on Facebook / Instagram", action_url: f.action_url || "https://www.facebook.com" }))}
+                    >
+                      <span className="qf-mode-card__icon">🤳</span>
+                      <div className="qf-mode-card__info">
+                        <span className="qf-mode-card__title">FB / IG Post Link</span>
+                        <span className="qf-mode-card__desc">Attendee submits Facebook or Instagram public post link.</span>
                       </div>
                     </div>
 
@@ -5877,22 +6029,76 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {actionModalVerification.user_message && (
-                <div style={{
-                  marginTop: 12,
-                  padding: "10px 14px",
-                  background: "rgba(245, 166, 35, 0.08)",
-                  border: "1px solid rgba(245, 166, 35, 0.25)",
-                  borderRadius: 8
-                }}>
-                  <span style={{ fontSize: "0.75rem", color: "var(--gold-light)", fontWeight: 700, display: "block", marginBottom: 4 }}>
-                    💬 Quester Note / Message:
-                  </span>
-                  <p style={{ margin: 0, fontSize: "0.85rem", color: "#fff", whiteSpace: "pre-wrap" }}>
-                    "{actionModalVerification.user_message}"
-                  </p>
-                </div>
-              )}
+              {actionModalVerification.user_message && (() => {
+                const msg = actionModalVerification.user_message || "";
+                const isFb = msg.includes("facebook.com") || msg.includes("fb.com") || msg.includes("fb.watch");
+                const isIg = msg.includes("instagram.com") || msg.includes("instagr.am");
+                const isUrl = msg.startsWith("http://") || msg.startsWith("https://") || isFb || isIg;
+
+                return (
+                  <div style={{
+                    marginTop: 12,
+                    padding: "12px 14px",
+                    background: isFb ? "rgba(24, 119, 242, 0.1)" : isIg ? "rgba(225, 48, 108, 0.1)" : "rgba(245, 166, 35, 0.08)",
+                    border: isFb ? "1px solid rgba(24, 119, 242, 0.4)" : isIg ? "1px solid rgba(225, 48, 108, 0.4)" : "1px solid rgba(245, 166, 35, 0.25)",
+                    borderRadius: 10
+                  }}>
+                    <span style={{ fontSize: "0.76rem", color: isFb ? "#60a5fa" : isIg ? "#f472b6" : "var(--gold-light)", fontWeight: 700, display: "block", marginBottom: 6 }}>
+                      {isFb ? "📘 Submitted Facebook Post Link:" : isIg ? "📷 Submitted Instagram Post Link:" : "💬 Quester Note / Message:"}
+                    </span>
+                    {isUrl ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <a
+                          href={msg.startsWith("http") ? msg : `https://${msg}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={`Click to open link in new tab:\n${msg}`}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            padding: "8px 14px",
+                            borderRadius: 8,
+                            background: isFb ? "#1877f2" : isIg ? "linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)" : "rgba(255,255,255,0.15)",
+                            color: "#fff",
+                            fontWeight: 700,
+                            fontSize: "0.85rem",
+                            textDecoration: "none",
+                            boxShadow: "0 2px 10px rgba(0,0,0,0.3)"
+                          }}
+                        >
+                          {isFb ? "📘 Open Facebook Post ↗" : isIg ? "📷 Open Instagram Post ↗" : "🔗 Open Post Link ↗"}
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => copyMessageContent(actionModalVerification.id, msg)}
+                          title={`Copy link to clipboard:\n${msg}`}
+                          style={{
+                            background: copiedMsgId === actionModalVerification.id ? "rgba(16, 185, 129, 0.25)" : "rgba(255,255,255,0.08)",
+                            border: copiedMsgId === actionModalVerification.id ? "1px solid rgba(16, 185, 129, 0.6)" : "1px solid rgba(255,255,255,0.15)",
+                            color: copiedMsgId === actionModalVerification.id ? "#34d399" : "#e2e8f0",
+                            padding: "8px 12px",
+                            borderRadius: 8,
+                            fontSize: "0.8rem",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4
+                          }}
+                        >
+                          <span>{copiedMsgId === actionModalVerification.id ? "✓" : "📋"}</span>
+                          <span>{copiedMsgId === actionModalVerification.id ? "Copied!" : "Copy Link"}</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <p style={{ margin: 0, fontSize: "0.85rem", color: "#fff", whiteSpace: "pre-wrap" }}>
+                        "{msg}"
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
 
               {actionModalVerification.rejection_reason && (
                 <div style={{
@@ -6039,6 +6245,371 @@ export default function AdminPage() {
                   onClick={() => {
                     setActionModalVerification(null);
                     setVerificationActionReason("");
+                  }}
+                  style={{ width: "100%", padding: "10px", textAlign: "center" }}
+                >
+                  Close Modal
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Message Note Action & Review Modal ── */}
+      {actionModalMessage && (
+        <div
+          className="admin-modal-overlay"
+          onClick={() => {
+            if (!isProcessingAction) {
+              setActionModalMessage(null);
+              setMessageActionReason("");
+            }
+          }}
+          style={{ zIndex: 1000, background: "rgba(0,0,0,0.85)" }}
+        >
+          <div
+            className="admin-modal"
+            style={{ maxWidth: 580, width: "94%", padding: "24px 28px", maxHeight: "90vh", overflowY: "auto" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18, borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 14 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: "1.2rem", color: "var(--gold-light)", display: "flex", alignItems: "center", gap: 8, fontWeight: 800 }}>
+                  <span>💬</span> Message Note Action
+                </h3>
+                <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
+                  Review submitted note or social link and take administrative action
+                </p>
+              </div>
+              <button
+                className="admin-modal__close"
+                onClick={() => {
+                  if (!isProcessingAction) {
+                    setActionModalMessage(null);
+                    setMessageActionReason("");
+                  }
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Quester & Quest Info Card */}
+            <div style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(245,166,35,0.2)",
+              borderRadius: 12,
+              padding: "14px 16px",
+              marginBottom: 18,
+              display: "flex",
+              flexDirection: "column",
+              gap: 8
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                <div>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block" }}>Quester / Attendee:</span>
+                  <strong style={{ fontSize: "0.95rem", color: "#fff" }}>{actionModalMessage.user_name}</strong>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginLeft: 8 }}>({actionModalMessage.user_email})</span>
+                </div>
+                {actionModalMessage.ticket_code && (
+                  <span style={{
+                    padding: "3px 8px",
+                    background: "rgba(245,166,35,0.15)",
+                    border: "1px solid rgba(245,166,35,0.3)",
+                    borderRadius: 6,
+                    fontSize: "0.75rem",
+                    color: "var(--gold-light)",
+                    fontWeight: 700
+                  }}>
+                    🎫 {actionModalMessage.ticket_code}
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, paddingTop: 6, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                <div>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block" }}>Quest Title:</span>
+                  <span style={{ fontSize: "0.9rem", color: "#c084fc", fontWeight: 700 }}>⚡ {actionModalMessage.quest_title}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span className="admin-xp-badge" style={{ fontSize: "0.85rem", padding: "4px 10px" }}>
+                    ⭐ +{actionModalMessage.xp} XP
+                  </span>
+                  <span className={`admin-status-badge ${actionModalMessage.status === "Approved" ? "admin-status-badge--live" : actionModalMessage.status === "Rejected" ? "admin-status-badge--done" : "admin-status-badge--soon"}`}>
+                    {actionModalMessage.status === "Approved" ? "✓ Approved" : actionModalMessage.status === "Rejected" ? "✕ Rejected" : "⏳ Pending"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Submitted Content Section */}
+            <div style={{ marginBottom: 20 }}>
+              <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                📝 Submitted Note / Link
+              </span>
+
+              {(() => {
+                const msg = actionModalMessage.user_message || "";
+                const isFb = msg.includes("facebook.com") || msg.includes("fb.com") || msg.includes("fb.watch");
+                const isIg = msg.includes("instagram.com") || msg.includes("instagr.am");
+                const isUrl = msg.startsWith("http://") || msg.startsWith("https://") || isFb || isIg;
+                const isCopied = copiedMsgId === actionModalMessage.id;
+
+                return (
+                  <div style={{
+                    padding: "14px 16px",
+                    background: isFb ? "rgba(24, 119, 242, 0.1)" : isIg ? "rgba(225, 48, 108, 0.1)" : "rgba(245, 166, 35, 0.08)",
+                    border: isFb ? "1px solid rgba(24, 119, 242, 0.4)" : isIg ? "1px solid rgba(225, 48, 108, 0.4)" : "1px solid rgba(245, 166, 35, 0.25)",
+                    borderRadius: 12
+                  }}>
+                    <span style={{ fontSize: "0.76rem", color: isFb ? "#60a5fa" : isIg ? "#f472b6" : "var(--gold-light)", fontWeight: 700, display: "block", marginBottom: 8 }}>
+                      {isFb ? "📘 Facebook Public Post Link:" : isIg ? "📷 Instagram Public Post Link:" : isUrl ? "🔗 Public Link Submission:" : "💬 Quester Note / Feedback:"}
+                    </span>
+
+                    {isUrl ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <a
+                          href={msg.startsWith("http") ? msg : `https://${msg}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={`Click to open link in new tab:\n${msg}`}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            padding: "8px 16px",
+                            borderRadius: 8,
+                            background: isFb ? "#1877f2" : isIg ? "linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)" : "rgba(255,255,255,0.15)",
+                            color: "#fff",
+                            fontWeight: 700,
+                            fontSize: "0.85rem",
+                            textDecoration: "none",
+                            boxShadow: "0 2px 10px rgba(0,0,0,0.3)"
+                          }}
+                        >
+                          {isFb ? "📘 Open Facebook Post ↗" : isIg ? "📷 Open Instagram Post ↗" : "🔗 Open Post Link ↗"}
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => copyMessageContent(actionModalMessage.id, msg)}
+                          title={`Copy link to clipboard:\n${msg}`}
+                          style={{
+                            background: isCopied ? "rgba(16, 185, 129, 0.25)" : "rgba(255,255,255,0.08)",
+                            border: isCopied ? "1px solid rgba(16, 185, 129, 0.6)" : "1px solid rgba(255,255,255,0.15)",
+                            color: isCopied ? "#34d399" : "#e2e8f0",
+                            padding: "8px 14px",
+                            borderRadius: 8,
+                            fontSize: "0.8rem",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4
+                          }}
+                        >
+                          <span>{isCopied ? "✓" : "📋"}</span>
+                          <span>{isCopied ? "Copied!" : "Copy Link"}</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                        <p style={{ margin: 0, fontSize: "0.9rem", color: "#fff", whiteSpace: "pre-wrap", flex: 1 }}>
+                          "{msg}"
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => copyMessageContent(actionModalMessage.id, msg)}
+                          title="Copy note text to clipboard"
+                          style={{
+                            background: isCopied ? "rgba(16, 185, 129, 0.25)" : "rgba(255,255,255,0.08)",
+                            border: isCopied ? "1px solid rgba(16, 185, 129, 0.6)" : "1px solid rgba(255,255,255,0.15)",
+                            color: isCopied ? "#34d399" : "#e2e8f0",
+                            padding: "4px 8px",
+                            borderRadius: 6,
+                            fontSize: "0.72rem",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            flexShrink: 0
+                          }}
+                        >
+                          {isCopied ? "✓ Copied" : "📋 Copy"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Attached Photo Proof if available */}
+              {actionModalMessage.proof_url && (actionModalMessage.proof_url.startsWith("http") || actionModalMessage.proof_url.startsWith("data:image/")) && (
+                <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "rgba(255,255,255,0.04)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <img
+                    src={actionModalMessage.proof_url}
+                    alt="Attached proof"
+                    style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8, cursor: "pointer", border: "1px solid rgba(255,255,255,0.2)" }}
+                    onClick={() => setSelectedProofImage(actionModalMessage.proof_url)}
+                  />
+                  <div>
+                    <span style={{ fontSize: "0.78rem", color: "#e2e8f0", display: "block", fontWeight: 600 }}>📷 Attached Screenshot Proof</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProofImage(actionModalMessage.proof_url)}
+                      style={{ background: "transparent", border: "none", color: "var(--gold-light)", fontSize: "0.72rem", cursor: "pointer", padding: 0, textDecoration: "underline" }}
+                    >
+                      Click to zoom / inspect proof image
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {actionModalMessage.rejection_reason && (
+                <div style={{
+                  marginTop: 12,
+                  padding: "8px 12px",
+                  background: "rgba(239, 68, 68, 0.1)",
+                  border: "1px solid rgba(239, 68, 68, 0.3)",
+                  borderRadius: 8,
+                  fontSize: "0.8rem",
+                  color: "#f87171"
+                }}>
+                  <strong>Previous Rejection Reason:</strong> "{actionModalMessage.rejection_reason}"
+                </div>
+              )}
+            </div>
+
+            {/* Administrative Action Section */}
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 18 }}>
+              <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                ⚡ Administrative Action
+              </span>
+
+              {/* Approve Button */}
+              <button
+                type="button"
+                disabled={isProcessingAction}
+                onClick={() => handleVerifyMessage(actionModalMessage.id, "Approved")}
+                style={{
+                  width: "100%",
+                  padding: "12px 18px",
+                  background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  border: "1px solid #10b981",
+                  borderRadius: 10,
+                  color: "#fff",
+                  fontWeight: 800,
+                  fontSize: "0.95rem",
+                  cursor: isProcessingAction ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  boxShadow: "0 4px 14px rgba(16, 185, 129, 0.35)",
+                  marginBottom: 16
+                }}
+              >
+                {isProcessingAction ? "Processing..." : `🎉 Approve & Award +${actionModalMessage.xp} XP`}
+              </button>
+
+              {/* Reject Section with presets */}
+              <div style={{
+                background: "rgba(239, 68, 68, 0.05)",
+                border: "1px solid rgba(239, 68, 68, 0.2)",
+                borderRadius: 10,
+                padding: "12px 14px",
+                marginBottom: 16
+              }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#f87171", display: "block", marginBottom: 8 }}>
+                  ✕ Or Reject with Reason:
+                </span>
+
+                {/* Quick Presets tailored for messages and post links */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                  {[
+                    "🚫 Irrelevant / Spam Note",
+                    "💬 Incomplete / Unclear Note",
+                    "🔗 Invalid Link / Not Public Post",
+                    "🔒 Post Is Private / Inaccessible",
+                    "📑 Duplicate Submission"
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setMessageActionReason(preset)}
+                      style={{
+                        padding: "3px 8px",
+                        borderRadius: 6,
+                        background: "rgba(255,255,255,0.06)",
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        color: "#e2e8f0",
+                        fontSize: "0.72rem",
+                        cursor: "pointer"
+                      }}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+
+                <textarea
+                  className="qf-input"
+                  rows={2}
+                  placeholder="Type rejection reason (optional)..."
+                  value={messageActionReason}
+                  onChange={(e) => setMessageActionReason(e.target.value)}
+                  style={{ width: "100%", fontSize: "0.82rem", resize: "vertical", marginBottom: 10 }}
+                />
+
+                <button
+                  type="button"
+                  disabled={isProcessingAction}
+                  onClick={() => handleVerifyMessage(actionModalMessage.id, "Rejected", messageActionReason.trim())}
+                  style={{
+                    width: "100%",
+                    padding: "9px 16px",
+                    background: "rgba(239, 68, 68, 0.2)",
+                    border: "1px solid rgba(239, 68, 68, 0.4)",
+                    borderRadius: 8,
+                    color: "#ef4444",
+                    fontWeight: 700,
+                    fontSize: "0.88rem",
+                    cursor: isProcessingAction ? "not-allowed" : "pointer"
+                  }}
+                >
+                  {isProcessingAction ? "Processing..." : "✕ Confirm Reject Submission"}
+                </button>
+              </div>
+
+              {/* Reset to Pending (if already verified) */}
+              {actionModalMessage.status !== "Pending" && (
+                <button
+                  type="button"
+                  disabled={isProcessingAction}
+                  onClick={() => handleVerifyMessage(actionModalMessage.id, "Pending")}
+                  style={{
+                    width: "100%",
+                    padding: "8px 14px",
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    borderRadius: 8,
+                    color: "var(--text-secondary)",
+                    fontSize: "0.8rem",
+                    cursor: isProcessingAction ? "not-allowed" : "pointer",
+                    marginBottom: 12
+                  }}
+                >
+                  🔄 Reset Status Back to Pending
+                </button>
+              )}
+
+              {/* Cancel Button */}
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  className="admin-cancel-btn"
+                  onClick={() => {
+                    setActionModalMessage(null);
+                    setMessageActionReason("");
                   }}
                   style={{ width: "100%", padding: "10px", textAlign: "center" }}
                 >
