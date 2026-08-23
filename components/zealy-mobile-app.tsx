@@ -179,6 +179,7 @@ export default function ZealyMobileApp() {
     }
     return [];
   });
+  const [isGateCheckedIn, setIsGateCheckedIn] = useState<boolean>(false);
 
   // Inactivity tracking state
   const [inactivityWarning, setInactivityWarning] = useState(false);
@@ -190,6 +191,7 @@ export default function ZealyMobileApp() {
   function handleLogout() {
     setAuthenticatedUser(null);
     setQrPass(null);
+    setIsGateCheckedIn(false);
     setTicketEmail("");
     setTicketMobileNum("");
     setTicketCountryCode("+63");
@@ -372,6 +374,11 @@ export default function ZealyMobileApp() {
         // Preserve local quest verification status (Done, Pending Verification, Approved, Rejected) to prevent status flickering
         setQuests((prevQuests) => {
           return mappedQuests.map((newQ) => {
+            if (newQ.id === "checkin") {
+              const existing = prevQuests.find((p) => p.id === "checkin");
+              if (existing?.status === "Done") return { ...newQ, status: "Done" };
+              return { ...newQ, status: isGateCheckedIn ? "Live" : "Soon" };
+            }
             const existing = prevQuests.find((p) => p.id === newQ.id);
             if (
               existing &&
@@ -389,7 +396,7 @@ export default function ZealyMobileApp() {
     } catch {
       // Fallback to initialQuests
     }
-  }, []);
+  }, [isGateCheckedIn]);
 
   const fetchUserVerifications = React.useCallback(async () => {
     const email = ticketEmail || authenticatedUser?.email || qrPass?.email || "quester@blockquest.ph";
@@ -444,6 +451,10 @@ export default function ZealyMobileApp() {
       if (!res.ok) return;
 
       const { totalXp, completedQuests, completedQuestDetails, verifications, isCheckedIn } = json;
+
+      if (typeof isCheckedIn === "boolean") {
+        setIsGateCheckedIn(isCheckedIn);
+      }
 
       if (typeof totalXp === "number") {
         setUserXp(totalXp);
@@ -517,14 +528,6 @@ export default function ZealyMobileApp() {
   }, [loadApiQuests, fetchUserVerifications, fetchLeaderboard, syncUserData]);
 
   const handleQuestClick = (quest: Quest) => {
-    if (quest.status === "Soon") return;
-
-    // Check expiration
-    if (quest.expires_at && new Date(quest.expires_at).getTime() < Date.now()) {
-      alert("⏱️ This quest has expired and can no longer be claimed.");
-      return;
-    }
-
     // Check prerequisite lock
     if (quest.depends_on_quest_id) {
       const parentCompleted = quests.some((p) => p.id === quest.depends_on_quest_id && p.status === "Done");
@@ -534,6 +537,14 @@ export default function ZealyMobileApp() {
         return;
       }
     }
+
+    // Check expiration
+    if (quest.expires_at && new Date(quest.expires_at).getTime() < Date.now()) {
+      alert("⏱️ This quest has expired and can no longer be claimed.");
+      return;
+    }
+
+    if (quest.status === "Soon" && quest.id !== "checkin") return;
 
     setSelectedQuest(quest);
   };
@@ -2170,6 +2181,85 @@ export default function ZealyMobileApp() {
                                 >
                                   {claiming ? "Claiming..." : isActionCompleted ? "Submit Answer & Claim XP" : "🔒 Complete Task First"}
                                 </button>
+                              </div>
+                            ) : selectedQuest.id === "checkin" ? (
+                              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+                                {isGateCheckedIn ? (
+                                  <>
+                                    <div style={{
+                                      background: "rgba(16, 185, 129, 0.15)",
+                                      border: "1px solid rgba(16, 185, 129, 0.4)",
+                                      padding: "16px",
+                                      borderRadius: 14,
+                                      textAlign: "center"
+                                    }}>
+                                      <div style={{ fontSize: "1.8rem", marginBottom: 4 }}>🎟️ ✅</div>
+                                      <div style={{ color: "#34d399", fontWeight: 800, fontSize: "1rem" }}>
+                                        Entrance Gate Check-in Verified!
+                                      </div>
+                                      <div style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: "0.82rem", marginTop: 6, lineHeight: 1.4 }}>
+                                        Your ticket pass was scanned at the entrance gate. Click below to claim your reward!
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={handleClaimXp}
+                                      disabled={claiming}
+                                      className="modal-claim-btn"
+                                      style={{
+                                        width: "100%",
+                                        padding: "15px",
+                                        borderRadius: 12,
+                                        fontWeight: 800,
+                                        fontSize: "1rem",
+                                        background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                                        color: "#fff",
+                                        border: "none",
+                                        cursor: "pointer",
+                                        boxShadow: "0 0 25px rgba(16, 185, 129, 0.4)",
+                                      }}
+                                    >
+                                      {claiming ? "Claiming +500 XP..." : "🎉 Claim +500 Check-in XP →"}
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div style={{
+                                      background: "rgba(245, 158, 11, 0.12)",
+                                      border: "1px solid rgba(245, 158, 11, 0.35)",
+                                      padding: "16px",
+                                      borderRadius: 14,
+                                      textAlign: "center"
+                                    }}>
+                                      <div style={{ fontSize: "1.8rem", marginBottom: 4 }}>🚪 🔒</div>
+                                      <div style={{ color: "#fbbf24", fontWeight: 800, fontSize: "1rem" }}>
+                                        Physical Gate Check-in Required
+                                      </div>
+                                      <div style={{ color: "rgba(255, 255, 255, 0.75)", fontSize: "0.82rem", marginTop: 6, lineHeight: 1.4 }}>
+                                        Scan your QR ticket pass at the event entrance gate on Saturday, Oct 17. Once scanned by gate staff, this 500 XP reward unlocks automatically for claim!
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        setSelectedQuest(null);
+                                        setActiveTab("profile");
+                                      }}
+                                      className="modal-claim-btn"
+                                      style={{
+                                        width: "100%",
+                                        padding: "14px",
+                                        borderRadius: 12,
+                                        fontWeight: 800,
+                                        fontSize: "0.9rem",
+                                        background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                                        color: "#100b02",
+                                        border: "none",
+                                        cursor: "pointer",
+                                      }}
+                                    >
+                                      🎫 View My QR Ticket Pass →
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             ) : (selectedQuest.has_passcode || selectedQuest.passcode) ? (
                               <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>

@@ -59,7 +59,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabase
     .from("registrations")
-    .select("id, full_name, email, phone, password_hash, total_xp, pincode")
+    .select("id, full_name, email, phone, password_hash, total_xp, pincode, checked_in, checked_in_at")
     .eq("email", email)
     .maybeSingle();
 
@@ -153,5 +153,6 @@ export async function POST(request: Request) {
     completedQuests: completions.map((c: any) => c.quest_id),
     hasPin,
     requiresPinSetup: !hasPin,
+    isCheckedIn: Boolean(data.checked_in || (data as any).checked_in_at),
   });
 }
