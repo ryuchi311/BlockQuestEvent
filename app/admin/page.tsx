@@ -219,14 +219,33 @@ export default function AdminPage() {
     }
   }, []);
 
+  // ── Session Expiry Modal State ──
+  const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false);
+  const [sessionExpiredReason, setSessionExpiredReason] = useState("");
+
+  const triggerSessionExpired = useCallback((reason = "Your session has expired due to 5 minutes of inactivity.") => {
+    setSessionExpiredReason(reason);
+    setShowSessionExpiredModal(true);
+    setAuthed(false);
+    setAdminUser(null);
+    setPassword("");
+    setTab("attendees");
+    setAttendees([]);
+    setQuests([]);
+    setVerifications([]);
+    setError("");
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("blockquest_admin_session");
+    }
+  }, []);
+
   useEffect(() => {
     if (!authed) return;
     let timeoutId: NodeJS.Timeout;
     const resetTimer = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        alert("Your session has expired due to 5 minutes of inactivity.");
-        handleLogout();
+        triggerSessionExpired("You have been automatically logged out after 5 minutes of inactivity for security.");
       }, 300000); // 5 minutes
     };
     resetTimer();
@@ -236,7 +255,7 @@ export default function AdminPage() {
       clearTimeout(timeoutId);
       events.forEach((event) => window.removeEventListener(event, resetTimer));
     };
-  }, [authed]);
+  }, [authed, triggerSessionExpired]);
 
   // ── Tabs & data ──
   const [tab, setTab] = useState<AdminTab>("attendees");
@@ -511,8 +530,12 @@ export default function AdminPage() {
     if (token && !headers.has("Authorization")) {
       headers.set("Authorization", `Bearer ${token}`);
     }
-    return fetch(url, { ...options, headers });
-  }, []);
+    const res = await fetch(url, { ...options, headers });
+    if (res.status === 401 && typeof window !== "undefined" && localStorage.getItem("blockquest_admin_session")) {
+      triggerSessionExpired("Your security token has expired or is invalid. Please log in again to continue.");
+    }
+    return res;
+  }, [triggerSessionExpired]);
 
   async function safeJson<T = any>(res: Response): Promise<T> {
     const text = await res.text();
@@ -777,13 +800,15 @@ export default function AdminPage() {
     else if (tab === "quests") fetchQuests();
     else if (tab === "verifications") fetchVerifications();
     else if (tab === "messages") fetchMessageNotes();
+    else if (tab === "promocodes") fetchPromoCodes();
     else if (tab === "questlog") {
+      fetchAttendees();
       fetchVerifications();
       fetchMessageNotes();
     }
     else if (tab === "staff") fetchAdminUsers();
     else if (tab === "socials") fetchSocialMissions();
-  }, [tab, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes, fetchAdminUsers, fetchSocialMissions]);
+  }, [tab, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes, fetchPromoCodes, fetchAdminUsers, fetchSocialMissions]);
 
   // ── Auto Refresh (Background Silent Polling - No UI Flickering) ──
   useEffect(() => {
@@ -793,7 +818,9 @@ export default function AdminPage() {
       else if (tab === "quests") fetchQuests(true);
       else if (tab === "verifications") fetchVerifications(true);
       else if (tab === "messages") fetchMessageNotes(true);
+      else if (tab === "promocodes") fetchPromoCodes(true);
       else if (tab === "questlog") {
+        fetchAttendees(true);
         fetchVerifications(true);
         fetchMessageNotes(true);
       }
@@ -801,7 +828,7 @@ export default function AdminPage() {
       else if (tab === "socials") fetchSocialMissions(true);
     }, 10000);
     return () => clearInterval(interval);
-  }, [authed, autoRefresh, tab, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes, fetchAdminUsers, fetchSocialMissions]);
+  }, [authed, autoRefresh, tab, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes, fetchPromoCodes, fetchAdminUsers, fetchSocialMissions]);
 
   const [rejectingItem, setRejectingItem] = useState<QuestVerification | null>(null);
   const [rejectionReasonInput, setRejectionReasonInput] = useState("");
@@ -1690,6 +1717,185 @@ export default function AdminPage() {
   const totalXpPool = quests.reduce((sum, q) => sum + (q.xp ?? 0), 0);
   const liveQuestCount = quests.filter((q) => q.status === "Live").length;
 
+  // ─── Session Expired Modal Render ────────────────────────────────────────
+  function renderSessionExpiredModal() {
+    if (!showSessionExpiredModal) return null;
+    return (
+      <div className="admin-modal-overlay" style={{ zIndex: 99999, background: "rgba(0, 0, 0, 0.85)", backdropFilter: "blur(12px)" }}>
+        <div
+          className="admin-modal"
+          style={{
+            maxWidth: 480,
+            borderRadius: 24,
+            border: "1px solid rgba(245, 166, 35, 0.4)",
+            boxShadow: "0 30px 80px rgba(0, 0, 0, 0.9), 0 0 40px rgba(245, 166, 35, 0.15)",
+            overflow: "hidden",
+            animation: "fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header Banner */}
+          <div style={{
+            background: "linear-gradient(135deg, rgba(245, 166, 35, 0.15) 0%, rgba(217, 119, 6, 0.05) 100%)",
+            padding: "28px 28px 20px",
+            borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+            textAlign: "center"
+          }}>
+            <div style={{
+              width: 64,
+              height: 64,
+              borderRadius: "50%",
+              background: "rgba(245, 166, 35, 0.12)",
+              border: "2px solid rgba(245, 166, 35, 0.3)",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "2rem",
+              marginBottom: 14,
+              boxShadow: "0 0 20px rgba(245, 166, 35, 0.2)"
+            }}>
+              ⏳
+            </div>
+            <h2 style={{ margin: "0 0 6px", fontSize: "1.3rem", fontWeight: 800, color: "#fff" }}>
+              Session / Token Expired
+            </h2>
+            <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--gold-light)", lineHeight: 1.4 }}>
+              {sessionExpiredReason || "Your admin session token has expired."}
+            </p>
+          </div>
+
+          {/* Instruction Steps */}
+          <div style={{ padding: "24px 28px" }}>
+            <div style={{
+              fontSize: "0.8rem",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              color: "var(--text-muted)",
+              fontWeight: 800,
+              marginBottom: 12
+            }}>
+              What you need to do:
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
+              <div style={{
+                display: "flex",
+                gap: 12,
+                background: "rgba(255, 255, 255, 0.03)",
+                border: "1px solid rgba(255, 255, 255, 0.06)",
+                borderRadius: 12,
+                padding: "12px 14px",
+                alignItems: "flex-start"
+              }}>
+                <div style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  background: "rgba(245, 166, 35, 0.2)",
+                  color: "var(--gold-light)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "0.75rem",
+                  fontWeight: 800,
+                  flexShrink: 0
+                }}>
+                  1
+                </div>
+                <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: 1.4 }}>
+                  <strong style={{ color: "#fff", display: "block" }}>Click "Log In Again" below</strong>
+                  This will close this prompt and return you to the admin login form.
+                </div>
+              </div>
+
+              <div style={{
+                display: "flex",
+                gap: 12,
+                background: "rgba(255, 255, 255, 0.03)",
+                border: "1px solid rgba(255, 255, 255, 0.06)",
+                borderRadius: 12,
+                padding: "12px 14px",
+                alignItems: "flex-start"
+              }}>
+                <div style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  background: "rgba(245, 166, 35, 0.2)",
+                  color: "var(--gold-light)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "0.75rem",
+                  fontWeight: 800,
+                  flexShrink: 0
+                }}>
+                  2
+                </div>
+                <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: 1.4 }}>
+                  <strong style={{ color: "#fff", display: "block" }}>Enter your credentials</strong>
+                  Provide your admin email and password to receive a fresh 12-hour session.
+                </div>
+              </div>
+
+              <div style={{
+                display: "flex",
+                gap: 12,
+                background: "rgba(255, 255, 255, 0.03)",
+                border: "1px solid rgba(255, 255, 255, 0.06)",
+                borderRadius: 12,
+                padding: "12px 14px",
+                alignItems: "flex-start"
+              }}>
+                <div style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  background: "rgba(16, 185, 129, 0.2)",
+                  color: "#10b981",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "0.75rem",
+                  fontWeight: 800,
+                  flexShrink: 0
+                }}>
+                  ✓
+                </div>
+                <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: 1.4 }}>
+                  <strong style={{ color: "#fff", display: "block" }}>Your drafts are preserved</strong>
+                  Any unfinished quest or campaign drafts in your local browser cache remain intact.
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowSessionExpiredModal(false);
+              }}
+              style={{
+                width: "100%",
+                padding: "14px",
+                borderRadius: 12,
+                border: "none",
+                background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                color: "#120b02",
+                fontSize: "0.95rem",
+                fontWeight: 800,
+                cursor: "pointer",
+                boxShadow: "0 4px 16px rgba(245, 166, 35, 0.35)",
+                transition: "all 0.2s ease"
+              }}
+            >
+              Log In Again →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ─── Login gate ──────────────────────────────────────────────────────────
   if (!mounted) {
     return null;
@@ -1734,6 +1940,7 @@ export default function AdminPage() {
           </form>
           <Link href="/shortcut" className="admin-back-link">← Back to Shortcut</Link>
         </div>
+        {renderSessionExpiredModal()}
       </main>
     );
   }
@@ -3772,31 +3979,52 @@ export default function AdminPage() {
 
         {/* ─── QUEST LOG (CUSTOMIZABLE REPORTING TABLE) TAB ─── */}
         {tab === "questlog" && !loading && (() => {
-          // Combine verifications and message notes into a single master audit log
+          // Combine registrations, verifications, and message notes into a master audit log
+          const registrationLogs = attendees.map((a: any) => ({
+            id: `reg-${a.id}`,
+            quest_id: "register",
+            quest_title: a.promo_code
+              ? `🚀 Account Registration (Promo: ${a.promo_code})`
+              : "🚀 Account Registration",
+            user_name: a.full_name,
+            user_email: a.email,
+            ticket_code: a.ticket_code,
+            xp: a.total_xp || (a.promo_code ? 400 : 250),
+            status: "Approved",
+            approved_by: a.promo_code ? `Promo (${a.promo_code})` : "System",
+            user_message: a.promo_code ? `Registered with Promo Code: ${a.promo_code}` : "Initial attendee registration",
+            created_at: a.created_at,
+            logType: a.promo_code ? "Promo Sign-Up" : "Registration",
+            category: "onboarding",
+          }));
+
           const allLogs = [
+            ...registrationLogs,
             ...verifications.map((v) => ({ ...v, logType: "Screenshot Proof" })),
             ...messageNotes.map((m) => ({ ...m, logType: "Messagebox Note" })),
-          ];
+          ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-          const filteredLogs = allLogs.filter((item) => {
+          const filteredLogs = allLogs.filter((item: any) => {
             const query = questLogSearch.toLowerCase();
             const matchesQuery =
               !query ||
               (item.user_name || "").toLowerCase().includes(query) ||
               (item.user_email || "").toLowerCase().includes(query) ||
               (item.quest_title || "").toLowerCase().includes(query) ||
-              (item.ticket_code || "").toLowerCase().includes(query);
+              (item.ticket_code || "").toLowerCase().includes(query) ||
+              (item.approved_by || "").toLowerCase().includes(query) ||
+              (item.user_message || "").toLowerCase().includes(query);
 
             if (!matchesQuery) return false;
             if (questLogStatusFilter !== "all" && item.status !== questLogStatusFilter) return false;
-            const questCategory = quests.find(q => q.id === item.quest_id)?.category || "other";
+            const questCategory = item.category || quests.find(q => q.id === item.quest_id)?.category || "other";
             if (questLogCategoryFilter !== "all" && questCategory !== questLogCategoryFilter) return false;
             return true;
           });
 
           const exportToCSV = () => {
-            const headers = ["Quester Name", "Email", "Ticket Code", "Quest Title", "XP", "Type", "Status", "Reviewed By", "Date"];
-            const rows = filteredLogs.map((item) => [
+            const headers = ["Quester Name", "Email", "Ticket Code", "Quest Title", "XP", "Type", "Status", "Reviewed By / Promo", "Notes", "Date"];
+            const rows = filteredLogs.map((item: any) => [
               `"${item.user_name || ""}"`,
               `"${item.user_email || ""}"`,
               `"${item.ticket_code || ""}"`,
@@ -3805,6 +4033,7 @@ export default function AdminPage() {
               `"${item.logType}"`,
               `"${item.status}"`,
               `"${item.approved_by || (item.status === "Approved" ? "Admin" : "N/A")}"`,
+              `"${(item.user_message || "").replace(/"/g, '""')}"`,
               `"${new Date(item.created_at).toLocaleString()}"`,
             ]);
             const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
@@ -3823,7 +4052,7 @@ export default function AdminPage() {
                 <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                   <input
                     type="text"
-                    placeholder="Search Quest Log (Name, Email, Title, Reviewer)..."
+                    placeholder="Search Quest Log (Name, Email, Promo Code, Reviewer)..."
                     value={questLogSearch}
                     onChange={(e) => setQuestLogSearch(e.target.value)}
                     className="admin-search-input"
@@ -3891,6 +4120,7 @@ export default function AdminPage() {
                   </button>
                   <button
                     onClick={() => {
+                      fetchAttendees();
                       fetchVerifications();
                       fetchMessageNotes();
                     }}
@@ -7489,6 +7719,7 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+      {renderSessionExpiredModal()}
       <Footer />
     </main>
   );
