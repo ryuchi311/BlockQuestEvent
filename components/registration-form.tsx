@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import type { FormEvent } from "react";
 import { createPortal } from "react-dom";
+import { useSearchParams } from "next/navigation";
 
 type Status = {
   type: "idle" | "success" | "error";
@@ -22,7 +23,10 @@ type Credentials = {
   password: string;
 };
 
-export default function RegistrationForm() {
+function RegistrationFormContent() {
+  const searchParams = useSearchParams();
+  const promoCode = searchParams.get("promoCode") || "";
+
   const registrationFormRef = useRef<HTMLFormElement>(null);
   const [status, setStatus] = useState<Status>({ type: "idle", message: "" });
   const [submitting, setSubmitting] = useState(false);
@@ -222,6 +226,7 @@ export default function RegistrationForm() {
           password,
           terms,
           dataGathering,
+          promoCode,
         }),
       });
 
@@ -331,6 +336,23 @@ export default function RegistrationForm() {
 
   return (
     <div className="registration-stack">
+      {promoCode && (
+        <div style={{
+          background: "rgba(245, 166, 35, 0.15)",
+          border: "1px solid rgba(245, 166, 35, 0.3)",
+          color: "var(--gold-light)",
+          padding: "10px 14px",
+          borderRadius: "12px",
+          marginBottom: "16px",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          fontSize: "0.9rem",
+          fontWeight: 700
+        }}>
+          🎁 Promo Code Applied: {promoCode}
+        </div>
+      )}
       {!pendingLogin && !showVerificationOnly && !authenticatedUser && !qrPass ? (
         <form ref={registrationFormRef} className="form" noValidate onSubmit={handleRegistration}>
         <label>
@@ -874,5 +896,13 @@ export default function RegistrationForm() {
         document.body
       )}
     </div>
+  );
+}
+
+export default function RegistrationForm() {
+  return (
+    <Suspense fallback={<div className="form__message idle" style={{textAlign:"center"}}>Loading form...</div>}>
+      <RegistrationFormContent />
+    </Suspense>
   );
 }

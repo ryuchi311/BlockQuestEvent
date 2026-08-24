@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS public.registrations (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   ticket_code TEXT UNIQUE,
   total_xp INTEGER NOT NULL DEFAULT 0,
-  pincode TEXT
+  pincode TEXT,
+  promo_code TEXT
 );
 
 CREATE INDEX IF NOT EXISTS registrations_created_at_idx
@@ -169,3 +170,16 @@ CREATE TABLE IF NOT EXISTS public.quest_message_notes (
 
 GRANT ALL ON TABLE public.quest_message_notes TO postgres, service_role, anon, authenticated;
 
+
+-- Promo Codes table for Registration
+CREATE TABLE IF NOT EXISTS public.promo_codes (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  code TEXT NOT NULL UNIQUE,
+  xp_bonus INTEGER NOT NULL DEFAULT 150,
+  usage_count INTEGER NOT NULL DEFAULT 0,
+  max_uses INTEGER,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+GRANT ALL ON TABLE public.promo_codes TO postgres, service_role, anon, authenticated;

@@ -71,7 +71,7 @@ interface AdminUser {
 }
 
 
-const ADMIN_TABS = ["scanner", "attendees", "quests", "verifications", "messages", "questlog", "socials", "booths", "staff"] as const;
+const ADMIN_TABS = ["scanner", "attendees", "quests", "verifications", "messages", "questlog", "socials", "booths", "staff", "promocodes"] as const;
 type AdminTab = (typeof ADMIN_TABS)[number];
 
 const STATUS_OPTIONS: Quest["status"][] = ["Live", "Soon", "Done", "Draft"];
@@ -243,6 +243,16 @@ export default function AdminPage() {
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [quests, setQuests] = useState<Quest[]>([]);
   const [verifications, setVerifications] = useState<QuestVerification[]>([]);
+  const [promoCodes, setPromoCodes] = useState<any[]>([]);
+  
+  // Promo Code State
+  const [showPromoCodeModal, setShowPromoCodeModal] = useState(false);
+  const [promoCodeForm, setPromoCodeForm] = useState({ id: "", code: "", xp_bonus: 150, max_uses: "", is_active: true });
+  const [promoCodeSaving, setPromoCodeSaving] = useState(false);
+  const [promoCodeError, setPromoCodeError] = useState("");
+  const [promoSearch, setPromoSearch] = useState("");
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
   const [selectedProofImage, setSelectedProofImage] = useState<string | null>(null);
   const [zoomScale, setZoomScale] = useState(1);
   const [zoomPos, setZoomPos] = useState({ x: 0, y: 0 });
@@ -731,6 +741,25 @@ export default function AdminPage() {
     }
   }, [adminUser, adminFetch]);
 
+  const fetchPromoCodes = useCallback(async (isBackground?: any) => {
+    if (adminUser?.role !== "superadmin" && adminUser?.role !== "admin") return;
+    const isBg = isBackground === true;
+    if (!isBg) {
+      setLoading(true);
+      setError("");
+    }
+    try {
+      const res = await adminFetch("/api/admin/promo-codes");
+      const json = await safeJson(res);
+      if (!res.ok) throw new Error(json.error || "Failed to load promo codes.");
+      setPromoCodes(json.promoCodes ?? []);
+    } catch (err: any) {
+      if (!isBg) setError(err.message);
+    } finally {
+      if (!isBg) setLoading(false);
+    }
+  }, [adminUser, adminFetch]);
+
   // Load ALL data immediately on auth so stat cards are always accurate
   useEffect(() => {
     if (!authed) return;
@@ -738,7 +767,8 @@ export default function AdminPage() {
     fetchQuests();
     fetchVerifications();
     fetchMessageNotes();
-  }, [authed, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes]);
+    fetchPromoCodes();
+  }, [authed, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes, fetchPromoCodes]);
 
   // Refresh current tab data when switching tabs
   useEffect(() => {
@@ -1865,7 +1895,7 @@ export default function AdminPage() {
           if (role === "superadmin") return true;
           if (role === "verifier") return t === "verifications" || t === "messages" || t === "questlog";
           if (role === "manage_attendees" || role === "manage_quester") return t === "scanner" || t === "attendees" || t === "questlog";
-          if (role === "admin") return t === "scanner" || t === "attendees" || t === "quests" || t === "verifications" || t === "messages" || t === "questlog" || t === "booths";
+          if (role === "admin") return t === "scanner" || t === "attendees" || t === "quests" || t === "verifications" || t === "messages" || t === "questlog" || t === "booths" || t === "promocodes";
           if (role === "viewer") return t === "scanner" || t === "attendees" || t === "quests" || t === "verifications" || t === "messages" || t === "questlog";
           return false;
         }).map((t) => (
@@ -1891,7 +1921,9 @@ export default function AdminPage() {
                             ? "🛡️"
                             : t === "socials"
                               ? "📣"
-                              : "🔍"}
+                              : t === "promocodes"
+                                ? "🎁"
+                                : "🔍"}
             </span>
             <span className="admin-tab-text">
               {t === "scanner"
@@ -1910,7 +1942,9 @@ export default function AdminPage() {
                             ? " Staff / Admins"
                             : t === "socials"
                               ? " Social Missions"
-                              : ` Quest Verifications (${verifications.filter((v) => !v.user_message && v.status === "Pending").length})`}
+                              : t === "promocodes"
+                                ? " Promo Codes"
+                                : ` Quest Verifications (${verifications.filter((v) => !v.user_message && v.status === "Pending").length})`}
             </span>
           </button>
         ))}
@@ -6874,6 +6908,584 @@ export default function AdminPage() {
                 {isDeleting ? "Deleting..." : "Proceed"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── PROMO CODES TAB ─── */}
+      {tab === "promocodes" && (adminUser?.role === "superadmin" || adminUser?.role === "admin") && !loading && (
+        <div className="admin-fade-in" style={{ padding: "0 4px" }}>
+          {/* Header & Actions Bar */}
+          <div className="admin-header-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, marginBottom: 20 }}>
+            <div>
+              <h2 style={{ display: "flex", alignItems: "center", gap: 10, margin: 0, fontSize: "1.4rem", fontWeight: 800 }}>
+                <span style={{ fontSize: "1.6rem" }}>🎁</span> Promo Codes & Referral Campaigns
+              </h2>
+              <p style={{ margin: "4px 0 0", color: "var(--text-muted)", fontSize: "0.9rem" }}>
+                Generate promotional links, configure custom XP sign-up bonuses, and track redemption metrics.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <input
+                type="text"
+                className="admin-search-input"
+                placeholder="Search promo codes..."
+                value={promoSearch}
+                onChange={(e) => setPromoSearch(e.target.value)}
+                style={{ width: 220, padding: "9px 14px", borderRadius: 10 }}
+              />
+              <button
+                onClick={() => {
+                  setPromoCodeForm({ id: "", code: "", xp_bonus: 150, max_uses: "", is_active: true });
+                  setPromoCodeError("");
+                  setShowPromoCodeModal(true);
+                }}
+                className="admin-refresh-btn"
+                style={{
+                  background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                  color: "#120b02",
+                  fontWeight: 800,
+                  boxShadow: "0 4px 14px rgba(245, 166, 35, 0.35)",
+                  padding: "9px 18px",
+                  borderRadius: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6
+                }}
+              >
+                <span>+</span> Create Promo Code
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Metrics Bar */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: 12,
+            marginBottom: 20
+          }}>
+            <div style={{
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: 14,
+              padding: "14px 18px",
+              display: "flex",
+              alignItems: "center",
+              gap: 12
+            }}>
+              <span style={{ fontSize: "1.8rem" }}>🏷️</span>
+              <div>
+                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Total Codes</div>
+                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fff" }}>{promoCodes.length}</div>
+              </div>
+            </div>
+
+            <div style={{
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: 14,
+              padding: "14px 18px",
+              display: "flex",
+              alignItems: "center",
+              gap: 12
+            }}>
+              <span style={{ fontSize: "1.8rem" }}>⚡</span>
+              <div>
+                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Active Campaigns</div>
+                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#10b981" }}>
+                  {promoCodes.filter(p => p.is_active).length}
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: 14,
+              padding: "14px 18px",
+              display: "flex",
+              alignItems: "center",
+              gap: 12
+            }}>
+              <span style={{ fontSize: "1.8rem" }}>👥</span>
+              <div>
+                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Total Redemptions</div>
+                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--gold-light)" }}>
+                  {promoCodes.reduce((acc, p) => acc + (p.usage_count || 0), 0)}
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: 14,
+              padding: "14px 18px",
+              display: "flex",
+              alignItems: "center",
+              gap: 12
+            }}>
+              <span style={{ fontSize: "1.8rem" }}>✨</span>
+              <div>
+                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Bonus XP Awarded</div>
+                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#38bdf8" }}>
+                  {promoCodes.reduce((acc, p) => acc + ((p.usage_count || 0) * (p.xp_bonus || 0)), 0).toLocaleString()} XP
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Table */}
+          {promoCodes.length === 0 ? (
+            <div style={{
+              textAlign: "center",
+              padding: "60px 20px",
+              background: "rgba(255, 255, 255, 0.02)",
+              borderRadius: 16,
+              border: "1px dashed rgba(255, 255, 255, 0.1)"
+            }}>
+              <span style={{ fontSize: "3rem", display: "block", marginBottom: 12 }}>🎁</span>
+              <h3 style={{ margin: "0 0 6px", color: "#fff", fontSize: "1.1rem" }}>No promo codes created yet</h3>
+              <p style={{ margin: "0 0 16px", color: "var(--text-muted)", fontSize: "0.9rem" }}>
+                Create your first promo code to start distributing referral registration links.
+              </p>
+              <button
+                onClick={() => {
+                  setPromoCodeForm({ id: "", code: "", xp_bonus: 150, max_uses: "", is_active: true });
+                  setPromoCodeError("");
+                  setShowPromoCodeModal(true);
+                }}
+                className="admin-refresh-btn"
+                style={{
+                  background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                  color: "#120b02",
+                  fontWeight: 800,
+                  padding: "9px 18px",
+                  borderRadius: 10
+                }}
+              >
+                + Create Promo Code
+              </button>
+            </div>
+          ) : (
+            <div className="admin-table-container" style={{ background: "rgba(10, 10, 20, 0.6)", borderRadius: 16, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Promo Code & Link</th>
+                    <th>Bonus XP</th>
+                    <th>Redemptions</th>
+                    <th>Usage Limit</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: "right" }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {promoCodes
+                    .filter(pc => !promoSearch || pc.code.toLowerCase().includes(promoSearch.toLowerCase()))
+                    .map((pc) => {
+                      const shareUrl = typeof window !== "undefined"
+                        ? `${window.location.origin}/register?promoCode=${pc.code}`
+                        : `https://event.block-quest.com/register?promoCode=${pc.code}`;
+                      const isCopied = copiedCode === pc.code;
+
+                      return (
+                        <tr key={pc.id}>
+                          <td>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <span style={{
+                                  fontWeight: 800,
+                                  fontFamily: "monospace",
+                                  fontSize: "1rem",
+                                  color: "var(--gold-light)",
+                                  background: "rgba(245, 166, 35, 0.1)",
+                                  padding: "3px 8px",
+                                  borderRadius: 6,
+                                  border: "1px solid rgba(245, 166, 35, 0.25)",
+                                  letterSpacing: "0.05em"
+                                }}>
+                                  {pc.code}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(shareUrl);
+                                    setCopiedCode(pc.code);
+                                    setTimeout(() => setCopiedCode(null), 2000);
+                                  }}
+                                  style={{
+                                    background: isCopied ? "rgba(16, 185, 129, 0.2)" : "rgba(255, 255, 255, 0.06)",
+                                    border: isCopied ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(255, 255, 255, 0.12)",
+                                    color: isCopied ? "#10b981" : "var(--text-secondary)",
+                                    borderRadius: 6,
+                                    padding: "3px 8px",
+                                    fontSize: "0.75rem",
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 4,
+                                    transition: "all 0.2s ease"
+                                  }}
+                                  title="Copy invite URL"
+                                >
+                                  {isCopied ? "Copied! ✔" : "Copy Link 📋"}
+                                </button>
+                              </div>
+                              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {shareUrl}
+                              </span>
+                            </div>
+                          </td>
+
+                          <td>
+                            <span style={{
+                              fontWeight: 800,
+                              color: "#f5a623",
+                              background: "rgba(245, 166, 35, 0.1)",
+                              padding: "4px 10px",
+                              borderRadius: 20,
+                              fontSize: "0.85rem",
+                              border: "1px solid rgba(245, 166, 35, 0.2)"
+                            }}>
+                              +{pc.xp_bonus} XP
+                            </span>
+                          </td>
+
+                          <td>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{ fontWeight: 800, fontSize: "1rem", color: "#fff" }}>
+                                {pc.usage_count || 0}
+                              </span>
+                              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                                registered
+                              </span>
+                            </div>
+                          </td>
+
+                          <td>
+                            {pc.max_uses ? (
+                              <span style={{
+                                fontSize: "0.85rem",
+                                fontWeight: 700,
+                                color: (pc.usage_count || 0) >= pc.max_uses ? "#ef4444" : "var(--text-secondary)"
+                              }}>
+                                {pc.usage_count || 0} / {pc.max_uses} max
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontStyle: "italic" }}>
+                                Unlimited
+                              </span>
+                            )}
+                          </td>
+
+                          <td>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  const res = await adminFetch("/api/admin/promo-codes", {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ id: pc.id, is_active: !pc.is_active }),
+                                  });
+                                  if (res.ok) fetchPromoCodes();
+                                } catch {}
+                              }}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 6,
+                                padding: "4px 12px",
+                                borderRadius: 20,
+                                fontSize: "0.8rem",
+                                fontWeight: 700,
+                                background: pc.is_active ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
+                                color: pc.is_active ? "#10b981" : "#ef4444",
+                                border: pc.is_active ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(239, 68, 68, 0.3)",
+                                cursor: "pointer"
+                              }}
+                              title="Click to toggle status"
+                            >
+                              <span style={{
+                                width: 7,
+                                height: 7,
+                                borderRadius: "50%",
+                                backgroundColor: pc.is_active ? "#10b981" : "#ef4444"
+                              }} />
+                              {pc.is_active ? "Active" : "Inactive"}
+                            </button>
+                          </td>
+
+                          <td style={{ textAlign: "right" }}>
+                            <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                              <button
+                                className="admin-edit-btn"
+                                onClick={() => {
+                                  setPromoCodeForm({
+                                    id: pc.id,
+                                    code: pc.code,
+                                    xp_bonus: pc.xp_bonus,
+                                    max_uses: pc.max_uses ?? "",
+                                    is_active: pc.is_active,
+                                  });
+                                  setPromoCodeError("");
+                                  setShowPromoCodeModal(true);
+                                }}
+                                style={{ padding: "6px 12px", fontSize: "0.8rem" }}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                className="admin-delete-btn"
+                                onClick={async () => {
+                                  if (!confirm(`Are you sure you want to delete promo code "${pc.code}"?`)) return;
+                                  try {
+                                    const res = await adminFetch("/api/admin/promo-codes", {
+                                      method: "DELETE",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ id: pc.id }),
+                                    });
+                                    if (!res.ok) throw new Error("Failed to delete promo code");
+                                    fetchPromoCodes();
+                                  } catch (e: any) {
+                                    alert(e.message);
+                                  }
+                                }}
+                                style={{ padding: "6px 12px", fontSize: "0.8rem" }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── Promo Code Form Modal ─── */}
+      {showPromoCodeModal && (
+        <div className="admin-modal-overlay" onClick={() => setShowPromoCodeModal(false)}>
+          <div className="admin-modal" style={{ maxWidth: 520, borderRadius: 20, overflow: "hidden" }} onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal__header" style={{ padding: "24px 28px 16px", borderBottom: "1px solid rgba(255, 255, 255, 0.08)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: "1.6rem" }}>🎁</span>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "#fff" }}>
+                    {promoCodeForm.id ? "Edit Promo Code" : "Create Promo Code"}
+                  </h2>
+                  <p style={{ margin: "2px 0 0", fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                    Configure referral code, bonus rewards, and redemption limits.
+                  </p>
+                </div>
+              </div>
+              <button className="admin-modal__close" onClick={() => setShowPromoCodeModal(false)}>✕</button>
+            </div>
+
+            <form
+              className="admin-quest-form"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setPromoCodeSaving(true);
+                setPromoCodeError("");
+                try {
+                  const res = await adminFetch("/api/admin/promo-codes", {
+                    method: promoCodeForm.id ? "PATCH" : "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      id: promoCodeForm.id || undefined,
+                      code: promoCodeForm.code.trim().toUpperCase(),
+                      xp_bonus: Number(promoCodeForm.xp_bonus),
+                      max_uses: promoCodeForm.max_uses ? Number(promoCodeForm.max_uses) : null,
+                      is_active: promoCodeForm.is_active
+                    }),
+                  });
+                  const json = await safeJson(res);
+                  if (!res.ok) throw new Error(json.error || "Failed to save promo code.");
+                  setShowPromoCodeModal(false);
+                  fetchPromoCodes();
+                } catch (err: any) {
+                  setPromoCodeError(err.message);
+                } finally {
+                  setPromoCodeSaving(false);
+                }
+              }}
+              style={{ padding: "20px 28px 24px" }}
+            >
+              {promoCodeError && (
+                <div style={{
+                  background: "rgba(239, 68, 68, 0.15)",
+                  border: "1px solid rgba(239, 68, 68, 0.3)",
+                  color: "#ef4444",
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  fontSize: "0.85rem",
+                  fontWeight: 600
+                }}>
+                  {promoCodeError}
+                </div>
+              )}
+
+              <label>
+                Promo Code Name *
+                <input
+                  type="text"
+                  required
+                  value={promoCodeForm.code}
+                  onChange={(e) => setPromoCodeForm({ ...promoCodeForm, code: e.target.value.toUpperCase().replace(/\s+/g, "") })}
+                  placeholder="e.g. BANANAMEDIANW, VIPFIESTA"
+                  style={{ textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, color: "var(--gold-light)" }}
+                />
+                <small>Attendees will use this code in their registration URL.</small>
+              </label>
+
+              {promoCodeForm.code && (
+                <div style={{
+                  background: "rgba(245, 166, 35, 0.08)",
+                  border: "1px dashed rgba(245, 166, 35, 0.3)",
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  fontSize: "0.8rem",
+                  color: "var(--gold-light)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4
+                }}>
+                  <span style={{ fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase" }}>Generated Registration Link Preview:</span>
+                  <code style={{ wordBreak: "break-all", color: "#fff" }}>
+                    {typeof window !== "undefined" ? window.location.origin : "https://event.block-quest.com"}/register?promoCode={promoCodeForm.code}
+                  </code>
+                </div>
+              )}
+
+              <div className="admin-form-row">
+                <label>
+                  Bonus XP Awarded *
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    step="25"
+                    value={promoCodeForm.xp_bonus}
+                    onChange={(e) => setPromoCodeForm({ ...promoCodeForm, xp_bonus: Number(e.target.value) })}
+                  />
+                  <small>Extra XP granted on top of the base 250 XP.</small>
+                </label>
+
+                <label>
+                  Max Uses Limit (optional)
+                  <input
+                    type="number"
+                    min="1"
+                    value={promoCodeForm.max_uses}
+                    onChange={(e) => setPromoCodeForm({ ...promoCodeForm, max_uses: e.target.value })}
+                    placeholder="Unlimited"
+                  />
+                  <small>Leave empty for unlimited redemptions.</small>
+                </label>
+              </div>
+
+              {/* XP Quick Preset Buttons */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 700 }}>XP Presets:</span>
+                {[100, 150, 250, 500, 1000].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setPromoCodeForm({ ...promoCodeForm, xp_bonus: preset })}
+                    style={{
+                      padding: "3px 8px",
+                      borderRadius: 6,
+                      fontSize: "0.75rem",
+                      fontWeight: 700,
+                      background: promoCodeForm.xp_bonus === preset ? "rgba(245, 166, 35, 0.25)" : "rgba(255, 255, 255, 0.05)",
+                      color: promoCodeForm.xp_bonus === preset ? "var(--gold-light)" : "var(--text-secondary)",
+                      border: promoCodeForm.xp_bonus === preset ? "1px solid rgba(245, 166, 35, 0.5)" : "1px solid rgba(255, 255, 255, 0.1)",
+                      cursor: "pointer"
+                    }}
+                  >
+                    +{preset} XP
+                  </button>
+                ))}
+              </div>
+
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "12px 16px",
+                background: "rgba(255, 255, 255, 0.02)",
+                borderRadius: 12,
+                border: "1px solid rgba(255, 255, 255, 0.06)",
+                marginTop: 4
+              }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "#fff" }}>Active Status</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>If disabled, attendees using this code will not receive bonus XP.</div>
+                </div>
+                <label style={{ position: "relative", display: "inline-block", width: 44, height: 24, cursor: "pointer", margin: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={promoCodeForm.is_active}
+                    onChange={(e) => setPromoCodeForm({ ...promoCodeForm, is_active: e.target.checked })}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: "absolute",
+                    inset: 0,
+                    backgroundColor: promoCodeForm.is_active ? "#10b981" : "rgba(255, 255, 255, 0.2)",
+                    borderRadius: 24,
+                    transition: "0.2s"
+                  }}>
+                    <span style={{
+                      position: "absolute",
+                      content: '""',
+                      height: 18,
+                      width: 18,
+                      left: promoCodeForm.is_active ? 22 : 3,
+                      bottom: 3,
+                      backgroundColor: "#fff",
+                      borderRadius: "50%",
+                      transition: "0.2s"
+                    }} />
+                  </span>
+                </label>
+              </div>
+
+              <div className="admin-modal__footer" style={{ marginTop: 12 }}>
+                <button
+                  type="button"
+                  className="admin-cancel-btn"
+                  onClick={() => setShowPromoCodeModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={promoCodeSaving}
+                  className="admin-save-btn"
+                  style={{
+                    background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                    color: "#120b02",
+                    fontWeight: 800,
+                    padding: "11px 22px",
+                    borderRadius: 10,
+                    border: "none",
+                    cursor: promoCodeSaving ? "not-allowed" : "pointer"
+                  }}
+                >
+                  {promoCodeSaving ? "Saving..." : promoCodeForm.id ? "Update Promo Code" : "Create Promo Code"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

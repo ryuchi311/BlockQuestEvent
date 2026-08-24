@@ -13,6 +13,7 @@ type RegistrationPayload = {
   password?: string;
   terms?: boolean;
   dataGathering?: boolean;
+  promoCode?: string;
 };
 
 export async function POST(request: Request) {
@@ -49,6 +50,7 @@ export async function POST(request: Request) {
   const phone = rawPhone.replace(/[^\d+]/g, ""); // Keep only digits and +
   const organization = payload.organization?.trim() || null;
   const password = payload.password ?? "";
+  const promoCode = payload.promoCode?.trim() || null;
 
   if (!fullName || !email || !phone || !password || payload.terms !== true || payload.dataGathering !== true) {
     return NextResponse.json(
@@ -97,7 +99,35 @@ export async function POST(request: Request) {
     );
   }
 
-  // 3. Insert registration record with initial 250 XP bonus
+  let initialXp = 250;
+  let successMessage = "Registration saved successfully. +250 XP awarded!";
+  let finalPromoCode = null;
+
+  if (promoCode) {
+    const { data: promoData, error: promoError } = await supabase
+      .from("promo_codes")
+      .select("*")
+      .eq("code", promoCode.trim().toUpperCase())
+      .single();
+
+    if (promoData && promoData.is_active) {
+      if (promoData.max_uses === null || promoData.usage_count < promoData.max_uses) {
+        initialXp += promoData.xp_bonus;
+        finalPromoCode = promoData.code;
+        successMessage = `Registration saved successfully. Promo code applied: +${initialXp} XP awarded!`;
+        
+        // Increment usage count in the background
+        supabase.rpc('increment_promo_usage', { p_code: promoData.code }).then((res) => {
+          if (res.error) {
+            // fallback if RPC doesn't exist
+            supabase.from("promo_codes").update({ usage_count: promoData.usage_count + 1 }).eq("code", promoData.code).then();
+          }
+        });
+      }
+    }
+  }
+
+  // 3. Insert registration record with initial XP bonus
   const { data: newReg, error } = await supabase
     .from("registrations")
     .insert({
@@ -109,7 +139,8 @@ export async function POST(request: Request) {
       agreed_to_terms: true,
       agreed_to_data_gathering: true,
       agreed_at: new Date().toISOString(),
-      total_xp: 250,
+      total_xp: initialXp,
+      promo_code: finalPromoCode,
     })
     .select("id")
     .single();
@@ -127,7 +158,7 @@ export async function POST(request: Request) {
   try {
     const completionPayload: Record<string, any> = {
       quest_id: "register",
-      xp_awarded: 250,
+      xp_awarded: initialXp,
     };
     if (newReg?.id) completionPayload.registration_id = newReg.id;
     if (email) completionPayload.user_email = email;
@@ -138,7 +169,7 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json(
-    { message: "Registration saved successfully. +250 XP awarded!", totalXp: 250 },
+    { message: successMessage, totalXp: initialXp },
     { status: 201 },
   );
 }
