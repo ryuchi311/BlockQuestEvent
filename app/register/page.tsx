@@ -2,6 +2,7 @@
 
 import RegistrationForm from "../../components/registration-form";
 import Link from "next/link";
+import Footer from "../../components/footer";
 
 export default function RegisterPage() {
   return (
@@ -65,6 +66,8 @@ export default function RegisterPage() {
           </div>
           <RegistrationForm />
         </section>
+        
+        <Footer />
       </section>
     </main>
   );

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import Footer from "../../components/footer";
 
 const QrScanner = dynamic(() => import("../../components/qr-scanner"), { ssr: false, loading: () => <p className="admin-loading">Loading scanner…</p> });
 
@@ -6876,6 +6877,7 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+      <Footer />
     </main>
   );
 }

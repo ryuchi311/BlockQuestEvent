@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
+import Footer from "../components/footer";
 
 export default function Home() {
   const portalRef = useRef<HTMLDivElement>(null);
@@ -98,10 +99,7 @@ export default function Home() {
           </Link>
         </div>
 
-        <footer className="home-footer">
-          <span className="home-footer__meta">© 2026 BlockQuest. All Rights Reserved.</span>
-          <span className="home-footer__meta home-footer__meta--love">Made with ❤️ for the community</span>
-        </footer>
+        <Footer />
       </section>
     </main>
   );
