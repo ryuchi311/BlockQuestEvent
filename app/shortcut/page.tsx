@@ -20,53 +20,49 @@ export default function ShortcutsPage() {
       fontFamily: "Outfit, Inter, system-ui, sans-serif",
       padding: "32px 20px 64px"
     }}>
-      <div style={{ maxWidth: 1080, margin: "0 auto" }}>
+      <div style={{ maxWidth: 1240, margin: "0 auto" }}>
         
-        {/* Header */}
+        {/* Compact Header */}
         <header style={{
           textAlign: "center",
-          marginBottom: 40,
-          background: "rgba(13, 14, 25, 0.8)",
+          marginBottom: 20,
+          background: "rgba(13, 14, 25, 0.7)",
           border: "1px solid rgba(255, 255, 255, 0.08)",
-          borderRadius: 24,
-          padding: "32px 24px",
-          boxShadow: "0 20px 50px rgba(0,0,0,0.6)"
+          borderRadius: 16,
+          padding: "16px 20px",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.4)"
         }}>
-          <div style={{
-            width: 56,
-            height: 56,
-            borderRadius: 16,
-            background: "linear-gradient(135deg, #f5a623 0%, #3b82f6 100%)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "1.8rem",
-            margin: "0 auto 16px",
-            boxShadow: "0 0 30px rgba(245, 166, 35, 0.35)"
-          }}>
-            🧭
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
+            <span style={{ fontSize: "1.3rem" }}>🧭</span>
+            <h1 style={{ fontSize: "1.35rem", fontWeight: 800, color: "#fff", letterSpacing: "-0.01em", margin: 0 }}>
+              Admin & Staff Navigation Central
+            </h1>
+            <span style={{
+              fontSize: "0.68rem",
+              fontWeight: 800,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              background: "rgba(245, 166, 35, 0.15)",
+              color: "var(--gold-light)",
+              border: "1px solid rgba(245, 166, 35, 0.3)",
+              padding: "2px 8px",
+              borderRadius: 20
+            }}>
+              Shortcut Hub
+            </span>
           </div>
-          <span style={{
-            fontSize: "0.78rem",
-            fontWeight: 800,
-            letterSpacing: "0.12em",
-            textTransform: "uppercase",
-            color: "var(--gold-light)",
-            display: "block",
-            marginBottom: 6
-          }}>
-            EVENT OPERATIONS SHORTCUT HUB
-          </span>
-          <h1 style={{ fontSize: "2.2rem", fontWeight: 900, color: "#fff", letterSpacing: "-0.02em" }}>
-            Admin & Staff Navigation Central
-          </h1>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem", maxWidth: 620, margin: "10px auto 0", lineHeight: 1.6 }}>
-            Quick launcher for all administrative consoles, mobile scanner gates, vendor stations, and QA test suites. Bookmark this page to navigate instantly during live event operations.
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.82rem", maxWidth: 680, margin: "0 auto", lineHeight: 1.4 }}>
+            Quick launcher for all administrative consoles, mobile scanner gates, vendor stations, and QA test suites.
           </p>
         </header>
 
-        {/* Shortcut Action Cards Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20, marginBottom: 40 }}>
+        {/* Shortcut Action Cards Grid (Responsive 4 in a row / 2x2 / 1-col) */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+          gap: 20,
+          marginBottom: 40
+        }}>
           
           {/* Card 1: Admin Dashboard */}
           <div style={{

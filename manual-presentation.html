@@ -635,11 +635,12 @@
     </a>
     <ul class="nav-links">
       <li><a href="#registration-deepdive" class="nav-link" style="color: var(--blue); font-weight: 700;">📝 Registration & QR Pass</a></li>
+      <li><a href="#promo-codes-deepdive" class="nav-link" style="color: #f5a623; font-weight: 700;">🎁 Promo Codes</a></li>
       <li><a href="#add-quest-deepdive" class="nav-link" style="color: var(--gold-light); font-weight: 700;">⚡ Add Quest</a></li>
-      <li><a href="#admin-tabs" class="nav-link">Admin Modules</a></li>
+      <li><a href="#admin-tabs" class="nav-link">Admin Modules (10)</a></li>
       <li><a href="#rbac" class="nav-link">RBAC Matrix</a></li>
       <li><a href="#architecture" class="nav-link">Architecture</a></li>
-      <li><a href="#security" class="nav-link" style="color: #f87171; font-weight: 700;">🔒 Security</a></li>
+      <li><a href="#security" class="nav-link" style="color: #f87171; font-weight: 700;">🔒 Security & Tokens</a></li>
       <li><a href="#faq" class="nav-link" style="color: var(--emerald); font-weight: 700;">❓ Master FAQ</a></li>
     </ul>
   </nav>
@@ -651,7 +652,7 @@
       <div class="hero-badge">⚡ End-to-End System Manual & Dashboard Guide</div>
       <h1 class="hero-title">BlockQuest Event Platform</h1>
       <p class="hero-subtitle">
-        A comprehensive guide explaining the strategic purpose, quester onboarding, gate operations, and an in-depth breakdown of all 9 Admin Dashboard Modules.
+        A comprehensive guide explaining the strategic purpose, quester onboarding, gate operations, promo campaigns, and an in-depth breakdown of all 10 Admin Dashboard Modules.
       </p>
 
       <div class="hero-metrics">
@@ -661,14 +662,19 @@
           <div class="metric-desc">Dynamic QR pass generation with unique codes (`BQF-XXXXXX`).</div>
         </div>
         <div class="metric-card">
+          <div class="metric-icon">🎁</div>
+          <div class="metric-title">Promo Code Engine</div>
+          <div class="metric-desc">Custom referral URLs (`?promoCode=...`), dynamic sign-up bonus XP & usage cap tracking.</div>
+        </div>
+        <div class="metric-card">
           <div class="metric-icon">📣</div>
           <div class="metric-title">Dynamic Socials</div>
           <div class="metric-desc">Configurable 10s auto-verification tasks with `is_active` soft-hide controls.</div>
         </div>
         <div class="metric-card">
           <div class="metric-icon">🔒</div>
-          <div class="metric-title">Security PIN Protection</div>
-          <div class="metric-desc">Mandatory first-login 4-digit PIN setup, login gate & self-service profile change.</div>
+          <div class="metric-title">PIN & Token Security</div>
+          <div class="metric-desc">Mandatory 4-digit PIN setup, 5-min inactivity auto-lock & token expiration guidance.</div>
         </div>
         <div class="metric-card">
           <div class="metric-icon">📥</div>
@@ -677,8 +683,8 @@
         </div>
         <div class="metric-card">
           <div class="metric-icon">🛡️</div>
-          <div class="metric-title">5-Tier RBAC & Password Controls</div>
-          <div class="metric-desc">Superadmin, Manager, Verifier, Gate & Viewer with mandatory staff password updates.</div>
+          <div class="metric-title">6-Tier RBAC & Password Controls</div>
+          <div class="metric-desc">Superadmin, Manager, Verifier, Gate, Booth Staff & Viewer with mandatory staff password updates.</div>
         </div>
       </div>
     </header>
@@ -873,6 +879,85 @@
             <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 14px;">
               📱 Present this QR code at the entrance gate scanner or save as screenshot.
             </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION: PROMO CODES DEEP DIVE -->
+    <section id="promo-codes-deepdive" style="background: rgba(245, 166, 35, 0.03); border-top: 1px solid var(--border-gold); border-bottom: 1px solid var(--border-gold);">
+      <div class="section-header">
+        <span class="section-tag tag-gold">NEW FEATURE SPOTLIGHT</span>
+        <h2 class="section-title">🎁 Promo Code & Referral Campaign Engine</h2>
+        <p class="section-desc">Empower marketing teams, community partners, and VIP sponsors to distribute custom invitation links with customized sign-up XP bonuses and real-time redemption caps.</p>
+      </div>
+
+      <div class="module-grid" style="grid-template-columns: 1.2fr 1fr; gap: 30px; margin-bottom: 30px;">
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--gold-light);">Strategic Value & Core Mechanics</h3>
+          
+          <div style="display: flex; gap: 14px; background: var(--bg-card); border: 1px solid var(--border-subtle); padding: 18px; border-radius: var(--radius-md);">
+            <div style="font-size: 1.6rem;">🔗</div>
+            <div>
+              <h4 style="font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 4px;">1. Seamless URL Query Detection</h4>
+              <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5;">
+                Attendees visiting <code>https://event.block-quest.com/register?promoCode=BANANAMEDIANW</code> automatically have the promo code captured without needing to type it manually.
+              </p>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 14px; background: var(--bg-card); border: 1px solid var(--border-subtle); padding: 18px; border-radius: var(--radius-md);">
+            <div style="font-size: 1.6rem;">⚡</div>
+            <div>
+              <h4 style="font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 4px;">2. Dynamic Bonus XP Allocation</h4>
+              <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5;">
+                Instead of rigid flat points, admins configure unique XP bonuses per code (e.g. +150 XP, +500 XP). Attendees start with <code>Base 250 XP + Bonus XP</code> immediately on registration.
+              </p>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 14px; background: var(--bg-card); border: 1px solid var(--border-subtle); padding: 18px; border-radius: var(--radius-md);">
+            <div style="font-size: 1.6rem;">📊</div>
+            <div>
+              <h4 style="font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 4px;">3. Real-Time Caps & Live Metrics</h4>
+              <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5;">
+                Set maximum allowable redemptions (e.g., first 50 sign-ups) or keep unlimited. The admin dashboard tracks live redemptions, active status toggles, and total distributed bonus XP.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Visual Mockup -->
+        <div style="background: var(--bg-card); border: 1px solid var(--border-gold); border-radius: var(--radius-lg); padding: 24px; display: flex; flex-direction: column; gap: 18px;">
+          <div style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; color: var(--gold-light); letter-spacing: 0.05em; border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px;">
+            👀 Live Experience Previews
+          </div>
+
+          <!-- Attendee View -->
+          <div>
+            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Attendee Registration View:</span>
+            <div style="margin-top: 6px; background: rgba(245, 166, 35, 0.15); border: 1px solid rgba(245, 166, 35, 0.3); color: var(--gold-light); padding: 10px 14px; border-radius: 10px; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+              🎁 Promo Code Applied: BANANAMEDIANW
+            </div>
+          </div>
+
+          <!-- Admin Row View -->
+          <div>
+            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Admin Campaign Controls:</span>
+            <div style="margin-top: 6px; background: rgba(10, 10, 20, 0.8); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 12px; font-size: 0.82rem; display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-family: monospace; font-weight: 800; color: var(--gold-light);">BANANAMEDIANW</span>
+                <span style="background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 700;">Active</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.78rem;">
+                <span>Reward: <strong style="color: var(--gold);">+150 XP</strong></span>
+                <span>Uses: <strong style="color: #fff;">42 / 100</strong></span>
+              </div>
+              <div style="display: flex; gap: 6px; margin-top: 4px;">
+                <span style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: var(--text-secondary); padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">Copy Link 📋</span>
+                <span style="background: rgba(245,166,35,0.15); color: var(--gold-light); padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">Edit</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1177,8 +1262,8 @@
     <section id="admin-tabs">
       <div class="section-header">
         <span class="section-tag tag-emerald">ADMIN DASHBOARD MODULES</span>
-        <h2 class="section-title">Complete Breakdown of All 9 Admin Dashboard Modules</h2>
-        <p class="section-desc">A detailed walkthrough of every tab, capability, safety control, and operational feature available in the Admin Portal.</p>
+        <h2 class="section-title">Complete Breakdown of All 10 Admin Dashboard Modules</h2>
+        <p class="section-desc">A detailed walkthrough of every tab, capability, safety control, promo engine, and operational feature available in the Admin Portal.</p>
       </div>
 
       <div class="tab-showcase">
@@ -1436,7 +1521,7 @@
               <div class="tab-icon-box">📊</div>
               <div>
                 <h3 class="tab-name">Tab 6: Quest Log (Master Audit & CSV Export)</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted);">Unified activity audit log, customizable column toggles, reviewer tracing & CSV report download</p>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Unified activity audit log, attendee registrations, promo code tracking, customizable column toggles & CSV export</p>
               </div>
             </div>
             <span class="tab-badge" style="background: rgba(168,85,247,0.15); color: var(--purple); border: 1px solid var(--purple);">All Staff & Management</span>
@@ -1446,11 +1531,15 @@
             <ul class="feature-list">
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
-                <div><strong>Unified Audit Trail:</strong> Combines Screenshot Proofs and Messagebox Notes into a single comprehensive reporting view.</div>
+                <div><strong>Unified Master Audit Trail:</strong> Combines initial Attendee Registrations, Promo Code Sign-Ups, Screenshot Proofs, and Messagebox Notes into a single comprehensive, chronological reporting view.</div>
               </li>
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
-                <div><strong>👮 Reviewed / Approved By Column:</strong> Traces exactly which admin validated each reward.</div>
+                <div><strong>🎁 Promo Code & Referral Attribution:</strong> Automatically logs registrations with their specific promo code name (e.g. <code>🚀 Account Registration (Promo: BANANAMEDIANW)</code>) and exact awarded XP.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>👮 Reviewed / Approved By Column:</strong> Traces exactly which admin validated each quest or marks promo redemptions automatically.</div>
               </li>
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
@@ -1458,7 +1547,7 @@
               </li>
               <li class="feature-item">
                 <span class="feature-bullet">✦</span>
-                <div><strong>📥 1-Click CSV Export:</strong> Exports fully formatted audit spreadsheets with reviewer emails for post-event sponsor reporting.</div>
+                <div><strong>📥 1-Click CSV Export:</strong> Exports fully formatted audit spreadsheets with reviewer emails and campaign referral notes for sponsor reconciliation.</div>
               </li>
             </ul>
 
@@ -1468,10 +1557,10 @@
                 <span style="color: var(--emerald);">CSV EXPORT READY</span>
               </div>
               <div style="color: var(--text-muted); line-height: 1.8;">
-                • Search: <span style="color: #fff;">Name, Email, Quest, Reviewer</span><br>
-                • Columns: <span style="color: var(--gold-light);">[ Quester | XP | Type | Reviewer ]</span><br>
-                • Download: <span style="color: var(--emerald);">[ 📥 Export Report (CSV) ]</span><br>
-                • Traceability: <span style="color: #60a5fa;">100% Reviewer Attribution</span>
+                • Search: <span style="color: #fff;">"BANANAMEDIANW" / Name / Email</span><br>
+                • Item: <span style="color: var(--gold-light);">Account Reg (Promo: BANANAMEDIANW)</span> | <span style="color: var(--gold);">+400 XP</span><br>
+                • Item: <span style="color: #c084fc;">Booth Proof (Polygon)</span> | <span style="color: var(--emerald);">✓ Approved by admin@block.io</span><br>
+                • Download: <span style="color: var(--emerald);">[ 📥 Export Report (CSV) ]</span>
               </div>
             </div>
           </div>
@@ -1649,6 +1738,57 @@
               </div>
             </div>
           </div>
+        <!-- TAB 10: PROMO CODES & CAMPAIGNS -->
+        <div class="tab-card">
+          <div class="tab-card-header">
+            <div class="tab-title-group">
+              <div class="tab-icon-box">🎁</div>
+              <div>
+                <h3 class="tab-name">Tab 10: Promo Codes & Referral Campaigns</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Custom sign-up bonuses, invite links, redemption caps & real-time attribution metrics</p>
+              </div>
+            </div>
+            <span class="tab-badge" style="background: rgba(245,166,35,0.15); color: var(--gold); border: 1px solid var(--gold);">Superadmin & Manager</span>
+          </div>
+
+          <div class="tab-grid">
+            <ul class="feature-list">
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Create & Edit Campaigns:</strong> Configure promo codes (e.g. <code>BANANAMEDIANW</code>, <code>VIPFIESTA</code>, <code>STUDIO2026</code>) with custom bonus XP points (+150 XP, +250 XP, +500 XP).</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>📋 1-Click Copy Invite Links:</strong> Each code row provides an instant <em>Copy Link</em> button that generates and copies the complete referral URL with animated <code>Copied! ✔</code> confirmation.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Redemption Caps & Usage Limits:</strong> Set a maximum allowable redemption count (e.g. first 100 quester sign-ups) or keep as unlimited.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Live Status Toggles:</strong> Superadmins & Admins can click once to immediately toggle a code between <em>Active</em> and <em>Inactive</em> without deleting campaign history.</div>
+              </li>
+              <li class="feature-item">
+                <span class="feature-bullet">✦</span>
+                <div><strong>Real-Time Campaign Summary KPIs:</strong> Top chips show Total Codes, Active Campaigns, Total Redemptions, and Total Bonus XP Distributed across the event.</div>
+              </li>
+            </ul>
+
+            <div class="mockup-preview">
+              <div class="mockup-bar">
+                <span>PROMO CODES DASHBOARD</span>
+                <span style="color: var(--gold-light);">LIVE METRICS</span>
+              </div>
+              <div style="color: var(--text-muted); line-height: 1.8;">
+                • Codes: <span style="color: #fff; font-weight: 800;">8 Campaigns</span> | Active: <span style="color: var(--emerald); font-weight: 800;">7 Live</span><br>
+                • Redemptions: <span style="color: var(--gold-light); font-weight: 800;">342 Attendees</span><br>
+                • Bonus XP Awarded: <span style="color: #38bdf8; font-weight: 800;">68,400 XP</span><br>
+                • BANANAMEDIANW: <span style="color: var(--gold);">+150 XP</span> | Uses: <span style="color: #fff;">124 / 200</span> | <span style="color: var(--emerald);">Active</span><br>
+                Actions: <span style="color: var(--text-secondary);">[ Copy Link 📋 ]</span> | <span style="color: var(--gold-light);">[ Edit ]</span> | <span style="color: var(--red);">[ Delete ]</span>
+              </div>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -1674,22 +1814,22 @@
           <tbody>
             <tr>
               <td><span class="role-badge badge-superadmin">Superadmin</span></td>
-              <td>All 7 Tabs (Full Access)</td>
-              <td>Full control: Create, Edit & Delete staff accounts, provision/edit booth stations & fixed XP, configure social missions, manage quests & attendees.</td>
+              <td>All 10 Tabs (Full Unrestricted Access)</td>
+              <td>Full control: Create, Edit & Delete staff accounts, promo codes & campaign links, provision/edit booth stations & fixed XP, configure social missions, manage quests & attendees.</td>
             </tr>
             <tr>
               <td><span class="role-badge badge-admin">Manager (Admin)</span></td>
-              <td>Scanner, Attendees, Quests, Verifications, Booth Stations</td>
-              <td>Event operations: Schedule quests, review submissions, check-in attendees, monitor live booth station scans and update fixed XP scores.</td>
+              <td>Scanner, Attendees, Quests, Verifications, Messages, Quest Log, Booth Stations, Promo Codes</td>
+              <td>Event operations: Schedule quests, review submissions, manage promo campaigns, check-in attendees, monitor live booth station scans and update fixed XP scores.</td>
             </tr>
             <tr>
               <td><span class="role-badge badge-quester">Manage Attendees</span></td>
-              <td>Scanner, Attendees</td>
+              <td>Scanner, Attendees, Quest Log</td>
               <td>Gate entrance QR scanning, manual search by ticket code/email, check-in confirmation modal.</td>
             </tr>
             <tr>
               <td><span class="role-badge badge-verifier">Verifier</span></td>
-              <td>Quest Verifications Only</td>
+              <td>Verifications, Messages, Quest Log</td>
               <td>Dedicated proof inspection queue (Approve XP / Reject with reason).</td>
             </tr>
             <tr>
@@ -1712,7 +1852,7 @@
       <div class="section-header">
         <span class="section-tag tag-emerald">QUALITY ASSURANCE & TESTER PLAYBOOK</span>
         <h2 class="section-title">🧪 Comprehensive QA Tester Guide for All Roles</h2>
-        <p class="section-desc">Step-by-step test scenarios and credentials to verify access boundaries, camera scanning, and state isolation.</p>
+        <p class="section-desc">Step-by-step test scenarios and credentials to verify access boundaries, camera scanning, promo campaigns, and state isolation.</p>
       </div>
 
       <!-- Test Credentials Overview -->
@@ -1736,29 +1876,29 @@
                 <td><span class="role-badge badge-superadmin">Superadmin</span></td>
                 <td><code>superadmin@blockquest.ph</code></td>
                 <td><code>superadmin2026</code></td>
-                <td><code>/admin</code> (All 7 Tabs)</td>
+                <td><code>/admin</code> (All 10 Tabs)</td>
                 <td>None (Full System Access)</td>
               </tr>
               <tr>
                 <td><span class="role-badge badge-admin">Manager (Admin)</span></td>
                 <td><code>manager@blockquest.ph</code></td>
                 <td><code>manager2026</code></td>
-                <td><code>/admin</code> (5 Tabs) & <code>/scan</code></td>
+                <td><code>/admin</code> (8 Tabs) & <code>/scan</code></td>
                 <td>Staff Tab & Social Missions</td>
               </tr>
               <tr>
                 <td><span class="role-badge badge-quester">Manage Attendees</span></td>
                 <td><code>gate@blockquest.ph</code></td>
                 <td><code>gate2026</code></td>
-                <td><code>/scan</code> & <code>/admin</code> (2 Tabs)</td>
-                <td>Quests, Verifications, Staff, Booths</td>
+                <td><code>/scan</code> & <code>/admin</code> (3 Tabs)</td>
+                <td>Quests, Verifications, Staff, Booths, Promo Codes</td>
               </tr>
               <tr>
                 <td><span class="role-badge badge-verifier">Verifier</span></td>
                 <td><code>verifier@blockquest.ph</code></td>
                 <td><code>verifier2026</code></td>
-                <td><code>/admin</code> (Verifications Only)</td>
-                <td>Scanner, Attendees, Quests, Staff, Booths</td>
+                <td><code>/admin</code> (Verifications, Messages, Quest Log)</td>
+                <td>Scanner, Attendees, Quests, Staff, Booths, Promo Codes</td>
               </tr>
               <tr>
                 <td><span class="role-badge badge-viewer">Viewer</span></td>
@@ -1785,15 +1925,15 @@
         <!-- Scenario 1: Superadmin -->
         <div class="card-box" style="border-left: 4px solid var(--gold);">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <h4 style="font-size: 1.05rem; color: var(--gold-light);">1. Superadmin Role Test</h4>
-            <span class="tab-badge" style="background: rgba(245,166,35,0.15); color: var(--gold); border: 1px solid var(--gold);">Full Access</span>
+            <h4 style="font-size: 1.05rem; color: var(--gold-light);">1. Superadmin Full System Test</h4>
+            <span class="tab-badge" style="background: rgba(245,166,35,0.15); color: var(--gold); border: 1px solid var(--gold);">10 Tabs Access</span>
           </div>
           <ol style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.7; padding-left: 18px;">
             <li>Log in at <code>/admin</code> with <code>superadmin@blockquest.ph</code> / <code>superadmin2026</code>.</li>
-            <li>Verify all 7 tabs are visible: <em>Scanner, Attendees, Quests, Verifications, Social Missions, Staff, Booth Stations</em>.</li>
-            <li>Open <strong>🏪 Booth Stations</strong> tab. Click <strong>+ Add Booth Station</strong> to create a test vendor.</li>
-            <li>Click <strong>✏️ Edit</strong> on a booth row and update the fixed XP reward (e.g. from +150 to +200 XP).</li>
-            <li>Close browser tab, reopen <code>/admin</code>, and confirm session auto-logged out.</li>
+            <li>Verify all 10 tabs are visible: <em>Scanner, Attendees, Quests, Verifications, Messages, Quest Log, Social Missions, Staff, Booth Stations, Promo Codes</em>.</li>
+            <li>Open <strong>🎁 Promo Codes</strong> tab. Click <strong>+ Create Code</strong> to configure a VIP referral campaign.</li>
+            <li>Click <strong>Copy Link 📋</strong> and verify the copied link includes <code>?promoCode=...</code>.</li>
+            <li>Close browser tab, reopen <code>/admin</code>, and confirm session remains cleanly guarded.</li>
           </ol>
         </div>
 
@@ -1801,12 +1941,12 @@
         <div class="card-box" style="border-left: 4px solid var(--blue-bright);">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <h4 style="font-size: 1.05rem; color: #60a5fa;">2. Operations Manager Test</h4>
-            <span class="tab-badge" style="background: rgba(59,130,246,0.15); color: var(--blue-bright); border: 1px solid var(--blue-bright);">5 Tabs Access</span>
+            <span class="tab-badge" style="background: rgba(59,130,246,0.15); color: var(--blue-bright); border: 1px solid var(--blue-bright);">8 Tabs Access</span>
           </div>
           <ol style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.7; padding-left: 18px;">
             <li>Log in at <code>/admin</code> with <code>manager@blockquest.ph</code> / <code>manager2026</code>.</li>
             <li>Confirm <strong>🛡️ Staff / Admins</strong> and <strong>🌐 Social Missions</strong> tabs are HIDDEN.</li>
-            <li>Verify access to <strong>🏪 Booth Stations</strong> tab: monitor scan counts and edit XP rewards.</li>
+            <li>Verify access to <strong>🎁 Promo Codes</strong> and <strong>🏪 Booth Stations</strong> tabs.</li>
             <li>Create a new Quest and verify it appears immediately in the Quest directory.</li>
           </ol>
         </div>
@@ -1829,13 +1969,13 @@
         <div class="card-box" style="border-left: 4px solid var(--emerald);">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <h4 style="font-size: 1.05rem; color: var(--emerald);">4. Quest Verifier Role Test</h4>
-            <span class="tab-badge" style="background: rgba(16,185,129,0.15); color: var(--emerald); border: 1px solid var(--emerald);">Verifications Only</span>
+            <span class="tab-badge" style="background: rgba(168,185,129,0.15); color: var(--emerald); border: 1px solid var(--emerald);">Verifications & Audit</span>
           </div>
           <ol style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.7; padding-left: 18px;">
             <li>Log in at <code>/admin</code> with <code>verifier@blockquest.ph</code> / <code>verifier2026</code>.</li>
-            <li>Confirm ONLY the <strong>🔍 Quest Verifications</strong> tab is accessible.</li>
+            <li>Confirm ONLY <strong>Verifications</strong>, <strong>Messages</strong>, and <strong>Quest Log</strong> tabs are accessible.</li>
             <li>Click a proof screenshot thumbnail, zoom in, and click <strong>Approve (+XP)</strong>.</li>
-            <li>Verify user's wallet total XP increments immediately on the leaderboard.</li>
+            <li>Verify user's wallet total XP increments immediately on the leaderboard and Quest Log.</li>
           </ol>
         </div>
 
@@ -1847,7 +1987,7 @@
           </div>
           <ol style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.7; padding-left: 18px;">
             <li>Log in at <code>/admin</code> with <code>viewer@blockquest.ph</code> / <code>viewer2026</code>.</li>
-            <li>Verify live statistics (Total Attendees, Total XP Pool) update in real-time.</li>
+            <li>Verify live statistics (Total Attendees, Total XP Pool, Promo Redemptions) update in real-time.</li>
             <li>Confirm all action buttons (Add, Edit, Delete, Check-In) are disabled or hidden.</li>
           </ol>
         </div>
@@ -1863,22 +2003,49 @@
             <li>Confirm station title displays <strong>Polygon Guild Booth</strong> and assigned XP reward is locked.</li>
             <li>Scan an attendee QR pass: verify celebratory sound + 1-time XP deposit.</li>
             <li>Scan the SAME attendee again: verify audio tone plays and <strong>"Already Visited"</strong> badge is shown.</li>
-            <li>Try logging in with this booth account at <code>/admin</code> or <code>/scan</code>: confirm login is <strong>DENIED</strong>.</li>
+          </ol>
+        </div>
+
+        <!-- Scenario 7: Promo Code Referral -->
+        <div class="card-box" style="border-left: 4px solid var(--gold);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h4 style="font-size: 1.05rem; color: var(--gold-light);">7. Promo Code & Referral Test</h4>
+            <span class="tab-badge" style="background: rgba(245,166,35,0.15); color: var(--gold); border: 1px solid var(--gold);">Viral Growth</span>
+          </div>
+          <ol style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.7; padding-left: 18px;">
+            <li>Open registration link with promo query: <code>/register?promoCode=BANANAMEDIANW</code>.</li>
+            <li>Verify gold banner displays: <strong>🎁 Promo Code Applied: BANANAMEDIANW</strong>.</li>
+            <li>Submit registration and confirm starting wallet balance equals <code>Base 250 XP + 150 Bonus = 400 XP</code>.</li>
+            <li>Open <strong>📊 Quest Log</strong> in Admin and verify entry appears as <code>🚀 Account Registration (Promo: BANANAMEDIANW)</code>.</li>
+          </ol>
+        </div>
+
+        <!-- Scenario 8: Token Expiration & Inactivity -->
+        <div class="card-box" style="border-left: 4px solid var(--red);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h4 style="font-size: 1.05rem; color: #f87171;">8. Session Timeout & Recovery Test</h4>
+            <span class="tab-badge" style="background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid var(--red);">Security Auto-Lock</span>
+          </div>
+          <ol style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.7; padding-left: 18px;">
+            <li>Leave the admin portal open without moving mouse or touching keys for 5 minutes.</li>
+            <li>Confirm the <strong>"Session / Token Expired"</strong> modal smoothly pops up with recovery steps.</li>
+            <li>Click <strong>"Log In Again →"</strong> and sign in: confirm previously opened tab state and draft work are preserved.</li>
           </ol>
         </div>
 
       </div>
     </section>
 
-    <!-- SECTION: DUAL TABLE ARCHITECTURE -->
+    <!-- SECTION: COMPLETE DATABASE & RELATIONAL ARCHITECTURE -->
     <section id="architecture">
       <div class="section-header">
-        <span class="section-tag tag-blue">Database Architecture</span>
-        <h2 class="section-title">Why Admin Quest Deletions Never Corrupt XP</h2>
-        <p class="section-desc">The architectural principle separating the running wallet from historical receipts.</p>
+        <span class="section-tag tag-blue">TECHNICAL BLUEPRINT</span>
+        <h2 class="section-title">🗄️ Database Architecture & Relational Schema</h2>
+        <p class="section-desc">A complete breakdown of all primary PostgreSQL tables, relations, indexing strategies, and immutable audit structures.</p>
       </div>
 
-      <div class="split-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+      <!-- Dual Table Concept -->
+      <div class="split-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 30px;">
         <div class="card-box" style="border-left: 4px solid var(--blue);">
           <h3 style="font-size: 1.2rem; color: var(--blue); margin-bottom: 8px;">💰 registrations.total_xp</h3>
           <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 12px;"><strong>The Running User Wallet</strong></p>
@@ -1889,6 +2056,152 @@
           <h3 style="font-size: 1.2rem; color: var(--emerald); margin-bottom: 8px;">🧾 quest_completions.xp_awarded</h3>
           <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 12px;"><strong>The Immutable Audit Receipt</strong></p>
           <p style="font-size: 0.92rem; color: #fff;">Stores exact XP awarded at the moment of approval. If an admin edits a quest XP value or deletes the quest, the user keeps their earned balance safely intact.</p>
+        </div>
+      </div>
+
+      <!-- Complete Database Tables Reference Table -->
+      <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 30px;">
+        <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--gold-light); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          📊 Core Database Schema Specifications
+        </h3>
+
+        <div class="rbac-table-wrap">
+          <table class="rbac-table">
+            <thead>
+              <tr>
+                <th>Table Name</th>
+                <th>Primary Columns & Data Types</th>
+                <th>Keys & Indexes</th>
+                <th>Purpose & Business Logic</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong><code>public.registrations</code></strong></td>
+                <td><code>id (BIGSERIAL)</code>, <code>ticket_code (TEXT)</code>, <code>full_name (TEXT)</code>, <code>email (TEXT)</code>, <code>promo_code (TEXT)</code>, <code>pincode_hash (TEXT)</code>, <code>total_xp (INT)</code>, <code>checked_in (BOOL)</code>, <code>created_at (TIMESTAMPTZ)</code></td>
+                <td><code>PK(id)</code>, <code>UNIQUE(ticket_code)</code>, <code>UNIQUE(email)</code></td>
+                <td>Primary attendee registry. Stores wallet XP balance, referral attribution, PIN security hash, and check-in status.</td>
+              </tr>
+              <tr>
+                <td><strong><code>public.promo_codes</code></strong></td>
+                <td><code>id (BIGSERIAL)</code>, <code>code (TEXT)</code>, <code>xp_bonus (INT)</code>, <code>usage_count (INT)</code>, <code>max_uses (INT)</code>, <code>is_active (BOOL)</code>, <code>created_at (TIMESTAMPTZ)</code></td>
+                <td><code>PK(id)</code>, <code>UNIQUE(code)</code></td>
+                <td>Marketing campaign referral codes. Tracks dynamic sign-up bonus points, active status, and redemption limit caps.</td>
+              </tr>
+              <tr>
+                <td><strong><code>public.quests</code></strong></td>
+                <td><code>id (TEXT)</code>, <code>title (TEXT)</code>, <code>description (TEXT)</code>, <code>xp (INT)</code>, <code>category (TEXT)</code>, <code>status (TEXT)</code>, <code>passcode (TEXT)</code>, <code>requires_proof (BOOL)</code>, <code>requires_message (BOOL)</code>, <code>sort_order (INT)</code></td>
+                <td><code>PK(id)</code></td>
+                <td>Event quest catalog. Supports 6 verification modes (Instant, Passcode, Screenshot, Text Note, Quiz, ATFX).</td>
+              </tr>
+              <tr>
+                <td><strong><code>public.quest_completions</code></strong></td>
+                <td><code>id (BIGSERIAL)</code>, <code>registration_id (BIGINT)</code>, <code>quest_id (TEXT)</code>, <code>user_email (TEXT)</code>, <code>xp_awarded (INT)</code>, <code>created_at (TIMESTAMPTZ)</code></td>
+                <td><code>PK(id)</code>, <code>FK(registration_id)</code>, <code>UNIQUE(registration_id, quest_id)</code></td>
+                <td>Immutable completion ledger. Prevents double-claiming and safeguards awarded points against upstream quest edits.</td>
+              </tr>
+              <tr>
+                <td><strong><code>public.quest_verifications</code></strong></td>
+                <td><code>id (BIGSERIAL)</code>, <code>user_name (TEXT)</code>, <code>user_email (TEXT)</code>, <code>ticket_code (TEXT)</code>, <code>quest_id (TEXT)</code>, <code>quest_title (TEXT)</code>, <code>xp (INT)</code>, <code>proof_url (TEXT)</code>, <code>user_message (TEXT)</code>, <code>status (TEXT)</code>, <code>approved_by (TEXT)</code>, <code>rejection_reason (TEXT)</code></td>
+                <td><code>PK(id)</code>, <code>INDEX(status)</code></td>
+                <td>Staff verification queue for image screenshot proofs and text feedback notes. Holds full audit review history.</td>
+              </tr>
+              <tr>
+                <td><strong><code>public.admin_users</code></strong></td>
+                <td><code>id (BIGSERIAL)</code>, <code>email (TEXT)</code>, <code>password_hash (TEXT)</code>, <code>full_name (TEXT)</code>, <code>role (TEXT)</code>, <code>booth_xp (INT)</code>, <code>requires_password_change (BOOL)</code></td>
+                <td><code>PK(id)</code>, <code>UNIQUE(email)</code></td>
+                <td>Staff credentials & role permissions (<code>superadmin</code>, <code>admin</code>, <code>manage_attendees</code>, <code>verifier</code>, <code>booth_staff</code>, <code>viewer</code>).</td>
+              </tr>
+              <tr>
+                <td><strong><code>public.social_missions</code></strong></td>
+                <td><code>id (BIGSERIAL)</code>, <code>title (TEXT)</code>, <code>description (TEXT)</code>, <code>url (TEXT)</code>, <code>button_text (TEXT)</code>, <code>button_color (TEXT)</code>, <code>sort_order (INT)</code>, <code>is_active (BOOL)</code></td>
+                <td><code>PK(id)</code></td>
+                <td>Configurable registration social follow missions with 10-second verification countdowns and soft-hide toggle.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Comprehensive REST API Endpoints Table -->
+      <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 30px;">
+        <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--gold-light); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          🌐 REST API Specification Matrix
+        </h3>
+
+        <div class="rbac-table-wrap">
+          <table class="rbac-table">
+            <thead>
+              <tr>
+                <th>Endpoint Route</th>
+                <th>HTTP Method</th>
+                <th>Auth Level</th>
+                <th>Description & Handler Logic</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>/api/register</code></td>
+                <td><span style="color: var(--emerald); font-weight: 800;">POST</span></td>
+                <td>Public</td>
+                <td>Validates attendee registration, captures <code>promoCode</code> query, checks usage limits, awards starting XP (Base 250 + Bonus), generates <code>BQF-XXXXXX</code> QR pass.</td>
+              </tr>
+              <tr>
+                <td><code>/api/admin/promo-codes</code></td>
+                <td><span style="color: var(--blue); font-weight: 800;">GET / POST / PATCH / DELETE</span></td>
+                <td>Superadmin, Manager</td>
+                <td>Full CRUD for referral campaigns. Creates codes with custom XP bonus and caps, toggles active state, and safely deletes campaigns.</td>
+              </tr>
+              <tr>
+                <td><code>/api/admin/login</code></td>
+                <td><span style="color: var(--emerald); font-weight: 800;">POST</span></td>
+                <td>Public (Staff)</td>
+                <td>Authenticates staff via <code>scryptSync</code> password verification and issues signed 12-hour HMAC-SHA256 session tokens.</td>
+              </tr>
+              <tr>
+                <td><code>/api/admin/quests</code></td>
+                <td><span style="color: var(--blue); font-weight: 800;">GET / POST / PATCH / DELETE</span></td>
+                <td>Superadmin, Manager</td>
+                <td>Full quest catalog management. Creates interactive quests across 6 modes, edits live reward values, and soft-deletes obsolete missions.</td>
+              </tr>
+              <tr>
+                <td><code>/api/admin/verifications</code></td>
+                <td><span style="color: var(--purple); font-weight: 800;">GET / PATCH</span></td>
+                <td>Verifier, Manager, Superadmin</td>
+                <td>Reviews uploaded screenshot proofs. Approving deposits XP into attendee wallet; rejecting prompts for mandatory feedback reason.</td>
+              </tr>
+              <tr>
+                <td><code>/api/admin/messages</code></td>
+                <td><span style="color: var(--purple); font-weight: 800;">GET / PATCH</span></td>
+                <td>Verifier, Manager, Superadmin</td>
+                <td>Reviews text feedback and written mission notes with single or batch approval capabilities.</td>
+              </tr>
+              <tr>
+                <td><code>/api/admin/attendees</code></td>
+                <td><span style="color: var(--gold); font-weight: 800;">GET / PATCH / DELETE</span></td>
+                <td>Superadmin, Manager, Gate</td>
+                <td>Fetches attendee registry, supports temporary PIN generation (<code>Reset PIN</code>), and executes cascading deletion for Superadmins.</td>
+              </tr>
+              <tr>
+                <td><code>/api/admin/checkin</code></td>
+                <td><span style="color: var(--emerald); font-weight: 800;">POST</span></td>
+                <td>Gate Staff, Manager, Superadmin</td>
+                <td>Validates QR ticket scans at the gate entrance and executes atomic check-in transitions with double-scan prevention.</td>
+              </tr>
+              <tr>
+                <td><code>/api/booth-scan</code></td>
+                <td><span style="color: var(--purple); font-weight: 800;">POST</span></td>
+                <td>Booth Staff, Manager, Superadmin</td>
+                <td>Dedicated vendor QR scanner. Awards 1-time fixed sponsor XP (+150 XP) and logs permanent visit receipt in <code>quest_completions</code>.</td>
+              </tr>
+              <tr>
+                <td><code>/api/admin/users</code></td>
+                <td><span style="color: var(--red); font-weight: 800;">GET / POST / PATCH / DELETE</span></td>
+                <td>Superadmin Only</td>
+                <td>Staff account management. Creates staff accounts across 6 RBAC roles, assigns booth credentials, and flags initial password changes.</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -1989,6 +2302,17 @@
             • <strong>Blocking Modal UI:</strong> Enforces an immediate password update on first login before granting access to administrative tools.
           </p>
         </div>
+
+        <div class="qb-step-card" style="border-color: rgba(245, 166, 35, 0.4);">
+          <div class="qb-step-header">
+            <div class="qb-num" style="background: rgba(245, 166, 35, 0.15); border-color: var(--gold); color: var(--gold);">9</div>
+            <h4 class="qb-title">5-Minute Inactivity Lock & Token Expiry Guidance</h4>
+          </div>
+          <p class="qb-desc">
+            • <strong>Automatic Inactivity Protection:</strong> If an admin device remains idle for 5 minutes without mouse/touch interaction, the dashboard automatically signs out for security.<br>
+            • <strong>Informative Recovery Modal:</strong> A step-by-step guidance modal explains that the token expired and reassures the user that their locally saved draft work remains preserved.
+          </p>
+        </div>
       </div>
     </section>
 
@@ -1997,7 +2321,7 @@
       <div class="section-header">
         <span class="section-tag tag-emerald">KNOWLEDGE BASE & OPERATIONS</span>
         <h2 class="section-title">❓ Master Frequently Asked Questions (FAQ)</h2>
-        <p class="section-desc">Comprehensive operational answers categorized by Gate Operations, Attendee Issues, Quest Management, and System Security.</p>
+        <p class="section-desc">Comprehensive operational answers categorized by Gate Operations, Attendee Issues, Quest Management, Promo Campaigns, and System Security.</p>
       </div>
 
       <!-- FAQ 1: Gate & Scanner -->
@@ -2171,12 +2495,34 @@
         </div>
       </div>
 
+      <!-- FAQ 16: Promo Codes & Referral Campaigns -->
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>16. How do Promo Codes and Referral Link campaigns work for sponsors & influencers?</span>
+          <span class="faq-tag" style="background: rgba(245,166,35,0.15); color: var(--gold); border: 1px solid var(--gold);">Promo Engine</span>
+        </div>
+        <div class="faq-answer">
+          Superadmins and Admins can create custom campaign codes in the <strong>🎁 Promo Codes</strong> tab (e.g., <code>BANANAMEDIANW</code>) with customized XP bonuses (e.g. +150 XP) and optional usage limits. Staff can click <strong>"Copy Link 📋"</strong> to share <code>https://event.block-quest.com/register?promoCode=CODE</code>. When attendees open the link, a gold banner confirms the promo, their starting XP is boosted, redemptions increment in real-time, and entries are automatically logged in the <strong>📊 Quest Log</strong>.
+        </div>
+      </div>
+
+      <!-- FAQ 17: Inactivity & Session Expiry -->
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>17. What should staff do if they see the "Session / Token Expired" popup?</span>
+          <span class="faq-tag" style="background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid var(--red);">Security & Sessions</span>
+        </div>
+        <div class="faq-answer">
+          For security, admin sessions automatically lock after 5 minutes of inactivity or when a 12-hour session token expires. A modal will appear explaining the reason. Staff simply click <strong>"Log In Again →"</strong> and enter their credentials. Any unsaved quest drafts or form entries in local browser memory remain preserved.
+        </div>
+      </div>
+
     </section>
 
     <!-- FOOTER -->
     <footer>
       <p>⚡ <strong>BlockQuest Event Platform</strong> • Designed for High-Performance Web3 & Gaming Events</p>
-      <p style="margin-top: 8px; font-size: 0.8rem;">Next.js App Router • Supabase PostgreSQL • S3 Cloud Storage • RBAC Engine</p>
+      <p style="margin-top: 8px; font-size: 0.8rem;">Next.js App Router • Supabase PostgreSQL • S3 Cloud Storage • RBAC Engine • Promo Code Engine</p>
     </footer>
 
   </div>
