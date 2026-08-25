@@ -194,7 +194,7 @@ export default function ShortcutsPage() {
               </p>
             </div>
             <Link
-              href="/scan"
+              href="/gate-scan"
               style={{
                 display: "block",
                 textAlign: "center",
@@ -208,7 +208,7 @@ export default function ShortcutsPage() {
                 boxShadow: "0 0 20px rgba(59, 130, 246, 0.3)"
               }}
             >
-              Launch /scan Gate Scanner 📷
+              Launch /gate-scan Scanner 📷
             </Link>
           </div>
 

@@ -41,6 +41,10 @@ export default function BoothScanPage() {
   const [scanning, setScanning] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const [manualCode, setManualCode] = useState("");
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [isTorchOn, setIsTorchOn] = useState(false);
+  const [rapidMode, setRapidMode] = useState(false);
+  const [rapidToast, setRapidToast] = useState<{ name: string; xp: number; status: string } | null>(null);
 
   // ── Scan Results ──
   const [status, setStatus] = useState<ScanStatus>("idle");
@@ -50,8 +54,20 @@ export default function BoothScanPage() {
   const [awardedAt, setAwardedAt] = useState<string | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [scanCount, setScanCount] = useState<number>(0);
+  const [scannedLeads, setScannedLeads] = useState<Array<{
+    id: number;
+    full_name: string;
+    email: string;
+    organization: string | null;
+    ticket_code: string | null;
+    timestamp: string;
+    xp: number;
+    tag?: string;
+  }>>([]);
+  const [activeLeadTab, setActiveLeadTab] = useState<"scanner" | "leads">("scanner");
 
   const audioContextRef = useRef<AudioContext | null>(null);
+  const rapidTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Restore authenticated booth session from sessionStorage (auto-cleared on browser/tab close)
   useEffect(() => {
@@ -279,6 +295,21 @@ export default function BoothScanPage() {
         const a: Attendee = json.attendee;
         setAttendee(a);
 
+        // Record lead in session list
+        setScannedLeads(prev => {
+          if (prev.some(l => l.id === a.id)) return prev;
+          return [{
+            id: a.id,
+            full_name: a.full_name,
+            email: a.email,
+            organization: a.organization,
+            ticket_code: a.ticket_code,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            xp: json.xp_awarded || boothPoints,
+            tag: undefined
+          }, ...prev];
+        });
+
         if (json.already_visited) {
           setStatus("already_visited");
           setAwardedXp(json.xp_awarded || boothPoints);
@@ -290,14 +321,72 @@ export default function BoothScanPage() {
           setScanCount(prev => prev + 1);
           playSuccessTone();
         }
+
+        if (rapidMode) {
+          setShowSheet(false);
+          setRapidToast({
+            name: a.full_name,
+            xp: json.xp_awarded || boothPoints,
+            status: json.already_visited ? "already_visited" : "success"
+          });
+          if (rapidTimerRef.current) clearTimeout(rapidTimerRef.current);
+          rapidTimerRef.current = setTimeout(() => {
+            setRapidToast(null);
+            resetAndScan();
+          }, 1400);
+        } else {
+          setShowSheet(true);
+        }
       } catch (err: any) {
         setStatus("invalid");
         setErrorMsg("Network error. Please try again.");
         playFailureTone();
+        setShowSheet(true);
       }
     },
-    [currentUser, boothPoints, playFailureTone, playSuccessTone, playAlreadyVisitedTone]
+    [currentUser, boothPoints, rapidMode, playFailureTone, playSuccessTone, playAlreadyVisitedTone]
   );
+
+  // ── Torch Controller ──
+  const toggleTorch = useCallback(async () => {
+    if (!scannerRef.current) return;
+    try {
+      const nextTorch = !isTorchOn;
+      await scannerRef.current.applyVideoConstraints({
+        advanced: [{ torch: nextTorch }]
+      });
+      setIsTorchOn(nextTorch);
+    } catch (e) {
+      console.warn("Torch not supported on this device/camera track", e);
+    }
+  }, [isTorchOn]);
+
+  const updateLeadTag = (attendeeId: number, tag: string) => {
+    setScannedLeads(prev => prev.map(l => l.id === attendeeId ? { ...l, tag: l.tag === tag ? undefined : tag } : l));
+  };
+
+  const exportLeadsCSV = () => {
+    if (scannedLeads.length === 0) return;
+    const headers = ["ID", "Full Name", "Email", "Organization", "Ticket Code", "Scanned Time", "XP Awarded", "Lead Tag"];
+    const rows = scannedLeads.map(l => [
+      l.id,
+      `"${(l.full_name || '').replace(/"/g, '""')}"`,
+      `"${(l.email || '').replace(/"/g, '""')}"`,
+      `"${(l.organization || 'Attendee').replace(/"/g, '""')}"`,
+      `"${(l.ticket_code || '').replace(/"/g, '""')}"`,
+      `"${l.timestamp}"`,
+      l.xp,
+      `"${(l.tag || 'Standard Visitor').replace(/"/g, '""')}"`
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `booth-leads-${currentUser?.fullName?.toLowerCase().replace(/[^a-z0-9]/g, '_') || 'station'}-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // ── Scanner lifecycle (Matching /scan implementation) ──
   const startScanner = useCallback(async () => {
@@ -329,6 +418,13 @@ export default function BoothScanPage() {
         () => {}
       );
       setScanning(true);
+      // Check torch capability
+      try {
+        const capabilities = scanner.getRunningTrackCapabilities();
+        if (capabilities && (capabilities as any).torch) {
+          setTorchSupported(true);
+        }
+      } catch {}
     } catch (err: any) {
       scannerRef.current = null;
       setCameraError(err?.message ?? "Camera unavailable.");
@@ -336,6 +432,7 @@ export default function BoothScanPage() {
   }, [processScan, unlockAudio]);
 
   const stopScanner = useCallback(async () => {
+    if (rapidTimerRef.current) clearTimeout(rapidTimerRef.current);
     if (scannerRef.current) {
       try {
         await scannerRef.current.stop();
@@ -344,17 +441,20 @@ export default function BoothScanPage() {
       scannerRef.current = null;
     }
     setScanning(false);
+    setIsTorchOn(false);
   }, []);
 
   useEffect(() => {
-    if (authed) {
+    if (authed && activeLeadTab === "scanner") {
       const timer = setTimeout(startScanner, 300);
       return () => {
         clearTimeout(timer);
         stopScanner();
       };
+    } else {
+      stopScanner();
     }
-  }, [authed, startScanner, stopScanner]);
+  }, [authed, activeLeadTab, startScanner, stopScanner]);
 
   const resetAndScan = useCallback(async () => {
     setStatus("idle");
@@ -547,6 +647,55 @@ export default function BoothScanPage() {
         </header>
 
         {/* Active Station Points Banner */}
+        {/* Navigation Tabs (Scanner vs Leads) */}
+        <div style={{
+          display: "flex",
+          borderBottom: "1px solid rgba(168, 85, 247, 0.2)",
+          background: "rgba(10, 11, 20, 0.98)"
+        }}>
+          <button
+            onClick={() => { setActiveLeadTab("scanner"); resetAndScan(); }}
+            style={{
+              flex: 1,
+              padding: "10px 14px",
+              background: activeLeadTab === "scanner" ? "rgba(168, 85, 247, 0.15)" : "transparent",
+              border: "none",
+              borderBottom: activeLeadTab === "scanner" ? "2px solid #a855f7" : "2px solid transparent",
+              color: activeLeadTab === "scanner" ? "#fff" : "var(--text-muted)",
+              fontWeight: 700,
+              fontSize: "0.82rem",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6
+            }}
+          >
+            📷 Camera Scanner
+          </button>
+          <button
+            onClick={() => setActiveLeadTab("leads")}
+            style={{
+              flex: 1,
+              padding: "10px 14px",
+              background: activeLeadTab === "leads" ? "rgba(168, 85, 247, 0.15)" : "transparent",
+              border: "none",
+              borderBottom: activeLeadTab === "leads" ? "2px solid #a855f7" : "2px solid transparent",
+              color: activeLeadTab === "leads" ? "#c084fc" : "var(--text-muted)",
+              fontWeight: 700,
+              fontSize: "0.82rem",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6
+            }}
+          >
+            📋 Leads ({scannedLeads.length})
+          </button>
+        </div>
+
+        {/* Active Station Points Banner & Rapid Controls */}
         <div style={{
           background: "linear-gradient(90deg, rgba(20, 16, 35, 0.98) 0%, rgba(13, 14, 25, 0.98) 100%)",
           borderBottom: "1px solid rgba(168, 85, 247, 0.2)",
@@ -556,19 +705,56 @@ export default function BoothScanPage() {
           alignItems: "center",
           gap: "12px"
         }}>
-          <div>
-            <span style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", display: "block" }}>
-              Session Scans
-            </span>
-            <strong style={{ fontSize: "0.95rem", color: "#fff", display: "inline-flex", alignItems: "center", gap: 4 }}>
-              👥 {scanCount} Attendees
-            </strong>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div>
+              <span style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", display: "block" }}>
+                Session Scans
+              </span>
+              <strong style={{ fontSize: "0.95rem", color: "#fff", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                👥 {scanCount} Attendees
+              </strong>
+            </div>
+
+            {/* Rapid Scan Toggle */}
+            <button
+              onClick={() => setRapidMode(prev => !prev)}
+              style={{
+                background: rapidMode ? "rgba(245, 166, 35, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                border: rapidMode ? "1px solid rgba(245, 166, 35, 0.5)" : "1px solid rgba(255, 255, 255, 0.1)",
+                color: rapidMode ? "#fbbf24" : "var(--text-muted)",
+                padding: "3px 8px",
+                borderRadius: 6,
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4
+              }}
+              title="Continuous auto-resume scanning without modal pauses"
+            >
+              ⚡ {rapidMode ? "Rapid ON" : "Rapid OFF"}
+            </button>
           </div>
 
-          <div style={{ textAlign: "right" }}>
-            <span style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", display: "block", marginBottom: 2 }}>
-              Reward
-            </span>
+          <div style={{ textAlign: "right", display: "flex", alignItems: "center", gap: 6 }}>
+            {torchSupported && (
+              <button
+                onClick={toggleTorch}
+                style={{
+                  background: isTorchOn ? "rgba(245, 166, 35, 0.25)" : "rgba(255, 255, 255, 0.06)",
+                  border: isTorchOn ? "1px solid #fbbf24" : "1px solid rgba(255, 255, 255, 0.15)",
+                  color: isTorchOn ? "#fbbf24" : "#fff",
+                  borderRadius: 6,
+                  padding: "4px 8px",
+                  fontSize: "0.75rem",
+                  cursor: "pointer"
+                }}
+              >
+                🔦
+              </button>
+            )}
+
             <span
               style={{
                 background: "rgba(245, 166, 35, 0.15)",
@@ -588,151 +774,349 @@ export default function BoothScanPage() {
           </div>
         </div>
 
-        {/* Camera Scanner Viewport */}
-        <div className="scan-camera-area" style={{ background: "#05050a", position: "relative" }}>
-          <div id="booth-qr-reader" className="scan-camera-inner" style={{ minHeight: "100%", width: "100%" }} />
+        {/* ─── TAB 1: SCANNER VIEW ─── */}
+        {activeLeadTab === "scanner" && (
+          <>
+            {/* Camera Scanner Viewport */}
+            <div className="scan-camera-area" style={{ background: "#05050a", position: "relative" }}>
+              <div id="booth-qr-reader" className="scan-camera-inner" style={{ minHeight: "100%", width: "100%" }} />
 
-          {status === "idle" && scanning && (
-            <div className="scan-instruction" style={{
-              background: "rgba(10, 10, 20, 0.85)",
-              border: "1px solid rgba(168, 85, 247, 0.4)",
-              boxShadow: "0 8px 20px rgba(0,0,0,0.6)",
-              bottom: "16px"
-            }}>
-              <span>📷 Point camera at Attendee QR Pass (+{boothPoints} XP)</span>
-            </div>
-          )}
-
-          {cameraError && (
-            <div className="scan-camera-error-overlay">
-              <span style={{ fontSize: "2rem" }}>📵</span>
-              <p>{cameraError}</p>
-              <button className="scan-retry-btn" onClick={startScanner}>Retry Camera</button>
-            </div>
-          )}
-        </div>
-
-        {/* Manual Input Code Bar */}
-        {!showSheet && (
-          <div className="scan-manual-bar" style={{ background: "rgba(10, 11, 20, 0.95)" }}>
-            <input
-              className="scan-manual-input"
-              type="text"
-              placeholder="Manual ticket code (BQF-XXXXXX)"
-              value={manualCode}
-              onChange={(e) => setManualCode(e.target.value.toUpperCase())}
-              onKeyDown={(e) => { if (e.key === "Enter") processScan(manualCode); }}
-              style={{ borderColor: "rgba(168, 85, 247, 0.25)" }}
-            />
-            <button
-              className="scan-manual-btn"
-              onClick={() => processScan(manualCode)}
-              disabled={!manualCode.trim() || status === "loading"}
-              style={{ background: "linear-gradient(135deg, #a855f7, #6366f1)", color: "#fff" }}
-            >
-              ⚡
-            </button>
-          </div>
-        )}
-
-        {/* ── Result Bottom Sheet ── */}
-        {showSheet && (
-          <div className={`scan-sheet scan-sheet--${status}`}>
-            {status === "loading" && (
-              <div className="scan-sheet-loading">
-                <div className="scan-sheet-spinner" style={{ borderTopColor: "#a855f7" }} />
-                <p>Verifying visit & awarding points…</p>
-              </div>
-            )}
-
-            {/* Invalid Ticket */}
-            {status === "invalid" && (
-              <div className="scan-sheet-body">
-                <div className="scan-sheet-banner scan-sheet-banner--invalid">
-                  <span className="scan-sheet-icon">❌</span>
-                  <div>
-                    <p className="scan-sheet-title">Invalid Pass</p>
-                    <p className="scan-sheet-sub">{errorMsg}</p>
-                  </div>
+              {/* Rapid Mode Floating Toast */}
+              {rapidToast && (
+                <div style={{
+                  position: "absolute",
+                  top: "20px",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  background: rapidToast.status === "success" ? "linear-gradient(135deg, #10b981, #059669)" : "linear-gradient(135deg, #f59e0b, #d97706)",
+                  color: "#fff",
+                  padding: "10px 20px",
+                  borderRadius: 14,
+                  fontWeight: 800,
+                  fontSize: "0.92rem",
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.8)",
+                  zIndex: 20,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  whiteSpace: "nowrap"
+                }}>
+                  <span>{rapidToast.status === "success" ? "✓" : "⚠️"}</span>
+                  <span>{rapidToast.name}</span>
+                  <span style={{ background: "rgba(0,0,0,0.25)", padding: "2px 6px", borderRadius: 6, fontSize: "0.8rem" }}>
+                    +{rapidToast.xp} XP
+                  </span>
                 </div>
-                <button className="scan-sheet-action scan-sheet-action--reset" onClick={resetAndScan}>
-                  🔄 Scan Next Attendee
+              )}
+
+              {status === "idle" && scanning && (
+                <div className="scan-instruction" style={{
+                  background: "rgba(10, 10, 20, 0.85)",
+                  border: "1px solid rgba(168, 85, 247, 0.4)",
+                  boxShadow: "0 8px 20px rgba(0,0,0,0.6)",
+                  bottom: "16px"
+                }}>
+                  <span>📷 Point camera at Attendee QR Pass (+{boothPoints} XP)</span>
+                </div>
+              )}
+
+              {cameraError && (
+                <div className="scan-camera-error-overlay">
+                  <span style={{ fontSize: "2rem" }}>📵</span>
+                  <p>{cameraError}</p>
+                  <button className="scan-retry-btn" onClick={startScanner}>Retry Camera</button>
+                </div>
+              )}
+            </div>
+
+            {/* Manual Input Code Bar */}
+            {!showSheet && (
+              <div className="scan-manual-bar" style={{ background: "rgba(10, 11, 20, 0.95)" }}>
+                <input
+                  className="scan-manual-input"
+                  type="text"
+                  placeholder="Manual ticket code (BQF-XXXXXX)"
+                  value={manualCode}
+                  onChange={(e) => setManualCode(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => { if (e.key === "Enter") processScan(manualCode); }}
+                  style={{ borderColor: "rgba(168, 85, 247, 0.25)" }}
+                />
+                <button
+                  className="scan-manual-btn"
+                  onClick={() => processScan(manualCode)}
+                  disabled={!manualCode.trim() || status === "loading"}
+                  style={{ background: "linear-gradient(135deg, #a855f7, #6366f1)", color: "#fff" }}
+                >
+                  ⚡
                 </button>
               </div>
             )}
 
-            {/* Already Visited This Booth */}
-            {status === "already_visited" && attendee && (
-              <div className="scan-sheet-body" style={{ borderColor: "rgba(245, 166, 35, 0.5)", background: "rgba(18, 16, 26, 0.98)" }}>
-                <div className="scan-sheet-banner scan-sheet-banner--warning" style={{ background: "rgba(245, 166, 35, 0.15)" }}>
-                  <span className="scan-sheet-icon">⚠️</span>
-                  <div>
-                    <p className="scan-sheet-title" style={{ color: "#fbbf24" }}>Already Visited Booth</p>
-                    <p className="scan-sheet-sub">
-                      Attendee already received points (+{awardedXp} XP) for this booth.
+            {/* ── Result Bottom Sheet ── */}
+            {showSheet && (
+              <div className={`scan-sheet scan-sheet--${status}`}>
+                {status === "loading" && (
+                  <div className="scan-sheet-loading">
+                    <div className="scan-sheet-spinner" style={{ borderTopColor: "#a855f7" }} />
+                    <p>Verifying visit & awarding points…</p>
+                  </div>
+                )}
+
+                {/* Invalid Ticket */}
+                {status === "invalid" && (
+                  <div className="scan-sheet-body">
+                    <div className="scan-sheet-banner scan-sheet-banner--invalid">
+                      <span className="scan-sheet-icon">❌</span>
+                      <div>
+                        <p className="scan-sheet-title">Invalid Pass</p>
+                        <p className="scan-sheet-sub">{errorMsg}</p>
+                      </div>
+                    </div>
+                    <button className="scan-sheet-action scan-sheet-action--reset" onClick={resetAndScan}>
+                      🔄 Scan Next Attendee
+                    </button>
+                  </div>
+                )}
+
+                {/* Already Visited This Booth */}
+                {status === "already_visited" && attendee && (
+                  <div className="scan-sheet-body" style={{ borderColor: "rgba(245, 166, 35, 0.5)", background: "rgba(18, 16, 26, 0.98)" }}>
+                    <div className="scan-sheet-banner scan-sheet-banner--warning" style={{ background: "rgba(245, 166, 35, 0.15)" }}>
+                      <span className="scan-sheet-icon">⚠️</span>
+                      <div>
+                        <p className="scan-sheet-title" style={{ color: "#fbbf24" }}>Already Visited Booth</p>
+                        <p className="scan-sheet-sub">
+                          Attendee already received points (+{awardedXp} XP) for this booth.
+                        </p>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "center", margin: "4px 0" }}>
+                      <div className="scan-sheet-name">{attendee.full_name}</div>
+                      <div className="scan-sheet-ticket">{attendee.ticket_code}</div>
+                      <div style={{ fontSize: "0.82rem", color: "var(--gold-light)", marginTop: 4 }}>
+                        Total Wallet: ⚡ {attendee.total_xp} XP
+                      </div>
+                    </div>
+
+                    {/* Lead Tagging Row */}
+                    <div style={{ margin: "10px 0 6px", display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
+                      {["🔥 Hot Lead", "💼 B2B", "🎯 Dev", "🎁 Swag"].map((tag) => {
+                        const currentLead = scannedLeads.find(l => l.id === attendee.id);
+                        const isSelected = currentLead?.tag === tag;
+                        return (
+                          <button
+                            key={tag}
+                            onClick={() => updateLeadTag(attendee.id, tag)}
+                            style={{
+                              background: isSelected ? "rgba(168, 85, 247, 0.3)" : "rgba(255, 255, 255, 0.06)",
+                              border: isSelected ? "1px solid #c084fc" : "1px solid rgba(255, 255, 255, 0.15)",
+                              color: isSelected ? "#e9d5ff" : "var(--text-muted)",
+                              borderRadius: 6,
+                              padding: "4px 8px",
+                              fontSize: "0.75rem",
+                              fontWeight: 600,
+                              cursor: "pointer"
+                            }}
+                          >
+                            {tag}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="scan-sheet-action-row">
+                      <button className="scan-sheet-action scan-sheet-action--reset" onClick={resetAndScan}>
+                        🔄 Scan Next Attendee
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Success: First Visit Points Awarded! */}
+                {status === "success" && attendee && (
+                  <div className="scan-sheet-body scan-sheet-body--success" style={{
+                    borderColor: "rgba(168, 85, 247, 0.6)",
+                    boxShadow: "0 0 40px rgba(168, 85, 247, 0.3)",
+                    background: "linear-gradient(180deg, rgba(25, 20, 45, 0.98) 0%, rgba(12, 12, 24, 0.98) 100%)"
+                  }}>
+                    <div className="scan-sheet-success-icon" style={{ filter: "drop-shadow(0 0 16px rgba(168, 85, 247, 0.8))" }}>
+                      🎉
+                    </div>
+                    <p className="scan-sheet-success-title" style={{ color: "#c084fc", textShadow: "0 0 20px rgba(192, 132, 252, 0.6)" }}>
+                      +{awardedXp} XP AWARDED!
                     </p>
+                    <div style={{ fontSize: "0.85rem", color: "#e9d5ff", marginBottom: 2 }}>
+                      First Visit to <strong>{currentUser?.fullName}</strong>
+                    </div>
+                    <div className="scan-sheet-name" style={{ fontSize: "1.2rem", fontWeight: 900 }}>
+                      {attendee.full_name}
+                    </div>
+                    <div className="scan-sheet-ticket">{attendee.ticket_code}</div>
+                    <div style={{
+                      background: "rgba(245, 166, 35, 0.15)",
+                      border: "1px solid rgba(245, 166, 35, 0.3)",
+                      borderRadius: 12,
+                      padding: "6px 14px",
+                      color: "var(--gold-light)",
+                      fontSize: "0.85rem",
+                      fontWeight: 800,
+                      marginTop: 4
+                    }}>
+                      New Balance: ⚡ {attendee.total_xp} XP
+                    </div>
+
+                    {/* Lead Tagging Row */}
+                    <div style={{ margin: "10px 0 6px", display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
+                      {["🔥 Hot Lead", "💼 B2B", "🎯 Dev", "🎁 Swag"].map((tag) => {
+                        const currentLead = scannedLeads.find(l => l.id === attendee.id);
+                        const isSelected = currentLead?.tag === tag;
+                        return (
+                          <button
+                            key={tag}
+                            onClick={() => updateLeadTag(attendee.id, tag)}
+                            style={{
+                              background: isSelected ? "rgba(168, 85, 247, 0.3)" : "rgba(255, 255, 255, 0.06)",
+                              border: isSelected ? "1px solid #c084fc" : "1px solid rgba(255, 255, 255, 0.15)",
+                              color: isSelected ? "#e9d5ff" : "var(--text-muted)",
+                              borderRadius: 6,
+                              padding: "4px 8px",
+                              fontSize: "0.75rem",
+                              fontWeight: 600,
+                              cursor: "pointer"
+                            }}
+                          >
+                            {tag}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="scan-sheet-action-row" style={{ width: "100%", marginTop: 8 }}>
+                      <button
+                        className="scan-sheet-action"
+                        onClick={resetAndScan}
+                        style={{
+                          background: "linear-gradient(135deg, #a855f7 0%, #6366f1 100%)",
+                          color: "#fff",
+                          fontWeight: 800
+                        }}
+                      >
+                        ➡ Scan Next Attendee
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div style={{ textAlign: "center", margin: "4px 0" }}>
-                  <div className="scan-sheet-name">{attendee.full_name}</div>
-                  <div className="scan-sheet-ticket">{attendee.ticket_code}</div>
-                  <div style={{ fontSize: "0.82rem", color: "var(--gold-light)", marginTop: 4 }}>
-                    Total Wallet: ⚡ {attendee.total_xp} XP
-                  </div>
-                </div>
-                <div className="scan-sheet-action-row">
-                  <button className="scan-sheet-action scan-sheet-action--reset" onClick={resetAndScan}>
-                    🔄 Scan Next Attendee
-                  </button>
-                </div>
+                )}
               </div>
             )}
+          </>
+        )}
 
-            {/* Success: First Visit Points Awarded! */}
-            {status === "success" && attendee && (
-              <div className="scan-sheet-body scan-sheet-body--success" style={{
-                borderColor: "rgba(168, 85, 247, 0.6)",
-                boxShadow: "0 0 40px rgba(168, 85, 247, 0.3)",
-                background: "linear-gradient(180deg, rgba(25, 20, 45, 0.98) 0%, rgba(12, 12, 24, 0.98) 100%)"
-              }}>
-                <div className="scan-sheet-success-icon" style={{ filter: "drop-shadow(0 0 16px rgba(168, 85, 247, 0.8))" }}>
-                  🎉
-                </div>
-                <p className="scan-sheet-success-title" style={{ color: "#c084fc", textShadow: "0 0 20px rgba(192, 132, 252, 0.6)" }}>
-                  +{awardedXp} XP AWARDED!
+        {/* ─── TAB 2: LEADS & EXPORT VIEW ─── */}
+        {activeLeadTab === "leads" && (
+          <div style={{ padding: "16px", background: "rgba(10, 11, 20, 0.95)", minHeight: 380 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div>
+                <h3 style={{ fontSize: "1rem", fontWeight: 800, color: "#fff", margin: 0 }}>
+                  Scanned Visitors ({scannedLeads.length})
+                </h3>
+                <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", margin: "2px 0 0" }}>
+                  Leads captured during this session
                 </p>
-                <div style={{ fontSize: "0.85rem", color: "#e9d5ff", marginBottom: 2 }}>
-                  First Visit to <strong>{currentUser?.fullName}</strong>
-                </div>
-                <div className="scan-sheet-name" style={{ fontSize: "1.2rem", fontWeight: 900 }}>
-                  {attendee.full_name}
-                </div>
-                <div className="scan-sheet-ticket">{attendee.ticket_code}</div>
-                <div style={{
-                  background: "rgba(245, 166, 35, 0.15)",
-                  border: "1px solid rgba(245, 166, 35, 0.3)",
-                  borderRadius: 12,
-                  padding: "6px 14px",
-                  color: "var(--gold-light)",
-                  fontSize: "0.85rem",
+              </div>
+
+              <button
+                onClick={exportLeadsCSV}
+                disabled={scannedLeads.length === 0}
+                style={{
+                  background: scannedLeads.length > 0 ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "rgba(255, 255, 255, 0.08)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "8px 14px",
+                  fontSize: "0.78rem",
                   fontWeight: 800,
-                  marginTop: 4
-                }}>
-                  New Balance: ⚡ {attendee.total_xp} XP
-                </div>
-                <div className="scan-sheet-action-row" style={{ width: "100%", marginTop: 8 }}>
-                  <button
-                    className="scan-sheet-action"
-                    onClick={resetAndScan}
+                  cursor: scannedLeads.length > 0 ? "pointer" : "not-allowed",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6
+                }}
+              >
+                📥 Export CSV
+              </button>
+            </div>
+
+            {scannedLeads.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "40px 16px", color: "var(--text-muted)" }}>
+                <span style={{ fontSize: "2rem", display: "block", marginBottom: 8 }}>👥</span>
+                <p style={{ fontSize: "0.85rem" }}>No attendees scanned yet in this session.</p>
+                <button
+                  onClick={() => setActiveLeadTab("scanner")}
+                  style={{
+                    marginTop: 12,
+                    background: "rgba(168, 85, 247, 0.15)",
+                    border: "1px solid rgba(168, 85, 247, 0.35)",
+                    color: "#c084fc",
+                    borderRadius: 8,
+                    padding: "8px 16px",
+                    fontWeight: 700,
+                    cursor: "pointer"
+                  }}
+                >
+                  Start Scanning
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 360, overflowY: "auto" }}>
+                {scannedLeads.map((l) => (
+                  <div
+                    key={l.id}
                     style={{
-                      background: "linear-gradient(135deg, #a855f7 0%, #6366f1 100%)",
-                      color: "#fff",
-                      fontWeight: 800
+                      background: "rgba(20, 22, 35, 0.9)",
+                      border: "1px solid rgba(168, 85, 247, 0.2)",
+                      borderRadius: 10,
+                      padding: "10px 12px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center"
                     }}
                   >
-                    ➡ Scan Next Attendee
-                  </button>
-                </div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: "0.88rem", color: "#fff" }}>
+                        {l.full_name}
+                      </div>
+                      <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                        {l.organization || "Attendee"} • {l.ticket_code} • {l.timestamp}
+                      </div>
+                      {l.tag && (
+                        <span style={{
+                          display: "inline-block",
+                          marginTop: 4,
+                          fontSize: "0.68rem",
+                          background: "rgba(168, 85, 247, 0.2)",
+                          border: "1px solid rgba(168, 85, 247, 0.4)",
+                          color: "#e9d5ff",
+                          borderRadius: 4,
+                          padding: "1px 6px"
+                        }}>
+                          {l.tag}
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ textAlign: "right" }}>
+                      <span style={{
+                        background: "rgba(245, 166, 35, 0.12)",
+                        color: "var(--gold-light)",
+                        borderRadius: 6,
+                        padding: "2px 8px",
+                        fontSize: "0.75rem",
+                        fontWeight: 800
+                      }}>
+                        +{l.xp} XP
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
