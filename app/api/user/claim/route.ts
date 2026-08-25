@@ -45,8 +45,9 @@ export async function POST(request: Request) {
       }
     }
 
-    if (quest_id === "promo-bonus") {
-      if (!user.promo_code) {
+    const isPromoQuest = quest_id.toLowerCase().includes("promo");
+    if (isPromoQuest) {
+      if (!user.promo_code || !user.promo_code.trim()) {
         return NextResponse.json(
           { error: "This quest is only available for attendees who registered using an official promo code or referral link." },
           { status: 400 }
@@ -108,7 +109,6 @@ export async function POST(request: Request) {
       .insert({
         quest_id,
         registration_id: user.id,
-        user_email: user_email.trim().toLowerCase(),
         xp_awarded: awardXp
       });
 

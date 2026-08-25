@@ -153,6 +153,40 @@ export default function ZealyMobileApp() {
   const [userVerifications, setUserVerifications] = useState<any[]>([]);
   const [completedQuestRecords, setCompletedQuestRecords] = useState<any[]>([]);
   const [showCompletedQuests, setShowCompletedQuests] = useState(false);
+  const [noticeModal, setNoticeModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "error" | "warning" | "success" | "info";
+    icon?: string;
+  } | null>(null);
+
+  const showNotice = React.useCallback((
+    message: string,
+    type: "error" | "warning" | "success" | "info" = "error",
+    title?: string,
+    icon?: string
+  ) => {
+    let defaultTitle = "Notice";
+    let defaultIcon = "ℹ️";
+    if (type === "error") {
+      defaultTitle = "Quest Claim Restricted";
+      defaultIcon = "🔒";
+    } else if (type === "warning") {
+      defaultTitle = "Action Required";
+      defaultIcon = "⚠️";
+    } else if (type === "success") {
+      defaultTitle = "Success!";
+      defaultIcon = "🎉";
+    }
+    setNoticeModal({
+      isOpen: true,
+      title: title || defaultTitle,
+      message,
+      type,
+      icon: icon || defaultIcon,
+    });
+  }, []);
 
   // Load ticket if user was registered/logged in in this session
   const [ticketEmail, setTicketEmail] = useState("");
@@ -476,7 +510,7 @@ export default function ZealyMobileApp() {
       const json = await safeJson(res);
       if (!res.ok) return;
 
-      const { totalXp, completedQuests, completedQuestDetails, verifications, isCheckedIn } = json;
+      const { totalXp, completedQuests, completedQuestDetails, verifications, isCheckedIn, promoCode } = json;
 
       if (typeof isCheckedIn === "boolean") {
         setIsGateCheckedIn(isCheckedIn);
@@ -508,6 +542,18 @@ export default function ZealyMobileApp() {
 
       setQuests((prevQuests) =>
         prevQuests.map((q) => {
+          if (q.id === "promo-bonus") {
+            const isDone = compMap.has(q.id);
+            return {
+              ...q,
+              title: promoCode ? `Promo Code Bonus (${promoCode})` : "Promo Code Bonus",
+              description: promoCode
+                ? `Claim your bonus 250 XP for registering with promo code: ${promoCode}`
+                : "Claim your bonus XP for registering with an official promo code or referral link.",
+              status: isDone ? "Done" : (promoCode ? "Live" : q.status),
+              completedAt: compMap.get(q.id) || (q as any).completedAt,
+            };
+          }
           if (compMap.has(q.id)) {
             return { ...q, status: "Done", completedAt: compMap.get(q.id) || (q as any).completedAt };
           }
@@ -559,14 +605,14 @@ export default function ZealyMobileApp() {
       const parentCompleted = quests.some((p) => p.id === quest.depends_on_quest_id && p.status === "Done");
       if (!parentCompleted) {
         const parentQuest = quests.find((p) => p.id === quest.depends_on_quest_id);
-        alert(`🔒 Locked! You must complete "${parentQuest?.title || quest.depends_on_quest_id}" first before unlocking this quest.`);
+        showNotice(`You must complete "${parentQuest?.title || quest.depends_on_quest_id}" first before unlocking this quest.`, "warning", "Quest Locked", "🔒");
         return;
       }
     }
 
     // Check expiration
     if (quest.expires_at && new Date(quest.expires_at).getTime() < Date.now()) {
-      alert("⏱️ This quest has expired and can no longer be claimed.");
+      showNotice("This quest has expired and can no longer be claimed.", "warning", "Quest Expired", "⏱️");
       return;
     }
 
@@ -665,9 +711,9 @@ export default function ZealyMobileApp() {
     if (selectedQuest.requiresProof && !hasProof) return;
     if (selectedQuest.requiresMessage && !hasMessage) {
       if (isSocialLinkQuest(selectedQuest)) {
-        alert("🔗 Please paste your public Facebook or Instagram post link before submitting!");
+        showNotice("Please paste your public Facebook or Instagram post link before submitting!", "warning", "Link Required", "🔗");
       } else {
-        alert("💬 Please enter a message / note before submitting!");
+        showNotice("Please enter a message / note before submitting!", "warning", "Message Required", "💬");
       }
       return;
     }
@@ -675,11 +721,11 @@ export default function ZealyMobileApp() {
     if (isSocialLinkQuest(selectedQuest)) {
       const check = isStrictSocialLink(userMessageInput);
       if (!check.valid) {
-        alert("⚠️ Invalid Link: Strictly only public Facebook or Instagram post links are allowed!\n\nExamples:\n• https://www.facebook.com/...\n• https://www.instagram.com/p/...");
+        showNotice("Strictly only public Facebook or Instagram post links are allowed!\n\nExamples:\n• https://www.facebook.com/...\n• https://www.instagram.com/p/...", "error", "Invalid Social Link", "⚠️");
         return;
       }
     } else if (userMessageInput.trim().length > 250) {
-      alert("💬 Message note cannot exceed 250 characters!");
+      showNotice("Message note cannot exceed 250 characters!", "warning", "Note Too Long", "💬");
       return;
     }
 
@@ -704,7 +750,7 @@ export default function ZealyMobileApp() {
       });
       const json = await safeJson(res);
       if (!res.ok) {
-        alert("❌ Submission Failed: " + (json.error || "Could not save to database."));
+        showNotice(json.error || "Could not save to database.", "error", "Submission Failed", "❌");
         return;
       }
       setQuests((prev) =>
@@ -715,7 +761,7 @@ export default function ZealyMobileApp() {
       setUserMessageInput("");
       fetchUserVerifications();
     } catch {
-      alert("Submission error. Please try again.");
+      showNotice("Submission error. Please try again.", "error", "Submission Error", "❌");
     } finally {
       setProofSubmitting(false);
     }
@@ -725,13 +771,13 @@ export default function ZealyMobileApp() {
     if (!selectedQuest || selectedQuest.status === "Done" || selectedQuest.status === "Pending Verification") return;
 
     if (selectedQuest.requiresProof || selectedQuest.requiresMessage) {
-      alert("⏳ This quest requires admin review before XP is awarded. Please submit your proof / message note for verification!");
+      showNotice("This quest requires admin review before XP is awarded. Please submit your proof / message note for verification!", "info", "Admin Review Required", "⏳");
       return;
     }
 
     if (selectedQuest.has_passcode || selectedQuest.passcode) {
       if (!passcodeAnswer.trim()) {
-        alert("🔑 Passcode is required! Please ask the booth staff or stage presenter for the secret code.");
+        showNotice("Passcode is required! Please ask the booth staff or stage presenter for the secret code.", "warning", "Passcode Required", "🔑");
         return;
       }
     }
@@ -770,7 +816,7 @@ export default function ZealyMobileApp() {
       setQuizAnswer("");
       setSelectedQuest(null);
     } catch (err: any) {
-      alert(err.message || "Claim error. Please try again.");
+      showNotice(err.message || "Claim error. Please try again.", "error", "Quest Claim Restricted", "🔒");
     } finally {
       setClaiming(false);
       fetchLeaderboard();
@@ -821,6 +867,7 @@ export default function ZealyMobileApp() {
       setAuthenticatedUser({
         fullName: loginResult.fullName,
         email: loginResult.email,
+        promoCode: loginResult.promoCode,
       });
       setQrPass({
         fullName: qrResult.fullName ?? loginResult.fullName,
@@ -835,10 +882,24 @@ export default function ZealyMobileApp() {
 
       const completedIds = loginResult.completedQuests || [];
       const hasRegister = completedIds.includes("register");
+      const promoCode = loginResult.promoCode;
 
       // Restore existing completions and XP from database
       setQuests((prevQuests) =>
-        prevQuests.map((q) => (completedIds.includes(q.id) ? { ...q, status: "Done" } : q))
+        prevQuests.map((q) => {
+          if (q.id === "promo-bonus") {
+            const isDone = completedIds.includes(q.id);
+            return {
+              ...q,
+              title: promoCode ? `Promo Code Bonus (${promoCode})` : "Promo Code Bonus",
+              description: promoCode
+                ? `Claim your bonus 250 XP for registering with promo code: ${promoCode}`
+                : "Claim your bonus XP for registering with an official promo code or referral link.",
+              status: isDone ? "Done" : (promoCode ? "Live" : q.status),
+            };
+          }
+          return completedIds.includes(q.id) ? { ...q, status: "Done" } : q;
+        })
       );
       setUserXp(loginResult.totalXp || 0);
 
@@ -897,7 +958,7 @@ export default function ZealyMobileApp() {
       setShowPinSetupModal(false);
       setNewPinInput("");
       setConfirmPinInput("");
-      alert("🔒 Security PIN code set successfully!");
+      showNotice("Security PIN code set successfully! Your account is now protected.", "success", "Security PIN Active", "🔒");
     } catch (err: any) {
       setPinModalError(err.message);
     } finally {
@@ -936,7 +997,7 @@ export default function ZealyMobileApp() {
       setCurrentPinInput("");
       setNewPinInput("");
       setConfirmPinInput("");
-      alert("🔒 Security PIN code updated successfully!");
+      showNotice("Security PIN code updated successfully!", "success", "Security PIN Updated", "🔒");
     } catch (err: any) {
       setPinModalError(err.message);
     } finally {
@@ -1877,29 +1938,29 @@ export default function ZealyMobileApp() {
               <span className="tab-label">Profile</span>
             </button>
           </nav>
-          {selectedQuest && (
-            <div className="modal-overlay">
-              <div className="modal-content" style={{ maxHeight: "85vh", overflowY: "auto", overscrollBehavior: "contain" }}>
-                <div className="modal-header" style={{ position: "sticky", top: 0, background: "rgba(22, 22, 40, 0.95)", backdropFilter: "blur(8px)", zIndex: 10, paddingTop: 4, paddingBottom: 6, marginTop: -6 }}>
-                  <h2>{selectedQuest.title}</h2>
-                  <button
-                    className="modal-close-btn"
-                    onClick={() => {
-                      setSelectedQuest(null);
-                      setProofImage(null);
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-                <div className="modal-xp-reward">Reward: {selectedQuest.xp} XP</div>
-                <p className="modal-body" style={{ whiteSpace: "pre-wrap" }}>{selectedQuest.description}</p>
-                {(() => {
-                  const liveQuest = quests.find((q) => q.id === selectedQuest.id) || selectedQuest;
-                  const isCompleted = liveQuest.status === "Done" || liveQuest.status === "Approved";
-                  const isPending = liveQuest.status === "Pending Verification";
-
-                  if (isCompleted) {
+          {selectedQuest && (() => {
+            const liveQuest = quests.find((q) => q.id === selectedQuest.id) || selectedQuest;
+            const isCompleted = liveQuest.status === "Done" || liveQuest.status === "Approved";
+            const isPending = liveQuest.status === "Pending Verification";
+            return (
+              <div className="modal-overlay">
+                <div className="modal-content" style={{ maxHeight: "85vh", overflowY: "auto", overscrollBehavior: "contain" }}>
+                  <div className="modal-header" style={{ position: "sticky", top: 0, background: "rgba(22, 22, 40, 0.95)", backdropFilter: "blur(8px)", zIndex: 10, paddingTop: 4, paddingBottom: 6, marginTop: -6 }}>
+                    <h2>{liveQuest.title}</h2>
+                    <button
+                      className="modal-close-btn"
+                      onClick={() => {
+                        setSelectedQuest(null);
+                        setProofImage(null);
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="modal-xp-reward">Reward: {liveQuest.xp} XP</div>
+                  <p className="modal-body" style={{ whiteSpace: "pre-wrap" }}>{liveQuest.description}</p>
+                  {(() => {
+                    if (isCompleted) {
                     return (
                       <div
                         style={{
@@ -2512,7 +2573,8 @@ export default function ZealyMobileApp() {
                 })()}
               </div>
             </div>
-          )}
+          );
+        })()}
           {inactivityWarning && (
             <div className="modal-overlay">
               <div className="modal-content" style={{ textAlign: "center", padding: "24px", maxWidth: "320px", display: "flex", flexDirection: "column", gap: "10px", alignItems: "center" }}>
@@ -2660,6 +2722,112 @@ export default function ZealyMobileApp() {
                     {pinSaving ? "Updating PIN..." : "🔑 Update Security PIN"}
                   </button>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* Awesome Custom Notice / Alert Modal */}
+          {noticeModal && noticeModal.isOpen && (
+            <div 
+              className="modal-overlay" 
+              style={{ 
+                zIndex: 999999, 
+                background: "rgba(7, 9, 18, 0.85)", 
+                backdropFilter: "blur(14px)", 
+                WebkitBackdropFilter: "blur(14px)",
+                display: "flex", 
+                alignItems: "center", 
+                justifyContent: "center",
+                padding: "20px"
+              }}
+              onClick={() => setNoticeModal(null)}
+            >
+              <div 
+                className="modal-content" 
+                style={{ 
+                  maxWidth: 360, 
+                  width: "100%",
+                  padding: "28px 24px", 
+                  textAlign: "center", 
+                  background: "linear-gradient(145deg, rgba(26, 31, 53, 0.98) 0%, rgba(14, 18, 30, 0.98) 100%)", 
+                  border: noticeModal.type === "error" 
+                    ? "1px solid rgba(239, 68, 68, 0.45)" 
+                    : noticeModal.type === "warning" 
+                    ? "1px solid rgba(245, 158, 11, 0.45)" 
+                    : "1px solid rgba(16, 185, 129, 0.45)", 
+                  borderRadius: 22,
+                  boxShadow: noticeModal.type === "error"
+                    ? "0 20px 50px rgba(239, 68, 68, 0.3), 0 0 20px rgba(239, 68, 68, 0.15)"
+                    : noticeModal.type === "warning"
+                    ? "0 20px 50px rgba(245, 158, 11, 0.3), 0 0 20px rgba(245, 158, 11, 0.15)"
+                    : "0 20px 50px rgba(16, 185, 129, 0.3), 0 0 20px rgba(16, 185, 129, 0.15)",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div style={{ 
+                  width: 64, 
+                  height: 64, 
+                  borderRadius: "50%", 
+                  margin: "0 auto 16px", 
+                  display: "flex", 
+                  alignItems: "center", 
+                  justifyContent: "center", 
+                  fontSize: "2.2rem",
+                  background: noticeModal.type === "error"
+                    ? "rgba(239, 68, 68, 0.15)"
+                    : noticeModal.type === "warning"
+                    ? "rgba(245, 158, 11, 0.15)"
+                    : "rgba(16, 185, 129, 0.15)",
+                  border: noticeModal.type === "error"
+                    ? "1px solid rgba(239, 68, 68, 0.35)"
+                    : noticeModal.type === "warning"
+                    ? "1px solid rgba(245, 158, 11, 0.35)"
+                    : "1px solid rgba(16, 185, 129, 0.35)",
+                  boxShadow: "inset 0 0 12px rgba(255,255,255,0.05)"
+                }}>
+                  {noticeModal.icon}
+                </div>
+                <h3 style={{ 
+                  color: noticeModal.type === "error" ? "#fca5a5" : noticeModal.type === "warning" ? "#fbbf24" : "#6ee7b7", 
+                  margin: "0 0 10px", 
+                  fontSize: "1.2rem", 
+                  fontWeight: 800,
+                  letterSpacing: "-0.01em"
+                }}>
+                  {noticeModal.title}
+                </h3>
+                <p style={{ 
+                  color: "rgba(255, 255, 255, 0.85)", 
+                  fontSize: "0.86rem", 
+                  marginBottom: 22, 
+                  lineHeight: 1.5,
+                  wordBreak: "break-word"
+                }}>
+                  {noticeModal.message}
+                </p>
+
+                <button
+                  onClick={() => setNoticeModal(null)}
+                  style={{
+                    width: "100%",
+                    padding: "14px",
+                    borderRadius: 14,
+                    fontWeight: 800,
+                    fontSize: "0.94rem",
+                    cursor: "pointer",
+                    border: "none",
+                    color: noticeModal.type === "error" ? "#ffffff" : "#100b02",
+                    background: noticeModal.type === "error"
+                      ? "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"
+                      : noticeModal.type === "warning"
+                      ? "linear-gradient(135deg, #ffd166 0%, #f5a623 100%)"
+                      : "linear-gradient(135deg, #34d399 0%, #059669 100%)",
+                    boxShadow: "0 6px 20px rgba(0,0,0,0.35)",
+                    transition: "transform 0.15s ease, filter 0.15s ease",
+                  }}
+                >
+                  Understood
+                </button>
               </div>
             </div>
           )}

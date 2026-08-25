@@ -461,6 +461,41 @@ export default function AdminPage() {
   const [revealedQuestLogKeys, setRevealedQuestLogKeys] = useState<Set<string>>(new Set());
   const [copiedMsgId, setCopiedMsgId] = useState<number | null>(null);
 
+  const [adminNoticeModal, setAdminNoticeModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "error" | "warning" | "success" | "info";
+    icon?: string;
+  } | null>(null);
+
+  const showAdminNotice = useCallback((
+    message: string,
+    type: "error" | "warning" | "success" | "info" = "info",
+    title?: string,
+    icon?: string
+  ) => {
+    let defaultTitle = "Notification";
+    let defaultIcon = "⚡";
+    if (type === "error") {
+      defaultTitle = "Action Failed";
+      defaultIcon = "❌";
+    } else if (type === "warning") {
+      defaultTitle = "Warning";
+      defaultIcon = "⚠️";
+    } else if (type === "success") {
+      defaultTitle = "Success!";
+      defaultIcon = "✅";
+    }
+    setAdminNoticeModal({
+      isOpen: true,
+      title: title || defaultTitle,
+      message,
+      type,
+      icon: icon || defaultIcon,
+    });
+  }, []);
+
   const copyMessageContent = (id: number, text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedMsgId(id);
@@ -3980,47 +4015,23 @@ export default function AdminPage() {
         {/* ─── QUEST LOG (CUSTOMIZABLE REPORTING TABLE) TAB ─── */}
         {tab === "questlog" && !loading && (() => {
           // Combine registrations, verifications, and message notes into a master audit log
-          const registrationLogs = attendees.flatMap((a: any) => {
-            const logs = [];
-            
-            // Base Registration Log
-            logs.push({
-              id: `reg-${a.id}`,
-              quest_id: "register",
-              quest_title: "🚀 Account Registration",
-              user_name: a.full_name,
-              user_email: a.email,
-              ticket_code: a.ticket_code,
-              xp: 250,
-              status: "Approved",
-              approved_by: "System",
-              user_message: "Initial attendee registration",
-              created_at: a.created_at,
-              logType: "Registration",
-              category: "onboarding",
-            });
-
-            // Promo Code Log
-            if (a.promo_code) {
-              logs.push({
-                id: `promo-${a.id}`,
-                quest_id: `promo_${a.promo_code}`,
-                quest_title: `🎁 Promo Code Applied: ${a.promo_code}`,
-                user_name: a.full_name,
-                user_email: a.email,
-                ticket_code: a.ticket_code,
-                xp: 250, // Assuming promo codes give 250 XP
-                status: "Approved",
-                approved_by: `Promo (${a.promo_code})`,
-                user_message: `Registered with Promo Code: ${a.promo_code}`,
-                created_at: a.created_at,
-                logType: "Promo Sign-Up",
-                category: "onboarding",
-              });
-            }
-
-            return logs;
-          });
+          const registrationLogs = attendees.map((a: any) => ({
+            id: `reg-${a.id}`,
+            quest_id: "register",
+            quest_title: "🚀 Account Registration",
+            user_name: a.full_name,
+            user_email: a.email,
+            ticket_code: a.ticket_code,
+            xp: 250,
+            status: "Approved",
+            approved_by: "System",
+            user_message: a.promo_code
+              ? `Initial attendee registration (Promo Code Applied: ${a.promo_code})`
+              : "Initial attendee registration",
+            created_at: a.created_at,
+            logType: "Registration",
+            category: "onboarding",
+          }));
 
           const allLogs = [
             ...registrationLogs,
@@ -7756,6 +7767,112 @@ export default function AdminPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Custom Admin Notice Modal */}
+      {adminNoticeModal && adminNoticeModal.isOpen && (
+        <div 
+          className="admin-modal-overlay" 
+          style={{ 
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 999999, 
+            background: "rgba(7, 9, 18, 0.85)", 
+            backdropFilter: "blur(14px)", 
+            WebkitBackdropFilter: "blur(14px)",
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "center",
+            padding: "20px"
+          }}
+          onClick={() => setAdminNoticeModal(null)}
+        >
+          <div 
+            style={{ 
+              maxWidth: 380, 
+              width: "100%",
+              padding: "28px 24px", 
+              textAlign: "center", 
+              background: "linear-gradient(145deg, rgba(26, 31, 53, 0.98) 0%, rgba(14, 18, 30, 0.98) 100%)", 
+              border: adminNoticeModal.type === "error" 
+                ? "1px solid rgba(239, 68, 68, 0.45)" 
+                : adminNoticeModal.type === "warning" 
+                ? "1px solid rgba(245, 158, 11, 0.45)" 
+                : "1px solid rgba(16, 185, 129, 0.45)", 
+              borderRadius: 22,
+              boxShadow: adminNoticeModal.type === "error"
+                ? "0 20px 50px rgba(239, 68, 68, 0.3), 0 0 20px rgba(239, 68, 68, 0.15)"
+                : adminNoticeModal.type === "warning"
+                ? "0 20px 50px rgba(245, 158, 11, 0.3), 0 0 20px rgba(245, 158, 11, 0.15)"
+                : "0 20px 50px rgba(16, 185, 129, 0.3), 0 0 20px rgba(16, 185, 129, 0.15)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ 
+              width: 64, 
+              height: 64, 
+              borderRadius: "50%", 
+              margin: "0 auto 16px", 
+              display: "flex", 
+              alignItems: "center", 
+              justifyContent: "center", 
+              fontSize: "2.2rem",
+              background: adminNoticeModal.type === "error"
+                ? "rgba(239, 68, 68, 0.15)"
+                : adminNoticeModal.type === "warning"
+                ? "rgba(245, 158, 11, 0.15)"
+                : "rgba(16, 185, 129, 0.15)",
+              border: adminNoticeModal.type === "error"
+                ? "1px solid rgba(239, 68, 68, 0.35)"
+                : adminNoticeModal.type === "warning"
+                ? "1px solid rgba(245, 158, 11, 0.35)"
+                : "1px solid rgba(16, 185, 129, 0.35)",
+            }}>
+              {adminNoticeModal.icon}
+            </div>
+            <h3 style={{ 
+              color: adminNoticeModal.type === "error" ? "#fca5a5" : adminNoticeModal.type === "warning" ? "#fbbf24" : "#6ee7b7", 
+              margin: "0 0 10px", 
+              fontSize: "1.2rem", 
+              fontWeight: 800
+            }}>
+              {adminNoticeModal.title}
+            </h3>
+            <p style={{ 
+              color: "rgba(255, 255, 255, 0.85)", 
+              fontSize: "0.86rem", 
+              marginBottom: 22, 
+              lineHeight: 1.5,
+              wordBreak: "break-word"
+            }}>
+              {adminNoticeModal.message}
+            </p>
+
+            <button
+              onClick={() => setAdminNoticeModal(null)}
+              style={{
+                width: "100%",
+                padding: "13px",
+                borderRadius: 14,
+                fontWeight: 800,
+                fontSize: "0.94rem",
+                cursor: "pointer",
+                border: "none",
+                color: adminNoticeModal.type === "error" ? "#ffffff" : "#100b02",
+                background: adminNoticeModal.type === "error"
+                  ? "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"
+                  : adminNoticeModal.type === "warning"
+                  ? "linear-gradient(135deg, #ffd166 0%, #f5a623 100%)"
+                  : "linear-gradient(135deg, #34d399 0%, #059669 100%)",
+                boxShadow: "0 6px 20px rgba(0,0,0,0.35)",
+              }}
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

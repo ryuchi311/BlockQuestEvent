@@ -112,9 +112,8 @@ export async function POST(request: Request) {
 
     if (promoData && promoData.is_active) {
       if (promoData.max_uses === null || promoData.usage_count < promoData.max_uses) {
-        initialXp += promoData.xp_bonus;
         finalPromoCode = promoData.code;
-        successMessage = `Registration saved successfully. Promo code applied: +${initialXp} XP awarded!`;
+        successMessage = `Registration saved successfully. Promo code ${promoData.code} applied! Claim your +250 XP Promo Bonus quest in your quest line.`;
         
         // Increment usage count in the background
         supabase.rpc('increment_promo_usage', { p_code: promoData.code }).then((res) => {
@@ -161,7 +160,7 @@ export async function POST(request: Request) {
       xp_awarded: initialXp,
     };
     if (newReg?.id) completionPayload.registration_id = newReg.id;
-    if (email) completionPayload.user_email = email;
+    if (newReg?.id) completionPayload.registration_id = newReg.id;
 
     await supabase.from("quest_completions").insert(completionPayload);
   } catch (compErr) {

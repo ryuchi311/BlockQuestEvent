@@ -24,11 +24,11 @@ export async function GET(request: Request) {
     const supabase = getSupabase();
 
     // 1. Fetch user from registrations
-    const { data: user } = await supabase
+    const { data: user, error: userError } = await supabase
       .from("registrations")
-      .select("id, total_xp, checked_in, checked_in_at")
-      .ilike("email", email)
-      .maybeSingle();
+      .select("id, total_xp, checked_in, checked_in_at, promo_code")
+      .eq("email", email)
+      .single();
 
     let completions: string[] = [];
     let completedDetails: any[] = [];
@@ -55,7 +55,6 @@ export async function GET(request: Request) {
           const newComp: Record<string, any> = {
             quest_id: "register",
             xp_awarded: 250,
-            user_email: email,
             registration_id: user.id,
           };
           const { data: inserted } = await supabase
@@ -132,6 +131,7 @@ export async function GET(request: Request) {
       completedQuestDetails: completedDetails,
       verifications: verifications,
       isCheckedIn: isCheckedIn,
+      promoCode: user?.promo_code || null,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
