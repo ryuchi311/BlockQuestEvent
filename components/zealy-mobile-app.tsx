@@ -161,6 +161,7 @@ export default function ZealyMobileApp() {
     type: "error" | "warning" | "success" | "info";
     icon?: string;
   } | null>(null);
+  const [showQrZoomModal, setShowQrZoomModal] = useState(false);
 
   const showNotice = React.useCallback((
     message: string,
@@ -1134,21 +1135,21 @@ export default function ZealyMobileApp() {
             )}
             {activeTab === "quests" && (
               <div className="zealy-tab-content">
-                <div className="section-head">
+                <div className="section-head" style={{ marginBottom: "2px", marginTop: "0px" }}>
                   <div>
-                    <p className="section-head__eyebrow">Available tasks</p>
-                    <h2>Event Quests</h2>
+                    <p className="section-head__eyebrow" style={{ fontSize: "0.64rem", marginBottom: "1px" }}>Available tasks</p>
+                    <h2 style={{ fontSize: "1.1rem", margin: 0, fontWeight: 800 }}>Event Quests</h2>
                   </div>
                 </div>
 
                 {!authenticatedUser && !qrPass ? (
-                  <div className="login-card" style={{ marginTop: 8, padding: "20px 18px", textAlign: "center", border: "1px solid rgba(245, 166, 35, 0.4)", background: "linear-gradient(135deg, rgba(20, 20, 30, 0.95) 0%, rgba(35, 25, 15, 0.95) 100%)" }}>
-                    <div style={{ fontSize: "2rem", marginBottom: 6 }}>🔒</div>
-                    <h3 style={{ color: "#fbbf24", fontWeight: 800, fontSize: "1.1rem", marginBottom: 6 }}>
+                  <div className="login-card" style={{ marginTop: 4, padding: "16px 14px", textAlign: "center", border: "1px solid rgba(245, 166, 35, 0.4)", background: "linear-gradient(135deg, rgba(20, 20, 30, 0.95) 0%, rgba(35, 25, 15, 0.95) 100%)" }}>
+                    <div style={{ fontSize: "1.8rem", marginBottom: 4 }}>🔒</div>
+                    <h3 style={{ color: "#fbbf24", fontWeight: 800, fontSize: "1rem", marginBottom: 4 }}>
                       Login Required to Play
                     </h3>
-                    <p className="login-card__hint" style={{ fontSize: "0.82rem", color: "var(--text-secondary)", marginBottom: 16 }}>
-                      Enter your registered Email & Phone Number to log into BlockQuest Arena, link your event ticket pass, and claim <strong>+250 XP</strong>!
+                    <p className="login-card__hint" style={{ fontSize: "0.78rem", color: "var(--text-secondary)", marginBottom: 12 }}>
+                      Sign in with your registered email and 4-digit PIN to access live event quests, claim XP, and climb the leaderboard.
                     </p>
                     <form className="form" onSubmit={handleLinkTicket} style={{ textAlign: "left" }}>
                       <label style={{ gap: "4px" }}>
@@ -1225,7 +1226,7 @@ export default function ZealyMobileApp() {
                 ) : (
                   <div className="quest-list">
                     {/* Active / In Progress Quests */}
-                    <div className="quest-category__title">
+                    <div className="quest-category__title" style={{ marginTop: "2px", marginBottom: "2px", fontSize: "0.72rem" }}>
                       <span>⚡ Active Quests ({quests.filter((q) => q.status !== "Done").length})</span>
                     </div>
 
@@ -1261,28 +1262,28 @@ export default function ZealyMobileApp() {
                             </span>
                             <span className="xp-badge">+{q.xp} XP</span>
                             {q.passcode && (
-                              <span style={{ fontSize: "0.7rem", padding: "2px 8px", borderRadius: "10px", background: "rgba(245, 158, 11, 0.2)", color: "#fbbf24", border: "1px solid rgba(245, 158, 11, 0.3)" }}>
+                              <span style={{ fontSize: "0.64rem", padding: "2px 6px", borderRadius: "6px", background: "rgba(245, 158, 11, 0.2)", color: "#fbbf24", border: "1px solid rgba(245, 158, 11, 0.3)" }}>
                                 🔑 Passcode
                               </span>
                             )}
                             {q.expires_at && (
-                              <span style={{ fontSize: "0.7rem", padding: "2px 8px", borderRadius: "10px", background: "rgba(239, 68, 68, 0.2)", color: "#f87171", border: "1px solid rgba(239, 68, 68, 0.3)" }}>
+                              <span style={{ fontSize: "0.64rem", padding: "2px 6px", borderRadius: "6px", background: "rgba(239, 68, 68, 0.2)", color: "#f87171", border: "1px solid rgba(239, 68, 68, 0.3)" }}>
                                 {new Date(q.expires_at).getTime() < Date.now() ? "⏳ Expired" : `⏱️ Ends ${new Date(q.expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
                               </span>
                             )}
                             {q.depends_on_quest_id && !quests.some((p) => p.id === q.depends_on_quest_id && p.status === "Done") && (
-                              <span style={{ fontSize: "0.7rem", padding: "2px 8px", borderRadius: "10px", background: "rgba(100, 116, 139, 0.25)", color: "#94a3b8", border: "1px solid rgba(100, 116, 139, 0.4)" }}>
-                                🔒 Locked (Prerequisite)
+                              <span style={{ fontSize: "0.64rem", padding: "2px 6px", borderRadius: "6px", background: "rgba(100, 116, 139, 0.25)", color: "#94a3b8", border: "1px solid rgba(100, 116, 139, 0.4)" }}>
+                                🔒 Prereq
                               </span>
                             )}
                             {q.requiresProof && q.status !== "Approved" && q.status !== "Pending Verification" && (
-                              <span style={{ fontSize: "0.7rem", padding: "2px 8px", borderRadius: "10px", background: "rgba(139, 92, 246, 0.2)", color: "#a78bfa", border: "1px solid rgba(139, 92, 246, 0.3)" }}>
-                                📷 Proof Required
+                              <span style={{ fontSize: "0.64rem", padding: "2px 6px", borderRadius: "6px", background: "rgba(139, 92, 246, 0.2)", color: "#a78bfa", border: "1px solid rgba(139, 92, 246, 0.3)" }}>
+                                📷 Proof
                               </span>
                             )}
                             {q.requiresMessage && q.status !== "Approved" && q.status !== "Pending Verification" && (
-                              <span style={{ fontSize: "0.7rem", padding: "2px 8px", borderRadius: "10px", background: "rgba(245, 158, 11, 0.2)", color: "#fbbf24", border: "1px solid rgba(245, 158, 11, 0.3)" }}>
-                                💬 Note Required
+                              <span style={{ fontSize: "0.64rem", padding: "2px 6px", borderRadius: "6px", background: "rgba(245, 158, 11, 0.2)", color: "#fbbf24", border: "1px solid rgba(245, 158, 11, 0.3)" }}>
+                                💬 Note
                               </span>
                             )}
                           </div>
@@ -1291,16 +1292,16 @@ export default function ZealyMobileApp() {
                         </div>
                         <div className="quest-card__footer">
                           {q.status === "Approved" ? (
-                            <span style={{ fontSize: "0.76rem", padding: "4px 10px", borderRadius: "10px", background: "rgba(16, 185, 129, 0.25)", color: "#34d399", border: "1px solid rgba(16, 185, 129, 0.4)", fontWeight: 800 }}>
+                            <span style={{ fontSize: "0.7rem", padding: "3px 8px", borderRadius: "6px", background: "rgba(16, 185, 129, 0.25)", color: "#34d399", border: "1px solid rgba(16, 185, 129, 0.4)", fontWeight: 800 }}>
                               🎉 Ready to Claim XP →
                             </span>
                           ) : q.status === "Rejected" ? (
-                            <span style={{ fontSize: "0.76rem", padding: "4px 10px", borderRadius: "10px", background: "rgba(239, 68, 68, 0.25)", color: "#f87171", border: "1px solid rgba(239, 68, 68, 0.4)", fontWeight: 800 }}>
-                              ❌ Rejected - Try Again →
+                            <span style={{ fontSize: "0.7rem", padding: "3px 8px", borderRadius: "6px", background: "rgba(239, 68, 68, 0.25)", color: "#f87171", border: "1px solid rgba(239, 68, 68, 0.4)", fontWeight: 800 }}>
+                              ❌ Rejected - Retry →
                             </span>
                           ) : q.status === "Pending Verification" ? (
-                            <span style={{ fontSize: "0.76rem", padding: "4px 10px", borderRadius: "10px", background: "rgba(245, 158, 11, 0.25)", color: "#fbbf24", border: "1px solid rgba(245, 158, 11, 0.4)", fontWeight: 800 }}>
-                              ⏳ Pending Admin Review
+                            <span style={{ fontSize: "0.7rem", padding: "3px 8px", borderRadius: "6px", background: "rgba(245, 158, 11, 0.25)", color: "#fbbf24", border: "1px solid rgba(245, 158, 11, 0.4)", fontWeight: 800 }}>
+                              ⏳ Pending Review
                             </span>
                           ) : (
                             <span className={`status-badge status-badge--${q.status.toLowerCase().replace(/\s+/g, "-")}`}>
@@ -1555,19 +1556,53 @@ export default function ZealyMobileApp() {
                       </div>
                       <span className="qr-pass__code">{qrPass.passCode}</span>
                     </div>
-                    <div className="qr-pass__body" style={{ gridTemplateColumns: "110px 1fr" }}>
-                      <div style={{ position: "relative", display: "inline-block", width: "110px", height: "110px" }}>
+                    <div className="qr-pass__body" style={{ gridTemplateColumns: "110px 1fr", alignItems: "center" }}>
+                      <div
+                        onClick={() => setShowQrZoomModal(true)}
+                        style={{
+                          position: "relative",
+                          display: "inline-block",
+                          width: "110px",
+                          height: "110px",
+                          cursor: "pointer",
+                          borderRadius: "12px",
+                          overflow: "hidden",
+                          boxShadow: "0 4px 14px rgba(0,0,0,0.5)",
+                          border: "1px solid rgba(245, 166, 35, 0.3)"
+                        }}
+                        title="Click to Zoom QR Code"
+                      >
                         <img
                           className="qr-pass__image"
                           src={qrPass.qrDataUrl}
                           alt="Ticket Pass"
-                          style={{ width: "110px", height: "110px" }}
+                          style={{ width: "110px", height: "110px", display: "block" }}
                         />
                       </div>
                       <div className="qr-pass__meta">
                         <strong style={{ fontSize: "1rem" }}>Entry QR Pass</strong>
                         <p style={{ fontSize: "0.78rem" }}>{qrPass.email}</p>
                         <p style={{ fontSize: "0.75rem", color: "var(--gold-light)" }}>✓ Ticket Linked & XP rewarded (+250 XP)</p>
+                        <button
+                          type="button"
+                          onClick={() => setShowQrZoomModal(true)}
+                          style={{
+                            marginTop: 4,
+                            background: "rgba(245, 166, 35, 0.15)",
+                            border: "1px solid rgba(245, 166, 35, 0.4)",
+                            color: "var(--gold-light)",
+                            borderRadius: 8,
+                            padding: "4px 10px",
+                            fontSize: "0.74rem",
+                            fontWeight: 800,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4
+                          }}
+                        >
+                          🔍 Zoom for Scanner
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -2829,6 +2864,127 @@ export default function ZealyMobileApp() {
                   }}
                 >
                   Understood
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── QR Zoom Modal for Easy Scanning ── */}
+          {showQrZoomModal && qrPass && (
+            <div
+              onClick={() => setShowQrZoomModal(false)}
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 99999,
+                background: "rgba(0, 0, 0, 0.88)",
+                backdropFilter: "blur(12px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "20px",
+                animation: "fadeIn 0.2s ease"
+              }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: "linear-gradient(135deg, rgba(24, 22, 38, 0.98) 0%, rgba(14, 14, 24, 0.98) 100%)",
+                  border: "1px solid rgba(245, 166, 35, 0.5)",
+                  boxShadow: "0 20px 60px rgba(0,0,0,0.9), 0 0 35px rgba(245, 166, 35, 0.25)",
+                  borderRadius: "24px",
+                  padding: "24px 20px",
+                  maxWidth: "340px",
+                  width: "100%",
+                  textAlign: "center",
+                  position: "relative"
+                }}
+              >
+                <button
+                  onClick={() => setShowQrZoomModal(false)}
+                  style={{
+                    position: "absolute",
+                    top: "14px",
+                    right: "14px",
+                    background: "rgba(255, 255, 255, 0.08)",
+                    border: "1px solid rgba(255, 255, 255, 0.15)",
+                    color: "var(--text-muted)",
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "50%",
+                    fontSize: "1rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer"
+                  }}
+                >
+                  ✕
+                </button>
+
+                <div style={{
+                  display: "inline-block",
+                  background: "rgba(245, 166, 35, 0.15)",
+                  border: "1px solid rgba(245, 166, 35, 0.35)",
+                  color: "var(--gold-light)",
+                  fontSize: "0.72rem",
+                  fontWeight: 800,
+                  padding: "3px 10px",
+                  borderRadius: "20px",
+                  marginBottom: "8px",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em"
+                }}>
+                  Official Ticket Pass
+                </div>
+
+                <h3 style={{ color: "#fff", fontSize: "1.25rem", fontWeight: 900, margin: "0 0 2px" }}>
+                  {qrPass.fullName}
+                </h3>
+                <p style={{ color: "#fbbf24", fontWeight: 800, fontSize: "0.95rem", margin: "0 0 16px", letterSpacing: "1px" }}>
+                  {qrPass.passCode}
+                </p>
+
+                {/* High-Contrast Crisp Large QR code */}
+                <div style={{
+                  background: "#ffffff",
+                  padding: "16px",
+                  borderRadius: "18px",
+                  display: "inline-block",
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.6)"
+                }}>
+                  <img
+                    src={qrPass.qrDataUrl}
+                    alt={`QR code for ${qrPass.fullName}`}
+                    style={{
+                      width: "220px",
+                      height: "220px",
+                      display: "block",
+                      imageRendering: "pixelated"
+                    }}
+                  />
+                </div>
+
+                <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "16px", marginBottom: "16px", lineHeight: 1.4 }}>
+                  Present this enlarged QR code to the <strong>Gate Staff</strong> or <strong>Sponsor Booths</strong> for instant scanning.
+                </p>
+
+                <button
+                  onClick={() => setShowQrZoomModal(false)}
+                  style={{
+                    width: "100%",
+                    background: "linear-gradient(135deg, #ffd166 0%, #f5a623 100%)",
+                    color: "#100b02",
+                    border: "none",
+                    borderRadius: "12px",
+                    padding: "12px",
+                    fontWeight: 900,
+                    fontSize: "0.9rem",
+                    cursor: "pointer",
+                    boxShadow: "0 4px 16px rgba(245, 166, 35, 0.35)"
+                  }}
+                >
+                  Done Scanning
                 </button>
               </div>
             </div>
