@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import ZealyIntroAnimation from "./zealy-intro-animation";
 
 interface Quest {
   id: string;
@@ -162,6 +163,7 @@ export default function ZealyMobileApp() {
     icon?: string;
   } | null>(null);
   const [showQrZoomModal, setShowQrZoomModal] = useState(false);
+  const [showIntro, setShowIntro] = useState(true);
 
   const showNotice = React.useCallback((
     message: string,
@@ -1023,16 +1025,34 @@ export default function ZealyMobileApp() {
   if (!mounted) return null;
 
   return (
-    <main className="zealy-page">
+    <>
+      {showIntro && (
+        <ZealyIntroAnimation
+          onComplete={() => {
+            if (typeof window !== "undefined") {
+              sessionStorage.setItem("bq_intro_seen", "true");
+            }
+            setShowIntro(false);
+          }}
+        />
+      )}
+      <main className="zealy-page">
       <div className="mobile-simulator">
         <div className="mobile-app">
           {/* Header */}
           <header className="zealy-header">
             <div className="zealy-header__brand">
-              <div className="zealy-logo-box">
+              <div className="zealy-logo-box" style={{
+                background: "linear-gradient(135deg, rgba(28, 24, 46, 0.95) 0%, rgba(10, 10, 20, 0.98) 100%)",
+                border: "1.5px solid rgba(245, 166, 35, 0.6)",
+                boxShadow: "0 0 16px rgba(245, 166, 35, 0.35)",
+                borderRadius: "14px",
+                padding: "4px"
+              }}>
                 <img
-                  src="https://block-quest.com/assets/images/block_quest_logo.png"
+                  src="/logo.png"
                   alt="BlockQuest Logo"
+                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
                 />
               </div>
               <div>
@@ -1216,7 +1236,7 @@ export default function ZealyMobileApp() {
                         disabled={ticketLoading}
                         className="arena-cta-btn"
                       >
-                        {ticketLoading ? "Verifying Account..." : "⚡ Login & Unlock Quests (+250 XP)"}
+                        {ticketLoading ? "Verifying..." : "⚡ Unlock Quests (+250 XP)"}
                       </button>
                     </form>
                     <p style={{ fontSize: "0.74rem", color: "rgba(255,255,255,0.4)", marginTop: 14 }}>
@@ -2997,5 +3017,6 @@ export default function ZealyMobileApp() {
         </div>
       </div>
     </main>
+    </>
   );
 }

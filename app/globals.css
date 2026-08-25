@@ -754,6 +754,19 @@ a {
   }
 }
 
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+    filter: blur(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0px);
+  }
+}
+
 @keyframes pulse-glow {
   0%, 100% {
     box-shadow: 0 0 15px rgba(245, 166, 35, 0.15);
@@ -1880,24 +1893,25 @@ a {
 /* Premium Readable CTA Button for BlockQuest Arena */
 .arena-cta-btn {
   width: 100%;
-  padding: 14px 20px;
-  margin-top: 14px;
-  border-radius: 14px;
+  padding: 10px 14px;
+  margin-top: 8px;
+  border-radius: 10px;
   border: 1px solid rgba(255, 209, 102, 0.6);
   background: linear-gradient(135deg, #ffd166 0%, #f5a623 50%, #e8850a 100%);
   color: #0b0802 !important;
   font-family: inherit;
-  font-size: 0.92rem;
-  font-weight: 850;
+  font-size: 0.84rem;
+  font-weight: 800;
   letter-spacing: 0.01em;
-  line-height: 1.25;
+  line-height: 1.2;
+  white-space: nowrap;
   cursor: pointer;
-  box-shadow: 0 6px 20px rgba(245, 166, 35, 0.35);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 14px rgba(245, 166, 35, 0.3);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   text-shadow: none !important;
   -webkit-font-smoothing: antialiased;
 }
