@@ -111,7 +111,13 @@ export default function ZealyMobileApp() {
   const [quests, setQuests] = useState<Quest[]>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("bq_quests");
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Merge in any new quests from initialQuests that aren't in local storage
+        const existingIds = new Set(parsed.map((q: Quest) => q.id));
+        const missingQuests = initialQuests.filter((q) => !existingIds.has(q.id));
+        return [...parsed, ...missingQuests];
+      }
     }
     return initialQuests;
   });

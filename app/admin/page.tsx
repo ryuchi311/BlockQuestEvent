@@ -5329,6 +5329,22 @@ export default function AdminPage() {
                   <div className="qf-presets-bar" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                     {[
                       {
+                        icon: "🎁",
+                        name: "Promo Code Bonus",
+                        data: {
+                          title: "Promo Code Bonus",
+                          description: "Claim your bonus XP for registering with an official promo code or referral link.",
+                          category: "onboarding" as const,
+                          xp: 250,
+                          requires_proof: false,
+                          requires_message: false,
+                          is_quiz: false,
+                          passcode: "",
+                          action_label: "",
+                          action_url: "",
+                        }
+                      },
+                      {
                         icon: "📱",
                         name: "Social Follow",
                         data: {
