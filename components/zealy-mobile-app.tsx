@@ -1646,38 +1646,52 @@ export default function ZealyMobileApp() {
                 </div>
 
                 {/* 🏆 Milestone Badges & Achievements */}
-                <div className="info-card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <h3 style={{ fontSize: "0.95rem", fontWeight: 800, color: "#fff", margin: 0 }}>
-                    🏆 Milestone Badges & Tier
-                  </h3>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+                <div className="info-card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <h3 style={{ fontSize: "0.9rem", fontWeight: 800, color: "#fff", margin: 0 }}>
+                      🏆 Milestone Badges & Tiers
+                    </h3>
+                    <span style={{ fontSize: "0.7rem", color: "#fbbf24", fontWeight: 700 }}>
+                      {userXp} Total XP
+                    </span>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 6, maxHeight: "230px", overflowY: "auto", paddingRight: 2 }}>
                     {[
-                      { name: "Rookie Quester", xp: 100, icon: "🥉", color: "#cd7f32" },
-                      { name: "Explorer", xp: 500, icon: "🥈", color: "#c0c0c0" },
-                      { name: "Master Quester", xp: 1200, icon: "🥇", color: "#ffd700" },
-                      { name: "Fiesta Legend", xp: 2500, icon: "👑", color: "#a855f7" },
+                      { name: "Rookie Quester", xp: 500, icon: "🥉", color: "#cd7f32" },
+                      { name: "Explorer", xp: 1200, icon: "🥈", color: "#94a3b8" },
+                      { name: "Challenger", xp: 2500, icon: "⚔️", color: "#34d399" },
+                      { name: "Master Quester", xp: 5000, icon: "🥇", color: "#ffd700" },
+                      { name: "Diamond Hero", xp: 10000, icon: "💎", color: "#38bdf8" },
+                      { name: "Fiesta Legend", xp: 20000, icon: "👑", color: "#c084fc" },
+                      { name: "Grandmaster", xp: 35000, icon: "⚡", color: "#fbbf24" },
+                      { name: "Mythic Sovereign", xp: 50000, icon: "🌌", color: "#f472b6" },
                     ].map((b) => {
                       const unlocked = userXp >= b.xp;
                       return (
                         <div
                           key={b.name}
                           style={{
-                            background: unlocked ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.25)",
-                            border: `1px solid ${unlocked ? b.color : "rgba(255,255,255,0.08)"}`,
-                            borderRadius: "10px",
-                            padding: "8px 10px",
+                            background: unlocked ? "rgba(255,255,255,0.06)" : "rgba(10, 14, 24, 0.45)",
+                            border: `1px solid ${unlocked ? b.color : "rgba(255,255,255,0.07)"}`,
+                            borderRadius: "8px",
+                            padding: "6px 8px",
                             display: "flex",
                             alignItems: "center",
-                            gap: 8,
-                            opacity: unlocked ? 1 : 0.45,
+                            gap: 6,
+                            opacity: unlocked ? 1 : 0.4,
+                            boxShadow: unlocked ? `0 0 10px ${b.color}22` : "none",
+                            transition: "all 0.15s ease",
                           }}
                         >
-                          <span style={{ fontSize: "1.3rem" }}>{unlocked ? b.icon : "🔒"}</span>
-                          <div style={{ display: "flex", flexDirection: "column" }}>
-                            <span style={{ fontSize: "0.78rem", fontWeight: 800, color: unlocked ? "#fff" : "var(--text-muted)" }}>
+                          <span style={{ fontSize: "1.1rem", filter: unlocked ? "none" : "grayscale(100%)" }}>
+                            {unlocked ? b.icon : "🔒"}
+                          </span>
+                          <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                            <span style={{ fontSize: "0.73rem", fontWeight: 800, color: unlocked ? "#f8fafc" : "#64748b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                               {b.name}
                             </span>
-                            <span style={{ fontSize: "0.65rem", color: unlocked ? b.color : "var(--text-muted)" }}>
+                            <span style={{ fontSize: "0.62rem", color: unlocked ? b.color : "#64748b", fontWeight: unlocked ? 700 : 400 }}>
                               {unlocked ? "✓ Unlocked" : `${b.xp} XP needed`}
                             </span>
                           </div>
@@ -1757,107 +1771,81 @@ export default function ZealyMobileApp() {
                     }
 
                     return (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: "280px", overflowY: "auto", paddingRight: 4 }}>
-                        {displayLogs.map((v, idx) => (
-                          <div
-                            key={v.uniqueKey || `${v.id || v.quest_id}_${idx}`}
-                            style={{
-                              background: "rgba(12, 12, 22, 0.7)",
-                              border: "1px solid rgba(255, 255, 255, 0.08)",
-                              borderRadius: 12,
-                              padding: 12,
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 8,
-                            }}
-                          >
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                              <div>
-                                <strong style={{ fontSize: "0.88rem", color: "#fff", display: "block" }}>{v.quest_title}</strong>
-                                <span style={{ fontSize: "0.72rem", color: "var(--gold-light)" }}>+{v.xp} XP Reward</span>
-                              </div>
-                              <span
-                                style={{
-                                  fontSize: "0.7rem",
-                                  fontWeight: 800,
-                                  padding: "3px 8px",
-                                  borderRadius: 10,
-                                  background:
-                                    v.status === "Approved"
-                                      ? "rgba(16, 185, 129, 0.18)"
-                                      : v.status === "Rejected"
-                                        ? "rgba(239, 68, 68, 0.18)"
-                                        : "rgba(245, 158, 11, 0.18)",
-                                  color:
-                                    v.status === "Approved"
-                                      ? "#34d399"
-                                      : v.status === "Rejected"
-                                        ? "#f87171"
-                                        : "#fbbf24",
-                                  border:
-                                    v.status === "Approved"
-                                      ? "1px solid rgba(16, 185, 129, 0.3)"
-                                      : v.status === "Rejected"
-                                        ? "1px solid rgba(239, 68, 68, 0.3)"
-                                        : "1px solid rgba(245, 158, 11, 0.3)",
-                                }}
-                              >
-                                {v.status === "Approved" ? (v.displayStatus || "✓ Approved") : v.status === "Rejected" ? "✕ Rejected" : "⏳ Pending Review"}
-                              </span>
-                            </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: "300px", overflowY: "auto", paddingRight: 2 }}>
+                        {displayLogs.map((v, idx) => {
+                          const formattedDate = v.created_at
+                            ? new Date(v.created_at).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : "";
 
-                            {v.status === "Rejected" && (
-                              <div style={{ background: "rgba(239, 68, 68, 0.08)", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: 8, padding: 8 }}>
-                                <p style={{ fontSize: "0.75rem", color: "#f87171", margin: 0, fontWeight: 600 }}>
-                                  🔴 <strong>Reason:</strong> {v.rejection_reason || "Proof did not satisfy requirements."}
-                                </p>
-                                <button
-                                  onClick={() => {
-                                    const questToRetry = quests.find((q) => q.id === v.quest_id) || {
-                                      id: v.quest_id,
-                                      title: v.quest_title,
-                                      description: "Resubmit proof screenshot for admin verification.",
-                                      xp: v.xp,
-                                      status: "Live" as const,
-                                      category: "social" as const,
-                                      requiresProof: true,
-                                    };
-                                    setSelectedQuest(questToRetry as any);
-                                    setActiveTab("quests");
-                                  }}
+                          return (
+                            <div
+                              key={v.uniqueKey || `${v.id || v.quest_id}_${idx}`}
+                              style={{
+                                background: "rgba(15, 20, 32, 0.75)",
+                                border: "1px solid rgba(255, 255, 255, 0.08)",
+                                borderRadius: 10,
+                                padding: "8px 10px",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 6,
+                              }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0, flex: 1 }}>
+                                  <strong style={{ fontSize: "0.81rem", color: "#f8fafc", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                    {v.quest_title}
+                                  </strong>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.68rem" }}>
+                                    <span style={{ color: "#fbbf24", fontWeight: 700 }}>+{v.xp} XP</span>
+                                    {formattedDate && <span style={{ color: "#94a3b8", opacity: 0.8 }}>• {formattedDate}</span>}
+                                  </div>
+                                </div>
+
+                                <span
                                   style={{
-                                    marginTop: 8,
-                                    width: "100%",
-                                    padding: "7px 10px",
-                                    borderRadius: 8,
-                                    border: "1px solid rgba(245, 166, 35, 0.5)",
-                                    background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
-                                    color: "#100b02",
-                                    fontSize: "0.78rem",
+                                    fontSize: "0.66rem",
                                     fontWeight: 800,
-                                    cursor: "pointer",
+                                    padding: "3px 8px",
+                                    borderRadius: 6,
+                                    background:
+                                      v.status === "Approved"
+                                        ? "rgba(16, 185, 129, 0.16)"
+                                        : v.status === "Rejected"
+                                          ? "rgba(239, 68, 68, 0.16)"
+                                          : "rgba(245, 158, 11, 0.16)",
+                                    color:
+                                      v.status === "Approved"
+                                        ? "#34d399"
+                                        : v.status === "Rejected"
+                                          ? "#f87171"
+                                          : "#fbbf24",
+                                    border:
+                                      v.status === "Approved"
+                                        ? "1px solid rgba(16, 185, 129, 0.3)"
+                                        : v.status === "Rejected"
+                                          ? "1px solid rgba(239, 68, 68, 0.3)"
+                                          : "1px solid rgba(245, 158, 11, 0.3)",
+                                    whiteSpace: "nowrap",
+                                    flexShrink: 0
                                   }}
                                 >
-                                  🔄 Try Again & Resubmit Proof
-                                </button>
+                                  {v.status === "Approved" ? (v.displayStatus || "✓ Claimed") : v.status === "Rejected" ? "✕ Rejected" : "⏳ Pending"}
+                                </span>
                               </div>
-                            )}
-                            {v.user_message && (
-                              <div style={{ fontSize: "0.76rem", color: "rgba(255,255,255,0.75)", background: "rgba(255,255,255,0.04)", padding: "6px 8px", borderRadius: 6, fontStyle: "italic" }}>
-                                💬 "{v.user_message}"
-                              </div>
-                            )}
 
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.68rem", color: "var(--text-muted)", marginTop: 2 }}>
-                              <span>
-                                {v.created_at
-                                  ? new Date(v.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
-                                  : "Completed"}
-                              </span>
-                              {v.is_instant && <span style={{ color: "#38bdf8" }}>⚡ Instant Claim</span>}
+                              {v.user_message && (
+                                <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.75)", background: "rgba(255,255,255,0.04)", padding: "4px 8px", borderRadius: 6, fontStyle: "italic" }}>
+                                  💬 "{v.user_message}"
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     );
                   })()}
