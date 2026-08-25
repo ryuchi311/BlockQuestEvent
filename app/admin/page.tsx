@@ -642,7 +642,7 @@ export default function AdminPage() {
       setTab("verifications");
     } else if ((role === "manage_attendees" || role === "manage_quester") && tab !== "scanner" && tab !== "attendees") {
       setTab("scanner");
-    } else if ((role === "admin" || role === "viewer") && (tab === "staff" || tab === "socials")) {
+    } else if ((role === "admin" || role === "manager" || role === "viewer") && (tab === "staff" || tab === "socials")) {
       setTab("attendees");
     }
   }, [adminUser]);
@@ -2048,6 +2048,12 @@ export default function AdminPage() {
     }
   }
 
+  const isViewer = adminUser?.role === "viewer";
+  const isVerifier = adminUser?.role === "verifier";
+  const isManageAttendees = adminUser?.role === "manage_attendees" || adminUser?.role === "manage_quester";
+  const isManager = adminUser?.role === "admin" || adminUser?.role === "manager";
+  const canManageQuests = adminUser?.role === "superadmin" || isManager;
+
   // ─── Dashboard ───────────────────────────────────────────────────────────
   return (
     <main className="admin-page">
@@ -2071,29 +2077,31 @@ export default function AdminPage() {
               <span style={{ fontSize: "0.7rem", color: "var(--gold-light)", textTransform: "uppercase" }}>{adminUser.role}</span>
             </div>
           )}
-          <button
-            onClick={() => {
-              setEditingQuest(null);
-              setQuestForm({ ...EMPTY_QUEST });
-              setShowQuestModal(true);
-            }}
-            className="admin-nav-link"
-            style={{
-              background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
-              color: "#120b02",
-              fontWeight: 800,
-              border: "1px solid rgba(245, 166, 35, 0.6)",
-              boxShadow: "0 0 14px rgba(245, 166, 35, 0.35)",
-              cursor: "pointer",
-              padding: "7px 14px",
-              borderRadius: "10px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6
-            }}
-          >
-            ⚡ + Add Quest
-          </button>
+          {!isViewer && canManageQuests && (
+            <button
+              onClick={() => {
+                setEditingQuest(null);
+                setQuestForm({ ...EMPTY_QUEST });
+                setShowQuestModal(true);
+              }}
+              className="admin-nav-link"
+              style={{
+                background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                color: "#120b02",
+                fontWeight: 800,
+                border: "1px solid rgba(245, 166, 35, 0.6)",
+                boxShadow: "0 0 14px rgba(245, 166, 35, 0.35)",
+                cursor: "pointer",
+                padding: "7px 14px",
+                borderRadius: "10px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6
+              }}
+            >
+              ⚡ + Add Quest
+            </button>
+          )}
           <a href="/shortcuts" className="admin-nav-link" style={{ borderColor: "rgba(59, 130, 246, 0.4)", color: "#60a5fa" }}>🧭 Shortcuts</a>
           <a href="/manual-presentation.html" target="_blank" rel="noreferrer" className="admin-nav-link" style={{ borderColor: "rgba(16, 185, 129, 0.4)", color: "#34d399" }}>📖 Manual ↗</a>
           <a href="/" className="admin-nav-link" onClick={(e) => handleNavigate(e, "/")}>Home Portal</a>
@@ -2107,6 +2115,94 @@ export default function AdminPage() {
           </button>
         </div>
       </header>
+
+      {isViewer && (
+        <div style={{
+          background: "rgba(59, 130, 246, 0.12)",
+          border: "1px solid rgba(59, 130, 246, 0.35)",
+          borderRadius: 14,
+          padding: "12px 18px",
+          margin: "14px 24px 0",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          color: "#93c5fd",
+          fontSize: "0.85rem",
+          fontWeight: 600,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.25)"
+        }}>
+          <span style={{ fontSize: "1.3rem" }}>👁️</span>
+          <span>
+            <strong style={{ color: "#fff" }}>Read-Only Viewer Mode:</strong> You are logged in with <strong>Viewer</strong> privileges. You can inspect all attendee lists, quest definitions, verifications, and analytics, but creation, editing, and state modifications are restricted.
+          </span>
+        </div>
+      )}
+
+      {isVerifier && (
+        <div style={{
+          background: "rgba(245, 158, 11, 0.12)",
+          border: "1px solid rgba(245, 158, 11, 0.35)",
+          borderRadius: 14,
+          padding: "12px 18px",
+          margin: "14px 24px 0",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          color: "#fde68a",
+          fontSize: "0.85rem",
+          fontWeight: 600,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.25)"
+        }}>
+          <span style={{ fontSize: "1.3rem" }}>🔍</span>
+          <span>
+            <strong style={{ color: "#fff" }}>Verification Specialist Mode:</strong> You are logged in with <strong>Verifier</strong> privileges. You can review proof screenshots, approve/reject submissions, verify message notes, and check in attendees. Quest and system configuration editing is restricted to Admins.
+          </span>
+        </div>
+      )}
+
+      {isManageAttendees && (
+        <div style={{
+          background: "rgba(16, 185, 129, 0.12)",
+          border: "1px solid rgba(16, 185, 129, 0.35)",
+          borderRadius: 14,
+          padding: "12px 18px",
+          margin: "14px 24px 0",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          color: "#a7f3d0",
+          fontSize: "0.85rem",
+          fontWeight: 600,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.25)"
+        }}>
+          <span style={{ fontSize: "1.3rem" }}>🎫</span>
+          <span>
+            <strong style={{ color: "#fff" }}>Gate & Attendee Management Mode:</strong> You are logged in with <strong>Manage Attendees</strong> privileges. You can operate the QR Gate Scanner, view attendee passes, and check in participants. Quest configurations and administrative settings are restricted.
+          </span>
+        </div>
+      )}
+
+      {isManager && adminUser?.role !== "superadmin" && (
+        <div style={{
+          background: "rgba(168, 85, 247, 0.12)",
+          border: "1px solid rgba(168, 85, 247, 0.35)",
+          borderRadius: 14,
+          padding: "12px 18px",
+          margin: "14px 24px 0",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          color: "#e9d5ff",
+          fontSize: "0.85rem",
+          fontWeight: 600,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.25)"
+        }}>
+          <span style={{ fontSize: "1.3rem" }}>⚡</span>
+          <span>
+            <strong style={{ color: "#fff" }}>Event Manager Mode:</strong> You are logged in with <strong>Manager / Admin</strong> privileges. You have access to Quests, Attendee Lists, Proof Reviews, Sponsor Booths, and Promo Codes. Staff administration and account deletion are restricted to Superadmin.
+          </span>
+        </div>
+      )}
 
       {/* Stat Cards */}
       <section className="admin-stats">
@@ -2166,7 +2262,7 @@ export default function AdminPage() {
           if (role === "superadmin") return true;
           if (role === "verifier") return t === "verifications" || t === "messages" || t === "questlog";
           if (role === "manage_attendees" || role === "manage_quester") return t === "scanner" || t === "attendees" || t === "questlog";
-          if (role === "admin") return t === "scanner" || t === "attendees" || t === "quests" || t === "verifications" || t === "messages" || t === "questlog" || t === "booths" || t === "promocodes";
+          if (role === "admin" || role === "manager") return t === "scanner" || t === "attendees" || t === "quests" || t === "verifications" || t === "messages" || t === "questlog" || t === "booths" || t === "promocodes";
           if (role === "viewer") return t === "scanner" || t === "attendees" || t === "quests" || t === "verifications" || t === "messages" || t === "questlog";
           return false;
         }).map((t) => (

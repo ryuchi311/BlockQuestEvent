@@ -103,10 +103,12 @@ export function verifyAdminAuth(
   }
 
   if (allowedRoles && allowedRoles.length > 0) {
-    // Normalizing role checks: superadmin has access to all roles
+    // Normalizing role checks: superadmin has access to all roles, manager maps to admin tier
     const userRole = user.role?.toLowerCase();
+    const isManagerAlias = (userRole === "manager" || userRole === "admin") && allowedRoles.some((r) => r.toLowerCase() === "admin" || r.toLowerCase() === "manager");
     const hasRole =
       userRole === "superadmin" ||
+      isManagerAlias ||
       allowedRoles.some((r) => r.toLowerCase() === userRole);
 
     if (!hasRole) {
