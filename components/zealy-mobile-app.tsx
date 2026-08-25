@@ -19,6 +19,7 @@ interface Quest {
   correct_option_index?: number;
   passcode?: string;
   has_passcode?: boolean;
+  publish_at?: string;
   expires_at?: string;
   depends_on_quest_id?: string;
 }
@@ -417,11 +418,24 @@ export default function ZealyMobileApp() {
             requiresProof: !!q.requires_proof,
             requiresMessage: !!q.requires_message,
             passcode: q.passcode || undefined,
-            has_passcode: !!q.has_passcode || !!q.passcode,
-            is_quiz: !!q.is_quiz,
+            publish_at: q.publish_at || undefined,
+            expires_at: q.expires_at || undefined,
             sort_order: q.sort_order ?? 999,
             created_at: q.created_at || undefined,
-          }));
+          }))
+          .map((q: any) => {
+            // Auto-publish logic: if publish_at is set, check if timestamp is reached
+            let evalStatus = q.status;
+            if (q.publish_at) {
+              const publishTime = new Date(q.publish_at).getTime();
+              if (publishTime > Date.now()) {
+                evalStatus = "Soon";
+              } else if (q.status === "Soon") {
+                evalStatus = "Live";
+              }
+            }
+            return { ...q, status: evalStatus };
+          });
 
         // Detect if new quests were published by admin
         if (previousQuestsCountRef.current !== null && mappedQuests.length > previousQuestsCountRef.current) {

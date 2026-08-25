@@ -36,6 +36,7 @@ interface Quest {
   quiz_options?: string[];
   correct_option_index?: number;
   passcode?: string;
+  publish_at?: string;
   expires_at?: string;
   depends_on_quest_id?: string;
   sort_order: number;
@@ -93,6 +94,7 @@ const EMPTY_QUEST: Omit<Quest, "created_at" | "updated_at"> = {
   quiz_options: [],
   correct_option_index: 0,
   passcode: "",
+  publish_at: "",
   expires_at: "",
   depends_on_quest_id: "",
   sort_order: 99,
@@ -1325,6 +1327,7 @@ export default function AdminPage() {
       is_quiz: q.is_quiz ?? false,
       quiz_answer: q.quiz_answer ?? "",
       passcode: q.passcode ?? "",
+      publish_at: q.publish_at ?? "",
       expires_at: q.expires_at ?? "",
       depends_on_quest_id: q.depends_on_quest_id ?? "",
       sort_order: q.sort_order,
@@ -1348,6 +1351,9 @@ export default function AdminPage() {
         action_label: questForm.action_label || null,
         action_url: questForm.action_url || null,
         description: questForm.description || null,
+        publish_at: questForm.publish_at && questForm.publish_at.trim() ? questForm.publish_at : null,
+        expires_at: questForm.expires_at && questForm.expires_at.trim() ? questForm.expires_at : null,
+        depends_on_quest_id: questForm.depends_on_quest_id && questForm.depends_on_quest_id.trim() ? questForm.depends_on_quest_id : null,
         admin_email: adminUser?.email,
         admin_name: adminUser?.fullName || adminUser?.email || "Admin",
       };
@@ -5882,23 +5888,57 @@ export default function AdminPage() {
                   )}
                 </div>
 
-                {/* ⑤ Advanced Rules (Expiration & Prerequisite) */}
+                {/* ⑤ Advanced Rules (Auto-Publish, Expiration & Prerequisite) */}
                 <div className="qf-section">
                   <div className="qf-section__label">⑤ Optional Rules & Locking</div>
 
-                  <div className="admin-form-row" style={{ marginBottom: 12 }}>
+                  <div className="admin-form-row" style={{ marginBottom: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <label className="qf-label">
-                      ⏱️ Expiration Time <span style={{ fontWeight: 400, color: "#64748b" }}>(Flash Quest)</span>
+                      🗓️ Auto-Publish Date & Time <span style={{ fontWeight: 400, color: "#64748b" }}>(Scheduled Release)</span>
                       <input
                         type="datetime-local"
-                        value={questForm.expires_at ? new Date(questForm.expires_at).toISOString().slice(0, 16) : ""}
-                        onChange={(e) => setQuestForm((f) => ({ ...f, expires_at: e.target.value ? new Date(e.target.value).toISOString() : "" }))}
+                        value={(() => {
+                          if (!questForm.publish_at) return "";
+                          try {
+                            const d = new Date(questForm.publish_at);
+                            if (isNaN(d.getTime())) return "";
+                            const pad = (n: number) => String(n).padStart(2, "0");
+                            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                          } catch { return ""; }
+                        })()}
+                        onChange={(e) => setQuestForm((f) => ({
+                          ...f,
+                          publish_at: e.target.value ? new Date(e.target.value).toISOString() : ""
+                        }))}
                         className="qf-input"
                       />
                     </label>
 
                     <label className="qf-label">
-                      🔒 Prerequisite Quest <span style={{ fontWeight: 400, color: "#64748b" }}>(Quest Chain)</span>
+                      ⏱️ Expiration Date & Time <span style={{ fontWeight: 400, color: "#64748b" }}>(Flash Quest)</span>
+                      <input
+                        type="datetime-local"
+                        value={(() => {
+                          if (!questForm.expires_at) return "";
+                          try {
+                            const d = new Date(questForm.expires_at);
+                            if (isNaN(d.getTime())) return "";
+                            const pad = (n: number) => String(n).padStart(2, "0");
+                            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                          } catch { return ""; }
+                        })()}
+                        onChange={(e) => setQuestForm((f) => ({
+                          ...f,
+                          expires_at: e.target.value ? new Date(e.target.value).toISOString() : ""
+                        }))}
+                        className="qf-input"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="admin-form-row" style={{ marginBottom: 12 }}>
+                    <label className="qf-label">
+                      🔒 Prerequisite Quest <span style={{ fontWeight: 400, color: "#64748b" }}>(Quest Chain Locking)</span>
                       <select
                         value={questForm.depends_on_quest_id ?? ""}
                         onChange={(e) => setQuestForm((f) => ({ ...f, depends_on_quest_id: e.target.value }))}
