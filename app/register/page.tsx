@@ -20,7 +20,7 @@ export default function RegisterPage() {
               <span className="spec-icon">📅</span>
               <div className="spec-info">
                 <h3>Date</h3>
-                <p suppressHydrationWarning>11 October 2026</p>
+                <p suppressHydrationWarning>10 October 2026</p>
               </div>
             </div>
             <div className="spec-item">
@@ -34,7 +34,7 @@ export default function RegisterPage() {
               <span className="spec-icon">🎟️</span>
               <div className="spec-info">
                 <h3>Access</h3>
-                <p>Free Ticket (Limit 600)</p>
+                <p>Free Ticket</p>
               </div>
             </div>
             <div className="spec-item">
