@@ -1556,17 +1556,21 @@ export default function ZealyMobileApp() {
                       </div>
                       <span className="qr-pass__code">{qrPass.passCode}</span>
                     </div>
-                    <div className="qr-pass__body" style={{ gridTemplateColumns: "110px 1fr", alignItems: "center" }}>
+                    <div className="qr-pass__body" style={{ gridTemplateColumns: "116px 1fr", alignItems: "center", gap: "14px" }}>
                       <div
                         onClick={() => setShowQrZoomModal(true)}
                         style={{
                           position: "relative",
-                          display: "inline-block",
-                          width: "110px",
-                          height: "110px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: "116px",
+                          height: "116px",
                           cursor: "pointer",
-                          borderRadius: "12px",
+                          borderRadius: "14px",
                           overflow: "hidden",
+                          background: "#ffffff",
+                          padding: "6px",
                           boxShadow: "0 4px 14px rgba(0,0,0,0.5)",
                           border: "1px solid rgba(245, 166, 35, 0.3)"
                         }}
@@ -1576,13 +1580,13 @@ export default function ZealyMobileApp() {
                           className="qr-pass__image"
                           src={qrPass.qrDataUrl}
                           alt="Ticket Pass"
-                          style={{ width: "110px", height: "110px", display: "block" }}
+                          style={{ width: "104px", height: "104px", display: "block", background: "#fff", padding: 0 }}
                         />
                       </div>
-                      <div className="qr-pass__meta">
-                        <strong style={{ fontSize: "1rem" }}>Entry QR Pass</strong>
-                        <p style={{ fontSize: "0.78rem" }}>{qrPass.email}</p>
-                        <p style={{ fontSize: "0.75rem", color: "var(--gold-light)" }}>✓ Ticket Linked & XP rewarded (+250 XP)</p>
+                      <div className="qr-pass__meta" style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                        <strong style={{ fontSize: "0.92rem", color: "#fff", fontWeight: 800 }}>Entry QR Pass</strong>
+                        <p style={{ fontSize: "0.74rem", color: "var(--text-secondary)" }}>{qrPass.email}</p>
+                        <p style={{ fontSize: "0.72rem", color: "var(--gold-light)", fontWeight: 700 }}>✓ Ticket Linked (+250 XP)</p>
                         <button
                           type="button"
                           onClick={() => setShowQrZoomModal(true)}
@@ -1591,14 +1595,15 @@ export default function ZealyMobileApp() {
                             background: "rgba(245, 166, 35, 0.15)",
                             border: "1px solid rgba(245, 166, 35, 0.4)",
                             color: "var(--gold-light)",
-                            borderRadius: 8,
-                            padding: "4px 10px",
-                            fontSize: "0.74rem",
+                            borderRadius: 6,
+                            padding: "3px 8px",
+                            fontSize: "0.72rem",
                             fontWeight: 800,
                             cursor: "pointer",
                             display: "inline-flex",
                             alignItems: "center",
-                            gap: 4
+                            gap: 4,
+                            width: "fit-content"
                           }}
                         >
                           🔍 Zoom for Scanner

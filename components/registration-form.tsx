@@ -380,7 +380,7 @@ function RegistrationFormContent() {
                 background: "rgba(255, 255, 255, 0.04)",
                 color: "#fff",
                 font: "inherit",
-                fontSize: "0.9rem"
+                fontSize: "16px"
               }}
             >
               <option value="+63">+63 (PH)</option>
@@ -512,7 +512,7 @@ function RegistrationFormContent() {
                     background: "rgba(255, 255, 255, 0.04)",
                     color: "#fff",
                     font: "inherit",
-                    fontSize: "0.9rem"
+                    fontSize: "16px"
                   }}
                 >
                   <option value="+63">+63 (PH)</option>
