@@ -37,7 +37,7 @@ const initialQuests: Quest[] = [
   {
     id: "checkin",
     title: "Complete physical check-in",
-    description: "Scan your QR pass at the entrance gate on Saturday, Oct 17 to claim this XP reward.",
+    description: "Scan your QR pass at the entrance gate on Saturday, Oct 10 to claim this XP reward.",
     xp: 500,
     status: "Soon",
     category: "onboarding"
@@ -2415,7 +2415,7 @@ export default function ZealyMobileApp() {
                                         Physical Gate Check-in Required
                                       </div>
                                       <div style={{ color: "rgba(255, 255, 255, 0.75)", fontSize: "0.82rem", marginTop: 6, lineHeight: 1.4 }}>
-                                        Scan your QR ticket pass at the event entrance gate on Saturday, Oct 17. Once scanned by gate staff, this 500 XP reward unlocks automatically for claim!
+                                        Scan your QR ticket pass at the event entrance gate on Saturday, Oct 10. Once scanned by gate staff, this 500 XP reward unlocks automatically for claim!
                                       </div>
                                     </div>
                                     <button

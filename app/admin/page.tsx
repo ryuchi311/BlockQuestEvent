@@ -3980,23 +3980,47 @@ export default function AdminPage() {
         {/* ─── QUEST LOG (CUSTOMIZABLE REPORTING TABLE) TAB ─── */}
         {tab === "questlog" && !loading && (() => {
           // Combine registrations, verifications, and message notes into a master audit log
-          const registrationLogs = attendees.map((a: any) => ({
-            id: `reg-${a.id}`,
-            quest_id: "register",
-            quest_title: a.promo_code
-              ? `🚀 Account Registration (Promo: ${a.promo_code})`
-              : "🚀 Account Registration",
-            user_name: a.full_name,
-            user_email: a.email,
-            ticket_code: a.ticket_code,
-            xp: a.total_xp || (a.promo_code ? 400 : 250),
-            status: "Approved",
-            approved_by: a.promo_code ? `Promo (${a.promo_code})` : "System",
-            user_message: a.promo_code ? `Registered with Promo Code: ${a.promo_code}` : "Initial attendee registration",
-            created_at: a.created_at,
-            logType: a.promo_code ? "Promo Sign-Up" : "Registration",
-            category: "onboarding",
-          }));
+          const registrationLogs = attendees.flatMap((a: any) => {
+            const logs = [];
+            
+            // Base Registration Log
+            logs.push({
+              id: `reg-${a.id}`,
+              quest_id: "register",
+              quest_title: "🚀 Account Registration",
+              user_name: a.full_name,
+              user_email: a.email,
+              ticket_code: a.ticket_code,
+              xp: 250,
+              status: "Approved",
+              approved_by: "System",
+              user_message: "Initial attendee registration",
+              created_at: a.created_at,
+              logType: "Registration",
+              category: "onboarding",
+            });
+
+            // Promo Code Log
+            if (a.promo_code) {
+              logs.push({
+                id: `promo-${a.id}`,
+                quest_id: `promo_${a.promo_code}`,
+                quest_title: `🎁 Promo Code Applied: ${a.promo_code}`,
+                user_name: a.full_name,
+                user_email: a.email,
+                ticket_code: a.ticket_code,
+                xp: 250, // Assuming promo codes give 250 XP
+                status: "Approved",
+                approved_by: `Promo (${a.promo_code})`,
+                user_message: `Registered with Promo Code: ${a.promo_code}`,
+                created_at: a.created_at,
+                logType: "Promo Sign-Up",
+                category: "onboarding",
+              });
+            }
+
+            return logs;
+          });
 
           const allLogs = [
             ...registrationLogs,
