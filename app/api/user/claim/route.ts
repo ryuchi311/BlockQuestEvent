@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     // 1. Fetch current user to get ID and physical check-in status
     const { data: user, error: userError } = await supabase
       .from("registrations")
-      .select("id, total_xp, checked_in, checked_in_at")
+      .select("id, total_xp, checked_in, checked_in_at, promo_code")
       .eq("email", user_email.trim().toLowerCase())
       .single();
       
@@ -40,6 +40,15 @@ export async function POST(request: Request) {
       if (!isCheckedIn) {
         return NextResponse.json(
           { error: "Physical check-in required at entrance gate before claiming this XP reward." },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (quest_id === "promo-bonus") {
+      if (!user.promo_code) {
+        return NextResponse.json(
+          { error: "This quest is only available for attendees who registered using an official promo code or referral link." },
           { status: 400 }
         );
       }

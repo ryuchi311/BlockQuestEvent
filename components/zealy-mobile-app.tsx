@@ -43,6 +43,14 @@ const initialQuests: Quest[] = [
     category: "onboarding"
   },
   {
+    id: "promo-bonus",
+    title: "Promo Code Bonus",
+    description: "Claim your bonus XP for registering with an official promo code or referral link.",
+    xp: 250,
+    status: "Live",
+    category: "onboarding"
+  },
+  {
     id: "follow-x",
     title: "Follow @BlockQuest on X",
     description: "Follow our official X handle and submit a screenshot proof to verify completion.",
