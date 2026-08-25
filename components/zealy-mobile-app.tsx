@@ -1485,7 +1485,7 @@ export default function ZealyMobileApp() {
                 </article>
                 <article className="info-card">
                   <h3>🗓️ Date & Time</h3>
-                  <p>Saturday, October 11, 2026 • 8:00 AM – 7:30 PM PHT</p>
+                  <p>Saturday, October 10, 2026 • 8:00 AM – 7:30 PM PHT</p>
                 </article>
                 <article className="info-card">
                   <h3>⚡ Event Highlights</h3>

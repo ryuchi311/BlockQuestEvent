@@ -2071,6 +2071,29 @@ export default function AdminPage() {
               <span style={{ fontSize: "0.7rem", color: "var(--gold-light)", textTransform: "uppercase" }}>{adminUser.role}</span>
             </div>
           )}
+          <button
+            onClick={() => {
+              setEditingQuest(null);
+              setQuestForm({ ...EMPTY_QUEST });
+              setShowQuestModal(true);
+            }}
+            className="admin-nav-link"
+            style={{
+              background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+              color: "#120b02",
+              fontWeight: 800,
+              border: "1px solid rgba(245, 166, 35, 0.6)",
+              boxShadow: "0 0 14px rgba(245, 166, 35, 0.35)",
+              cursor: "pointer",
+              padding: "7px 14px",
+              borderRadius: "10px",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6
+            }}
+          >
+            ⚡ + Add Quest
+          </button>
           <a href="/shortcuts" className="admin-nav-link" style={{ borderColor: "rgba(59, 130, 246, 0.4)", color: "#60a5fa" }}>🧭 Shortcuts</a>
           <a href="/manual-presentation.html" target="_blank" rel="noreferrer" className="admin-nav-link" style={{ borderColor: "rgba(16, 185, 129, 0.4)", color: "#34d399" }}>📖 Manual ↗</a>
           <a href="/" className="admin-nav-link" onClick={(e) => handleNavigate(e, "/")}>Home Portal</a>
