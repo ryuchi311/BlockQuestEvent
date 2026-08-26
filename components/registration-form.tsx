@@ -40,7 +40,7 @@ function RegistrationFormContent() {
   const [loginCountryCode, setLoginCountryCode] = useState("+63");
   const [loginMobileNum, setLoginMobileNum] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  
+
   const [countryCode, setCountryCode] = useState("+63");
   const [mobileNum, setMobileNum] = useState("");
 
@@ -69,7 +69,7 @@ function RegistrationFormContent() {
           try {
             const isAllCompleted = localStorage.getItem("social_missions_completed_all") === "true";
             const savedIds = JSON.parse(localStorage.getItem("completed_social_mission_ids") || "[]");
-            
+
             const restoredTimers: Record<number, number> = {};
             data.missions.forEach((m: any) => {
               if (isAllCompleted || savedIds.includes(m.id)) {
@@ -77,7 +77,7 @@ function RegistrationFormContent() {
               }
             });
             setMissionTimers(restoredTimers);
-          } catch {}
+          } catch { }
         }
       })
       .catch((err) => console.warn("Could not load social missions:", err));
@@ -113,7 +113,7 @@ function RegistrationFormContent() {
         saved.push(missionId);
         localStorage.setItem("completed_social_mission_ids", JSON.stringify(saved));
       }
-    } catch {}
+    } catch { }
   };
 
   const isStoredCompleted = typeof window !== "undefined" && localStorage.getItem("social_missions_completed_all") === "true";
@@ -355,118 +355,118 @@ function RegistrationFormContent() {
       )}
       {!pendingLogin && !showVerificationOnly && !authenticatedUser && !qrPass ? (
         <form ref={registrationFormRef} className="form" noValidate onSubmit={handleRegistration}>
-        <label>
+          <label>
             Name
-            <input name="fullName" type="text" autoComplete="name" placeholder="Mara Ellison" required />
+            <input name="fullName" type="text" autoComplete="name" placeholder="Mara" required />
           </label>
 
-        <label>
-          Email
-          <input name="email" type="email" autoComplete="email" placeholder="mara@studio.com" required />
-        </label>
+          <label>
+            Email
+            <input name="email" type="email" autoComplete="email" placeholder="mara@studio.com" required />
+          </label>
 
-        <label>
-          Phone number
-          <div className="phone-input-group">
-            <select
-              className="country-code-select"
-              value={countryCode}
-              onChange={(e) => setCountryCode(e.target.value)}
-              style={{
-                width: "125px",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
-                borderRadius: "12px",
-                padding: "14px 24px 14px 12px",
-                background: "rgba(255, 255, 255, 0.04)",
-                color: "#fff",
-                font: "inherit",
-                fontSize: "16px"
-              }}
-            >
-              <option value="+63">+63 (PH)</option>
-              <option value="+1">+1 (US)</option>
-              <option value="+65">+65 (SG)</option>
-              <option value="+60">+60 (MY)</option>
-              <option value="+84">+84 (VN)</option>
-              <option value="+62">+62 (ID)</option>
-              <option value="+81">+81 (JP)</option>
-            </select>
+          <label>
+            Phone number
+            <div className="phone-input-group">
+              <select
+                className="country-code-select"
+                value={countryCode}
+                onChange={(e) => setCountryCode(e.target.value)}
+                style={{
+                  width: "125px",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  borderRadius: "12px",
+                  padding: "14px 24px 14px 12px",
+                  background: "rgba(255, 255, 255, 0.04)",
+                  color: "#fff",
+                  font: "inherit",
+                  fontSize: "16px"
+                }}
+              >
+                <option value="+63">+63 (PH)</option>
+                <option value="+1">+1 (US)</option>
+                <option value="+65">+65 (SG)</option>
+                <option value="+60">+60 (MY)</option>
+                <option value="+84">+84 (VN)</option>
+                <option value="+62">+62 (ID)</option>
+                <option value="+81">+81 (JP)</option>
+              </select>
+              <input
+                className="mobile-number-input"
+                type="tel"
+                placeholder="9062818246"
+                value={mobileNum}
+                onChange={handleMobileChange}
+                required
+              />
+            </div>
+          </label>
+
+          <label>
+            Organization (optional)
             <input
-              className="mobile-number-input"
-              type="tel"
-              placeholder="9062818246"
-              value={mobileNum}
-              onChange={handleMobileChange}
-              required
+              name="organization"
+              type="text"
+              autoComplete="organization"
+              placeholder="BlockQuest Labs"
             />
-          </div>
-        </label>
-
-        <label>
-          Organization (optional)
-          <input
-            name="organization"
-            type="text"
-            autoComplete="organization"
-            placeholder="BlockQuest Labs"
-          />
-        </label>
+          </label>
 
 
 
-        <label className="form__checkbox form__checkbox--privacy" suppressHydrationWarning>
-          <input name="data_gathering" type="checkbox" required className="form__checkbox-input" />
-          <span className="form__checkbox-text" suppressHydrationWarning>
-            I consent to the use of my data for event analytics, and agree to receive marketing updates and communications.
-          </span>
-        </label>
+          <label className="form__checkbox form__checkbox--privacy" suppressHydrationWarning>
+            <input name="data_gathering" type="checkbox" required className="form__checkbox-input" />
+            <span className="form__checkbox-text" suppressHydrationWarning>
+              I consent to the use of my data for event analytics, and agree to receive marketing updates and communications.
+            </span>
+          </label>
 
-        <label className="form__checkbox form__checkbox--privacy" suppressHydrationWarning style={{ marginTop: "12px", marginBottom: "16px" }}>
-          <input name="terms" type="checkbox" required className="form__checkbox-input" />
-          <span className="form__checkbox-text" suppressHydrationWarning>
-            I have read and agree to the <strong>Terms & Conditions</strong> and the{" "}
+          <label className="form__checkbox form__checkbox--privacy" suppressHydrationWarning style={{ marginTop: "12px", marginBottom: "16px" }}>
+            <input name="terms" type="checkbox" required className="form__checkbox-input" />
+            <span className="form__checkbox-text" suppressHydrationWarning>
+              I have read and agree to the <strong>Terms & Conditions</strong> and the{" "}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowPrivacyModal(true);
+                }}
+                className="privacy-modal-btn"
+              >
+                Data Privacy Policy (RA 10173)
+              </button>.
+            </span>
+          </label>
+
+          <button type="submit" disabled={submitting}>
+            {submitting ? "Saving..." : "Register"}
+          </button>
+
+          <div style={{ textAlign: "center", marginTop: "4px" }}>
             <button
               type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                setShowPrivacyModal(true);
+              onClick={() => {
+                setShowVerificationOnly(true);
+                setStatus({ type: "idle", message: "" });
               }}
-              className="privacy-modal-btn"
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--gold-light)",
+                textDecoration: "underline",
+                cursor: "pointer",
+                width: "auto",
+                boxShadow: "none",
+                padding: "4px 8px"
+              }}
             >
-              Data Privacy Policy (RA 10173)
-            </button>.
-          </span>
-        </label>
+              Already registered? Unlock QR Pass
+            </button>
+          </div>
 
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Saving..." : "Register"}
-        </button>
-
-        <div style={{ textAlign: "center", marginTop: "4px" }}>
-          <button
-            type="button"
-            onClick={() => {
-              setShowVerificationOnly(true);
-              setStatus({ type: "idle", message: "" });
-            }}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--gold-light)",
-              textDecoration: "underline",
-              cursor: "pointer",
-              width: "auto",
-              boxShadow: "none",
-              padding: "4px 8px"
-            }}
-          >
-            Already registered? Unlock QR Pass
-          </button>
-        </div>
-
-        <p id="form-message" className={`form__message ${status.type}`} role="status" aria-live="polite">
-          {status.message}
-        </p>
+          <p id="form-message" className={`form__message ${status.type}`} role="status" aria-live="polite">
+            {status.message}
+          </p>
         </form>
       ) : null}
 
@@ -901,7 +901,7 @@ function RegistrationFormContent() {
 
 export default function RegistrationForm() {
   return (
-    <Suspense fallback={<div className="form__message idle" style={{textAlign:"center"}}>Loading form...</div>}>
+    <Suspense fallback={<div className="form__message idle" style={{ textAlign: "center" }}>Loading form...</div>}>
       <RegistrationFormContent />
     </Suspense>
   );
