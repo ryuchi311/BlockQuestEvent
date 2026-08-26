@@ -1,118 +1,115 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BlockQuest Fiesta PH — Registration</title>
-    <link rel="icon" href="/favicon.ico" />
-    <link rel="stylesheet" href="styles.css" />
-    <script defer src="script.js"></script>
-  </head>
-  <body>
-    <main class="page">
-      <section class="hero" aria-labelledby="event-title">
-        <div class="hero__brand">
-          <img
-            class="hero__logo"
-            src="https://block-quest.com/assets/images/block_quest_logo.png"
-            alt="BlockQuest Fiesta Official Logo"
-          />
-          <a class="eyebrow-link" href="https://block-quest.com/" target="_blank" rel="noreferrer">
-            ✦ Registration open
-          </a>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BlockQuest Fiesta PH — Registration</title>
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="stylesheet" href="styles.css" />
+  <script defer src="script.js"></script>
+</head>
+
+<body>
+  <main class="page">
+    <section class="hero" aria-labelledby="event-title">
+      <div class="hero__brand">
+        <img class="hero__logo" src="https://block-quest.com/assets/images/block_quest_logo.png"
+          alt="BlockQuest Fiesta Official Logo" />
+        <a class="eyebrow-link" href="https://block-quest.com/" target="_blank" rel="noreferrer">
+          ✦ Registration open
+        </a>
+      </div>
+
+      <h1 id="event-title">
+        BlockQuest Fiesta PH
+        <span>Oct 2026</span>
+      </h1>
+
+      <p class="hero__lead">Let the Quest Begin!</p>
+
+      <p class="hero__description">
+        One day. Six stages. The people building what comes next.
+      </p>
+
+
+      <div class="info-grid" aria-label="Event details">
+        <article class="info-card">
+          <span class="info-card__icon">☷</span>
+          <h2>Saturday, 10 October 2026</h2>
+          <p>09:00 – 18:30</p>
+        </article>
+        <article class="info-card">
+          <span class="info-card__icon">⌂</span>
+          <h2>Manila, Philippines</h2>
+          <p>Doors open 08:30</p>
+        </article>
+        <article class="info-card">
+          <span class="info-card__icon">◎</span>
+          <h2>0 / 600 seats claimed</h2>
+          <p>Live counter</p>
+        </article>
+        <article class="info-card">
+          <span class="info-card__icon">⚿</span>
+          <h2>Signed QR passes</h2>
+          <p>Forgery-proof entry</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="form-card" aria-labelledby="register-title">
+      <h2 id="register-title">Get your Free ticket</h2>
+
+      <form id="registration-form" class="form" novalidate>
+        <label>
+          Full name
+          <input name="fullName" type="text" autocomplete="name" placeholder="Mara Ellison" required />
+        </label>
+
+        <label>
+          Email
+          <input name="email" type="email" autocomplete="email" placeholder="mara@studio.com" required />
+        </label>
+
+        <label>
+          Phone
+          <input name="phone" type="tel" autocomplete="tel" placeholder="+63 917 555 0134" required />
+        </label>
+
+        <label>
+          Organization (optional)
+          <input name="organization" type="text" autocomplete="organization" placeholder="BlockQuest Labs" />
+        </label>
+
+        <div class="form__row">
+          <label>
+            Password
+            <input name="password" type="password" autocomplete="new-password" placeholder="Enter password"
+              minlength="8" required />
+          </label>
+
+          <label>
+            Confirm password
+            <input name="confirmPassword" type="password" autocomplete="new-password" placeholder="Confirm password"
+              minlength="8" required />
+          </label>
         </div>
 
-        <h1 id="event-title">
-          BlockQuest Fiesta PH
-          <span>Oct 2026</span>
-        </h1>
+        <label class="form__checkbox">
+          <input name="terms" type="checkbox" required />
+          <span>I agree to the event terms, code of conduct, and photography policy.</span>
+        </label>
 
-        <p class="hero__lead">Let the Quest Begin!</p>
+        <button type="submit">Register and generate QR pass</button>
 
-        <p class="hero__description">
-          One day. Six stages. The people building what comes next.
-        </p>
-
-
-        <div class="info-grid" aria-label="Event details">
-          <article class="info-card">
-            <span class="info-card__icon">☷</span>
-            <h2>Saturday, 10 October 2026</h2>
-            <p>09:00 – 18:30</p>
-          </article>
-          <article class="info-card">
-            <span class="info-card__icon">⌂</span>
-            <h2>Manila, Philippines</h2>
-            <p>Doors open 08:30</p>
-          </article>
-          <article class="info-card">
-            <span class="info-card__icon">◎</span>
-            <h2>0 / 600 seats claimed</h2>
-            <p>Live counter</p>
-          </article>
-          <article class="info-card">
-            <span class="info-card__icon">⚿</span>
-            <h2>Signed QR passes</h2>
-            <p>Forgery-proof entry</p>
-          </article>
+        <div class="hero-actions">
+          <a class="hero-cta" href="#register-title">Join The Game</a>
         </div>
-      </section>
 
-      <section class="form-card" aria-labelledby="register-title">
-        <h2 id="register-title">Get your Free ticket</h2>
+        <p id="form-message" class="form__message" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+  </main>
+</body>
 
-        <form id="registration-form" class="form" novalidate>
-          <label>
-            Full name
-            <input name="fullName" type="text" autocomplete="name" placeholder="Mara Ellison" required />
-          </label>
-
-          <label>
-            Email
-            <input name="email" type="email" autocomplete="email" placeholder="mara@studio.com" required />
-          </label>
-
-          <label>
-            Phone
-            <input name="phone" type="tel" autocomplete="tel" placeholder="+63 917 555 0134" required />
-          </label>
-
-          <label>
-            Organization (optional)
-            <input
-              name="organization"
-              type="text"
-              autocomplete="organization"
-              placeholder="BlockQuest Labs"
-            />
-          </label>
-
-          <div class="form__row">
-            <label>
-              Password
-              <input name="password" type="password" autocomplete="new-password" placeholder="Enter password" minlength="8" required />
-            </label>
-
-            <label>
-              Confirm password
-              <input name="confirmPassword" type="password" autocomplete="new-password" placeholder="Confirm password" minlength="8" required />
-            </label>
-          </div>
-
-          <label class="form__checkbox">
-            <input name="terms" type="checkbox" required />
-            <span>I agree to the event terms, code of conduct, and photography policy.</span>
-          </label>
-
-          <button type="submit">Register and generate QR pass</button>
-
-          <div class="hero-actions">
-            <a class="hero-cta" href="#register-title">Join The Game</a>
-          </div>
-
-          <p id="form-message" class="form__message" role="status" aria-live="polite"></p>
-        </form>
-      </section>
-    </main>
-  </body>
 </html>
