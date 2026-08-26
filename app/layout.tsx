@@ -13,6 +13,12 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "BlockQuest Fiesta PH",
   description: "BlockQuest Fiesta PH Web Platform & Event Suite",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "BlockQuest",
+  },
   icons: {
     icon: "/favicon.ico",
     shortcut: "/favicon.ico",
