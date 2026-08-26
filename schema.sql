@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS public.registrations (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   ticket_code TEXT UNIQUE,
+  checked_in BOOLEAN NOT NULL DEFAULT FALSE,
+  checked_in_at TIMESTAMPTZ,
   total_xp INTEGER NOT NULL DEFAULT 0,
   pincode TEXT,
   promo_code TEXT
@@ -70,10 +72,13 @@ CREATE TABLE IF NOT EXISTS public.fiesta_event_quests (
   correct_option_index INTEGER,
   passcode TEXT,
   expires_at TIMESTAMPTZ,
+  publish_at TIMESTAMPTZ,
   depends_on_quest_id TEXT,
   sort_order INTEGER NOT NULL DEFAULT 99,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by TEXT,
+  updated_by TEXT
 );
 
 -- Migration statements for newly added quest attributes
@@ -81,6 +86,7 @@ ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS quiz_options JSO
 ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS correct_option_index INTEGER;
 ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS passcode TEXT;
 ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS publish_at TIMESTAMPTZ;
 ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS depends_on_quest_id TEXT;
 ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS requires_message BOOLEAN DEFAULT FALSE;
 
@@ -98,6 +104,8 @@ CREATE TABLE IF NOT EXISTS public.quest_verifications (
   user_message TEXT,
   status TEXT NOT NULL DEFAULT 'Pending', -- 'Pending', 'Approved', 'Rejected'
   rejection_reason TEXT,
+  approved_by TEXT,
+  reviewed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -128,11 +136,11 @@ ALTER TABLE public.quest_verifications ADD COLUMN IF NOT EXISTS proof_hash TEXT;
 -- Quest Completions table to track claimed XP
 CREATE TABLE IF NOT EXISTS public.quest_completions (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  registration_id BIGINT NOT NULL,
   quest_id TEXT NOT NULL,
-  user_email TEXT NOT NULL,
   xp_awarded INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(quest_id, user_email)
+  completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(quest_id, registration_id)
 );
 
 GRANT ALL ON TABLE public.quest_completions TO postgres, service_role, anon, authenticated;
@@ -165,6 +173,8 @@ CREATE TABLE IF NOT EXISTS public.quest_message_notes (
   user_message TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'Pending', -- 'Pending', 'Approved', 'Rejected'
   rejection_reason TEXT,
+  approved_by TEXT,
+  reviewed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
