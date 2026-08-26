@@ -97,7 +97,7 @@ export default function InstallPrompt() {
 
       {isIOS ? (
         <div style={{ background: "rgba(255, 255, 255, 0.05)", padding: "12px", borderRadius: "10px", fontSize: "0.85rem", color: "#eee", lineHeight: 1.5 }}>
-          Tap the <strong>Share</strong> icon <span style={{fontSize:"1.2rem", verticalAlign: "middle"}}>⍐</span> below, then scroll down and select <strong>"Add to Home Screen"</strong>.
+          Tap the <strong>Share</strong> icon <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", display: "inline-block", margin: "0 2px" }}><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg> below, then scroll down and select <strong>"Add to Home Screen"</strong>.
         </div>
       ) : (
         <button
