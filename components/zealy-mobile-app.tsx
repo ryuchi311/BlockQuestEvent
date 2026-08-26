@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import ZealyIntroAnimation from "./zealy-intro-animation";
+import InstallPrompt from "./install-prompt";
 
 interface Quest {
   id: string;
@@ -3016,6 +3017,7 @@ export default function ZealyMobileApp() {
           )}
         </div>
       </div>
+      <InstallPrompt />
     </main>
     </>
   );
