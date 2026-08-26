@@ -169,3 +169,38 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
+// PUT — batch update sort_order for quests (Restricted to superadmin / admin)
+export async function PUT(request: Request) {
+  const auth = verifyAdminAuth(request, ["superadmin", "admin"]);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error, auth.status);
+  }
+
+  try {
+    const { orderedIds } = await request.json();
+    if (!orderedIds || !Array.isArray(orderedIds)) {
+      return NextResponse.json({ error: "orderedIds array is required." }, { status: 400 });
+    }
+
+    const supabase = getSupabase();
+    
+    const updates = orderedIds.map((id, index) => 
+      supabase
+        .from("fiesta_event_quests")
+        .update({ sort_order: index })
+        .eq("id", id)
+    );
+    
+    const results = await Promise.all(updates);
+    
+    const errors = results.filter(r => r.error).map(r => r.error);
+    if (errors.length > 0) {
+      return NextResponse.json({ error: "Some updates failed", details: errors }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}

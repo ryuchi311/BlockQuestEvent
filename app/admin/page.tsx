@@ -3,6 +3,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import Footer from "../../components/footer";
 
 const QrScanner = dynamic(() => import("../../components/qr-scanner"), { ssr: false, loading: () => <p className="admin-loading">Loading scanner…</p> });
@@ -181,6 +184,33 @@ function PaginationBar({
   );
 }
 
+function SortableQuestRow({ id, order, children }: { id: string, order: number, children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    ...(transform ? { position: "relative", zIndex: 10, backgroundColor: "rgba(30, 41, 59, 0.9)" } : {})
+  };
+  return (
+    <tr ref={setNodeRef} style={style as React.CSSProperties} className="admin-table__row">
+      <td className="admin-table__num">
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span 
+            {...attributes} 
+            {...listeners} 
+            style={{ cursor: "grab", color: "var(--text-muted)", fontSize: "1.2rem", padding: "4px" }}
+            title="Drag to reorder"
+          >
+            ≡
+          </span>
+          {order}
+        </div>
+      </td>
+      {children}
+    </tr>
+  );
+}
+
 // ─── Admin Dashboard ─────────────────────────────────────────────────────────
 export default function AdminPage() {
   // ── Auth gate ──
@@ -263,6 +293,39 @@ export default function AdminPage() {
   const [tab, setTab] = useState<AdminTab>("attendees");
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [quests, setQuests] = useState<Quest[]>([]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      setQuests(prevQuests => {
+        const oldIndex = prevQuests.findIndex(q => q.id === active.id);
+        const newIndex = prevQuests.findIndex(q => q.id === over?.id);
+        const newQuests = arrayMove(prevQuests, oldIndex, newIndex);
+        const updatedQuests = newQuests.map((q, i) => ({ ...q, sort_order: i }));
+        
+        setTimeout(async () => {
+          try {
+            const token = getAdminToken();
+            const res = await fetch("/api/admin/quests", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+              body: JSON.stringify({ orderedIds: updatedQuests.map(q => q.id) })
+            });
+            if (!res.ok) throw new Error("Failed to save order");
+          } catch (err) {
+            console.error(err);
+          }
+        }, 0);
+        
+        return updatedQuests;
+      });
+    }
+  };
   const [verifications, setVerifications] = useState<QuestVerification[]>([]);
   const [promoCodes, setPromoCodes] = useState<any[]>([]);
   
@@ -3106,6 +3169,7 @@ export default function AdminPage() {
               )}
             </div>
 
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <div className="admin-table-wrapper">
               <table className="admin-table">
                 <thead>
@@ -3130,9 +3194,9 @@ export default function AdminPage() {
                       </td>
                     </tr>
                   ) : (
-                    filteredQuests.slice((questPage - 1) * questPageSize, (questPage - 1) * questPageSize + questPageSize).map((q) => (
-                      <tr key={q.id} className="admin-table__row">
-                        <td className="admin-table__num">{q.sort_order}</td>
+                    <SortableContext items={filteredQuests.slice((questPage - 1) * questPageSize, (questPage - 1) * questPageSize + questPageSize).map(q => q.id)} strategy={verticalListSortingStrategy}>
+                      {filteredQuests.slice((questPage - 1) * questPageSize, (questPage - 1) * questPageSize + questPageSize).map((q) => (
+                        <SortableQuestRow key={q.id} id={q.id} order={q.sort_order}>
                         <td>
                           <code className="admin-quest-id">{q.id}</code>
                         </td>
@@ -3206,12 +3270,14 @@ export default function AdminPage() {
                             )}
                           </div>
                         </td>
-                      </tr>
-                    ))
+                      </SortableQuestRow>
+                    ))}
+                    </SortableContext>
                   )}
                 </tbody>
               </table>
             </div>
+          </DndContext>
 
             <PaginationBar
               currentPage={questPage}
