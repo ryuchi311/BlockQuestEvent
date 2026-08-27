@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("fiesta_event_quests")
-      .select("id, title, description, xp, status, category, action_label, action_url, requires_proof, requires_message, is_quiz, quiz_answer, quiz_options, correct_option_index, passcode, publish_at, expires_at, depends_on_quest_id, sort_order, created_by, updated_by, created_at, updated_at")
+      .select("id, title, description, xp, status, category, action_label, action_url, requires_proof, requires_message, is_quiz, quiz_answer, quiz_options, correct_option_index, passcode, publish_at, expires_at, depends_on_quest_id, discord_guild_id, sort_order, created_by, updated_by, created_at, updated_at")
       .order("sort_order", { ascending: true });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -74,6 +74,7 @@ export async function POST(request: Request) {
       publish_at,
       expires_at,
       depends_on_quest_id,
+      discord_guild_id,
       sort_order,
       admin_email
     } = body;
@@ -104,6 +105,7 @@ export async function POST(request: Request) {
         publish_at: publish_at || null,
         expires_at: expires_at || null,
         depends_on_quest_id: depends_on_quest_id || null,
+        discord_guild_id: discord_guild_id || null,
         sort_order: sort_order ?? 99,
         created_by: body.admin_name || admin_email || auth.user?.fullName || "System",
         updated_by: body.admin_name || admin_email || auth.user?.fullName || "System",

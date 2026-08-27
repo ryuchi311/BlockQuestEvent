@@ -42,6 +42,7 @@ interface Quest {
   publish_at?: string;
   expires_at?: string;
   depends_on_quest_id?: string;
+  discord_guild_id?: string;
   sort_order: number;
   created_by?: string;
   updated_by?: string;
@@ -1393,6 +1394,7 @@ export default function AdminPage() {
       publish_at: q.publish_at ?? "",
       expires_at: q.expires_at ?? "",
       depends_on_quest_id: q.depends_on_quest_id ?? "",
+      discord_guild_id: q.discord_guild_id ?? "",
       sort_order: q.sort_order,
     });
     setQuestError("");
@@ -5579,6 +5581,22 @@ export default function AdminPage() {
                         }
                       },
                       {
+                        icon: "💬",
+                        name: "Join Discord",
+                        data: {
+                          title: "Join BlockQuest Discord Server",
+                          description: "Become a member of our official Discord community and automatically verify your membership to claim XP.",
+                          category: "social" as const,
+                          xp: 150,
+                          requires_proof: false,
+                          requires_message: false,
+                          is_quiz: false,
+                          passcode: "",
+                          action_label: "Join & Verify Discord",
+                          action_url: "https://discord.gg",
+                        }
+                      },
+                      {
                         icon: "🤳",
                         name: "Speaker Selfie Post (FB/IG)",
                         data: {
@@ -6027,7 +6045,7 @@ export default function AdminPage() {
                     {/* Passcode / PIN */}
                     <div
                       className={`qf-mode-card${!questForm.requires_proof && !questForm.requires_message && !questForm.is_quiz && !!questForm.passcode ? " qf-mode-card--active" : ""}`}
-                      onClick={() => setQuestForm((f) => ({ ...f, requires_proof: false, requires_message: false, is_quiz: false, passcode: f.passcode || "CODE" }))}
+                      onClick={() => setQuestForm((f) => ({ ...f, requires_proof: false, requires_message: false, is_quiz: false, passcode: f.passcode || "CODE", discord_guild_id: "" }))}
                     >
                       <span className="qf-mode-card__icon">🔑</span>
                       <div className="qf-mode-card__info">
@@ -6035,9 +6053,48 @@ export default function AdminPage() {
                         <span className="qf-mode-card__desc">Enter PIN from speaker or booth.</span>
                       </div>
                     </div>
+
+                    {/* Discord Guild / Server Verification */}
+                    <div
+                      className={`qf-mode-card${questForm.id === "discord-member" || !!questForm.discord_guild_id ? " qf-mode-card--active" : ""}`}
+                      onClick={() => setQuestForm((f) => ({
+                        ...f,
+                        requires_proof: false,
+                        requires_message: false,
+                        is_quiz: false,
+                        passcode: "",
+                        category: "social",
+                        action_label: f.action_label || "Join & Verify Discord",
+                        action_url: f.action_url || "https://discord.gg",
+                        discord_guild_id: f.discord_guild_id || "875130075996094525"
+                      }))}
+                    >
+                      <span className="qf-mode-card__icon">💬</span>
+                      <div className="qf-mode-card__info">
+                        <span className="qf-mode-card__title">Discord Guild OAuth</span>
+                        <span className="qf-mode-card__desc">Verify user joined specific Discord Server ID.</span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Mode-Specific Input Fields */}
+                  {(questForm.id === "discord-member" || questForm.discord_guild_id !== undefined) && (
+                    <div style={{ background: "rgba(88, 101, 242, 0.08)", border: "1px solid rgba(88, 101, 242, 0.3)", borderRadius: 12, padding: 14, marginBottom: 10 }}>
+                      <label className="qf-label">
+                        💬 Discord Server ID (Guild ID) *
+                        <input
+                          type="text"
+                          placeholder="e.g. 875130075996094525"
+                          value={questForm.discord_guild_id ?? ""}
+                          onChange={(e) => setQuestForm((f) => ({ ...f, discord_guild_id: e.target.value.trim() }))}
+                          className="qf-input"
+                          style={{ marginTop: 6, fontFamily: "monospace", fontWeight: 700 }}
+                        />
+                        <small>Right-click your Discord server icon in Discord &rarr; Copy Server ID</small>
+                      </label>
+                    </div>
+                  )}
+
                   {questForm.is_quiz && (
                     <div style={{ background: "rgba(168, 85, 247, 0.08)", border: "1px solid rgba(168, 85, 247, 0.3)", borderRadius: 12, padding: 14 }}>
                       <label className="qf-label">

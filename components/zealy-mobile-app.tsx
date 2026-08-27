@@ -76,7 +76,18 @@ const initialQuests: Quest[] = [
     requiresProof: true
   },
   {
+    id: "discord-member",
+    title: "Join BlockQuest Discord Server",
+    description: "Become a member of our official Discord community and automatically verify your membership to claim XP.",
+    xp: 150,
+    status: "Live",
+    category: "social",
+    actionLabel: "Join & Verify Discord",
+    actionUrl: "https://discord.gg"
+  },
+  {
     id: "daily-claim",
+
     title: "Daily Check-in",
     description: "Claim your daily check-in points to boost your leaderboard ranking.",
     xp: 50,
@@ -367,6 +378,7 @@ export default function ZealyMobileApp() {
     };
   }, [mounted, authenticatedUser, resetInactivityTimer]);
 
+
   // Countdown effect when warning is shown
   React.useEffect(() => {
     if (inactivityWarning) {
@@ -595,6 +607,41 @@ export default function ZealyMobileApp() {
       // ignore
     }
   }, [ticketEmail, authenticatedUser, qrPass]);
+
+  // Handle Discord OAuth Callback URL parameters
+  React.useEffect(() => {
+    if (!mounted) return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const status = urlParams.get("status");
+    const error = urlParams.get("error");
+    const xpAwarded = urlParams.get("xp");
+
+    if (status === "discord_claimed") {
+      showNotice(
+        `Your Discord membership has been verified! You earned +${xpAwarded || 150} XP.`,
+        "success",
+        "Discord Quest Completed!",
+        "🎉"
+      );
+      syncUserData();
+      // Clean query parameters from address bar
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (status === "already_claimed") {
+      showNotice("You have already claimed your Discord membership XP!", "info", "Already Claimed", "ℹ️");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (error === "not_a_discord_member") {
+      showNotice(
+        "We could not verify your membership. Please join the Discord server first, then try verifying again!",
+        "error",
+        "Discord Membership Not Found",
+        "🔒"
+      );
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (error === "discord_auth_failed" || error === "discord_token_error") {
+      showNotice("Discord authorization failed or was cancelled. Please try again.", "error", "Authorization Failed", "✕");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [mounted, showNotice, syncUserData]);
 
   useEffect(() => {
     fetchUserVerifications();
@@ -2614,7 +2661,38 @@ export default function ZealyMobileApp() {
                                   {claiming ? "Claiming..." : isActionCompleted ? "Unlock Passcode & Claim XP" : "🔒 Complete Task First"}
                                 </button>
                               </div>
-                            ) : (
+                            ) : selectedQuest.id === "discord-member" ? (
+                              <button
+                                onClick={() => {
+                                  const email = ticketEmail || authenticatedUser?.email || qrPass?.email;
+                                  if (!email) {
+                                    showNotice("Please register or log in first before claiming Discord XP.", "warning", "Login Required", "🔑");
+                                    return;
+                                  }
+                                  window.location.href = `/api/auth/discord?email=${encodeURIComponent(email)}&quest_id=${selectedQuest.id}`;
+                                }}
+                                className="modal-claim-btn"
+                                style={{
+                                  width: "100%",
+                                  padding: "14px",
+                                  borderRadius: 12,
+                                  fontWeight: 800,
+                                  fontSize: "0.95rem",
+                                  background: "linear-gradient(135deg, #5865F2 0%, #404EED 100%)",
+                                  color: "#fff",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  boxShadow: "0 0 20px rgba(88, 101, 242, 0.4)",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: 8,
+                                  marginTop: 12
+                                }}
+                              >
+                                💬 Authorize & Verify Discord Membership →
+                              </button>
+                             ) : (
                               <button
                                 onClick={handleClaimXp}
                                 disabled={claiming || !isActionCompleted}
