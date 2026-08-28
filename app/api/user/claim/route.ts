@@ -120,20 +120,44 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: completionError.message }, { status: 500 });
     }
 
-    // 3. Calculate exact total XP from quest_completions + approved quest_verifications
+    // 3. Log to quest_verifications table as 'Approved' so it displays in Quest Logs & Admin panel
+    let logTitle = quest_id === "promo-bonus" ? "Media Partner: Promo Code Bonus" : (quest_id === "checkin" ? "Physical Gate Check-in" : "Event Quest Claim");
+    let userMsg = user.promo_code ? `Claimed Promo Code Bonus (Code: ${user.promo_code})` : `Claimed quest reward: ${quest_id}`;
+
+    try {
+      await supabase.from("quest_verifications").insert({
+        quest_id,
+        quest_title: logTitle,
+        user_name: user.id ? undefined : "Quester",
+        user_email: user_email.trim().toLowerCase(),
+        xp: awardXp,
+        proof_url: "Auto-Verified (System Claim)",
+        user_message: userMsg,
+        status: "Approved",
+        approved_by: "System",
+        reviewed_at: new Date().toISOString(),
+      });
+    } catch (verifErr) {
+      console.warn("Could not log to quest_verifications:", verifErr);
+    }
+
+    // 4. Calculate exact total XP from quest_completions + approved quest_verifications
     const { data: compList } = await supabase
       .from("quest_completions")
-      .select("xp_awarded")
+      .select("quest_id, xp_awarded")
       .eq("registration_id", user.id);
 
     const { data: verifList } = await supabase
       .from("quest_verifications")
-      .select("xp")
+      .select("quest_id, xp")
       .eq("user_email", user_email.trim().toLowerCase())
       .eq("status", "Approved");
 
+    const compQuestIds = new Set((compList || []).map((c: any) => c.quest_id));
     const compXp = (compList || []).reduce((sum, c) => sum + (c.xp_awarded || 0), 0);
-    const verifXp = (verifList || []).reduce((sum, v) => sum + (v.xp || 0), 0);
+    const verifXp = (verifList || [])
+      .filter((v: any) => !compQuestIds.has(v.quest_id))
+      .reduce((sum, v) => sum + (v.xp || 0), 0);
     const calculatedTotalXp = compXp + verifXp;
 
     await supabase
