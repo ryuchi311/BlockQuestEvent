@@ -90,6 +90,7 @@ ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS publish_at TIMES
 ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS depends_on_quest_id TEXT;
 ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS requires_message BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS discord_guild_id TEXT;
+ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT;
 
 -- Quest Verifications table for user proof submissions & admin review
 CREATE TABLE IF NOT EXISTS public.quest_verifications (

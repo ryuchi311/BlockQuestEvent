@@ -40,11 +40,11 @@ export async function GET(request: Request) {
 
     if (user) {
       isCheckedIn = user.checked_in || !!user.checked_in_at;
-      // 2. Fetch completed instant quests (support both registration_id and user_email)
+      // 2. Fetch completed instant quests by registration_id
       const { data: compData } = await supabase
         .from("quest_completions")
         .select("*")
-        .or(`registration_id.eq.${user.id},user_email.ilike.${email}`);
+        .eq("registration_id", user.id);
 
       let list = compData || [];
       const hasRegister = list.some((c: any) => c.quest_id === "register");
@@ -109,11 +109,11 @@ export async function GET(request: Request) {
     });
 
     const verificationsList = Array.from(latestByQuestMap.values());
-
+    const compQuestIds = new Set(completions);
     verifications = verificationsList;
     verifXp = verificationsList
-      .filter((v) => v.status === "Approved")
-      .reduce((sum, v) => sum + (v.xp || 0), 0);
+      .filter((v: any) => v.status === "Approved" && !compQuestIds.has(v.quest_id))
+      .reduce((sum: number, v: any) => sum + (v.xp || 0), 0);
 
     const exactTotalXp = compXp + verifXp;
 

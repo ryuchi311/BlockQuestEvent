@@ -94,11 +94,11 @@ export async function POST(request: Request) {
     }
   }
 
-  // Fetch completed quests to restore UI state (support both registration_id and user_email)
+  // Fetch completed quests to restore UI state
   const { data: completionsData } = await supabase
     .from("quest_completions")
     .select("*")
-    .or(`registration_id.eq.${data.id},user_email.ilike.${email}`);
+    .eq("registration_id", data.id);
 
   let completions = completionsData || [];
   const hasRegister = completions.some((c: any) => c.quest_id === "register");

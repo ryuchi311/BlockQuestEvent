@@ -10,7 +10,7 @@ interface Quest {
   title: string;
   description: string;
   xp: number;
-  status: "Live" | "Soon" | "Done" | "Pending Verification" | "Approved" | "Rejected";
+  status: "Live" | "Soon" | "Locked" | "Done" | "Pending Verification" | "Approved" | "Rejected";
   category: "onboarding" | "social" | "daily" | "quiz" | "atfx";
   actionLabel?: string;
   actionUrl?: string;
@@ -157,6 +157,7 @@ export default function ZealyMobileApp() {
   const [userMessageInput, setUserMessageInput] = useState("");
   const [quizAnswer, setQuizAnswer] = useState("");
   const [passcodeAnswer, setPasscodeAnswer] = useState("");
+  const [telegramUsernameInput, setTelegramUsernameInput] = useState("");
   const [visitedActions, setVisitedActions] = useState<Record<string, boolean>>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("bq_visited");
@@ -244,6 +245,7 @@ export default function ZealyMobileApp() {
     return [];
   });
   const [isGateCheckedIn, setIsGateCheckedIn] = useState<boolean>(false);
+  const [userPromoCode, setUserPromoCode] = useState<string | null>(null);
 
   // Inactivity tracking state
   const [inactivityWarning, setInactivityWarning] = useState(false);
@@ -256,6 +258,7 @@ export default function ZealyMobileApp() {
     setAuthenticatedUser(null);
     setQrPass(null);
     setIsGateCheckedIn(false);
+    setUserPromoCode(null);
     setTicketEmail("");
     setTicketMobileNum("");
     setTicketCountryCode("+63");
@@ -542,6 +545,12 @@ export default function ZealyMobileApp() {
 
       const { totalXp, completedQuests, completedQuestDetails, verifications, isCheckedIn, promoCode } = json;
 
+      if (typeof promoCode === "string" && promoCode.trim()) {
+        setUserPromoCode(promoCode.trim());
+      } else {
+        setUserPromoCode(null);
+      }
+
       if (typeof isCheckedIn === "boolean") {
         setIsGateCheckedIn(isCheckedIn);
       }
@@ -580,7 +589,7 @@ export default function ZealyMobileApp() {
               description: promoCode
                 ? `Claim your bonus 250 XP for registering with promo code: ${promoCode}`
                 : "Claim your bonus XP for registering with an official promo code or referral link.",
-              status: isDone ? "Done" : (promoCode ? "Live" : q.status),
+              status: isDone ? "Done" : (promoCode ? "Live" : "Locked"),
               completedAt: compMap.get(q.id) || (q as any).completedAt,
             };
           }
@@ -948,6 +957,7 @@ export default function ZealyMobileApp() {
       const completedIds = loginResult.completedQuests || [];
       const hasRegister = completedIds.includes("register");
       const promoCode = loginResult.promoCode;
+      setUserPromoCode(promoCode || null);
 
       // Restore existing completions and XP from database
       setQuests((prevQuests) =>
@@ -960,7 +970,7 @@ export default function ZealyMobileApp() {
               description: promoCode
                 ? `Claim your bonus 250 XP for registering with promo code: ${promoCode}`
                 : "Claim your bonus XP for registering with an official promo code or referral link.",
-              status: isDone ? "Done" : (promoCode ? "Live" : q.status),
+              status: isDone ? "Done" : (promoCode ? "Live" : "Locked"),
             };
           }
           return completedIds.includes(q.id) ? { ...q, status: "Done" } : q;
@@ -2109,11 +2119,13 @@ export default function ZealyMobileApp() {
                   return (
                     <>
                       {(() => {
-                        const hasAction = !!selectedQuest.actionUrl;
+                        const isDiscordQuest = selectedQuest.id === "discord-member" || !!(selectedQuest as any).discord_guild_id || (selectedQuest.title || "").toLowerCase().includes("discord");
+                        const isTelegramQuest = selectedQuest.id === "join-tg" || !!(selectedQuest as any).telegram_chat_id || (selectedQuest.title || "").toLowerCase().includes("telegram");
+                        const hasAction = !!selectedQuest.actionUrl && !isDiscordQuest && !isTelegramQuest;
                         const isActionCompleted = !hasAction || !!visitedActions[selectedQuest.id];
                         return (
                           <>
-                            {selectedQuest.actionUrl && (
+                            {selectedQuest.actionUrl && !isDiscordQuest && !isTelegramQuest && (
                               <Link
                                 href={selectedQuest.actionUrl}
                                 target={selectedQuest.actionUrl.startsWith("http") ? "_blank" : undefined}
@@ -2142,7 +2154,7 @@ export default function ZealyMobileApp() {
                               </Link>
                             )}
 
-                            {hasAction && !isActionCompleted && (
+                            {hasAction && !isActionCompleted && !isDiscordQuest && (
                               <div style={{
                                 background: "rgba(245, 158, 11, 0.12)",
                                 border: "1px solid rgba(245, 158, 11, 0.3)",
@@ -2183,7 +2195,7 @@ export default function ZealyMobileApp() {
                               );
                             })()}
 
-                            {(selectedQuest.requiresProof || selectedQuest.requiresMessage) && selectedQuest.status !== "Approved" ? (
+                            {(!((selectedQuest.id === "join-tg" || (selectedQuest as any).telegram_chat_id || (selectedQuest.title || "").toLowerCase().includes("telegram")) || (selectedQuest.id === "discord-member" || !!(selectedQuest as any).discord_guild_id || (selectedQuest.title || "").toLowerCase().includes("discord"))) && (selectedQuest.requiresProof || selectedQuest.requiresMessage) && selectedQuest.status !== "Approved") ? (
                               <div style={{
                                 marginTop: 12,
                                 marginBottom: 16,
@@ -2547,6 +2559,83 @@ export default function ZealyMobileApp() {
                                   {claiming ? "Claiming..." : isActionCompleted ? "Submit Answer & Claim XP" : "🔒 Complete Task First"}
                                 </button>
                               </div>
+                            ) : selectedQuest.id === "promo-bonus" ? (
+                              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+                                {userPromoCode ? (
+                                  <>
+                                    <div style={{
+                                      background: "rgba(16, 185, 129, 0.15)",
+                                      border: "1px solid rgba(16, 185, 129, 0.4)",
+                                      padding: "16px",
+                                      borderRadius: 14,
+                                      textAlign: "center"
+                                    }}>
+                                      <div style={{ fontSize: "1.8rem", marginBottom: 4 }}>🎁 ✅</div>
+                                      <div style={{ color: "#34d399", fontWeight: 800, fontSize: "1rem" }}>
+                                        Promo Code Applied: {userPromoCode}
+                                      </div>
+                                      <div style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: "0.82rem", marginTop: 6, lineHeight: 1.4 }}>
+                                        Your account was registered with official promo code <strong>{userPromoCode}</strong>. Click below to claim your bonus 250 XP reward!
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={handleClaimXp}
+                                      disabled={claiming}
+                                      className="modal-claim-btn"
+                                      style={{
+                                        width: "100%",
+                                        padding: "15px",
+                                        borderRadius: 12,
+                                        fontWeight: 800,
+                                        fontSize: "1rem",
+                                        background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                                        color: "#fff",
+                                        border: "none",
+                                        cursor: "pointer",
+                                        boxShadow: "0 0 25px rgba(16, 185, 129, 0.4)",
+                                      }}
+                                    >
+                                      {claiming ? "Claiming +250 XP..." : "🎉 Claim +250 Promo Bonus XP →"}
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div style={{
+                                      background: "rgba(239, 68, 68, 0.15)",
+                                      border: "1px solid rgba(239, 68, 68, 0.35)",
+                                      padding: "16px",
+                                      borderRadius: 14,
+                                      textAlign: "center"
+                                    }}>
+                                      <div style={{ fontSize: "1.8rem", marginBottom: 4 }}>🔒 ❌</div>
+                                      <div style={{ color: "#f87171", fontWeight: 800, fontSize: "1rem" }}>
+                                        Promo Code Required
+                                      </div>
+                                      <div style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: "0.82rem", marginTop: 6, lineHeight: 1.4 }}>
+                                        This bonus XP is strictly available for attendees who registered using an official promo code or referral link. No promo code was applied to your account during registration.
+                                      </div>
+                                    </div>
+                                    <button
+                                      disabled
+                                      className="modal-claim-btn"
+                                      style={{
+                                        width: "100%",
+                                        padding: "15px",
+                                        borderRadius: 12,
+                                        fontWeight: 800,
+                                        fontSize: "0.95rem",
+                                        background: "rgba(255, 255, 255, 0.08)",
+                                        color: "rgba(255, 255, 255, 0.4)",
+                                        border: "none",
+                                        cursor: "not-allowed",
+                                        opacity: 0.6
+                                      }}
+                                    >
+                                      🔒 Promo Code Required to Claim XP
+                                    </button>
+                                  </>
+                                )}
+                              </div>
                             ) : selectedQuest.id === "checkin" ? (
                               <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
                                 {isGateCheckedIn ? (
@@ -2648,7 +2737,7 @@ export default function ZealyMobileApp() {
                                     textTransform: "uppercase",
                                   }}
                                 />
-                                <button
+                                 <button
                                   onClick={handleClaimXp}
                                   disabled={claiming || !passcodeAnswer.trim() || !isActionCompleted}
                                   className="modal-claim-btn"
@@ -2661,37 +2750,230 @@ export default function ZealyMobileApp() {
                                   {claiming ? "Claiming..." : isActionCompleted ? "Unlock Passcode & Claim XP" : "🔒 Complete Task First"}
                                 </button>
                               </div>
-                            ) : selectedQuest.id === "discord-member" ? (
-                              <button
-                                onClick={() => {
-                                  const email = ticketEmail || authenticatedUser?.email || qrPass?.email;
-                                  if (!email) {
-                                    showNotice("Please register or log in first before claiming Discord XP.", "warning", "Login Required", "🔑");
-                                    return;
-                                  }
-                                  window.location.href = `/api/auth/discord?email=${encodeURIComponent(email)}&quest_id=${selectedQuest.id}`;
-                                }}
-                                className="modal-claim-btn"
-                                style={{
-                                  width: "100%",
-                                  padding: "14px",
-                                  borderRadius: 12,
-                                  fontWeight: 800,
-                                  fontSize: "0.95rem",
-                                  background: "linear-gradient(135deg, #5865F2 0%, #404EED 100%)",
-                                  color: "#fff",
-                                  border: "none",
-                                  cursor: "pointer",
-                                  boxShadow: "0 0 20px rgba(88, 101, 242, 0.4)",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  gap: 8,
-                                  marginTop: 12
-                                }}
-                              >
-                                💬 Authorize & Verify Discord Membership →
-                              </button>
+                             ) : (selectedQuest.id === "join-tg" || (selectedQuest as any).telegram_chat_id || (selectedQuest.title || "").toLowerCase().includes("telegram")) ? (
+                               <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+                                 {/* Step 1: Action Button */}
+                                 {selectedQuest.actionUrl && (
+                                   <Link
+                                     href={selectedQuest.actionUrl}
+                                     target={selectedQuest.actionUrl.startsWith("http") ? "_blank" : undefined}
+                                     className="modal-action-btn"
+                                     style={{
+                                       width: "100%",
+                                       padding: "14px",
+                                       borderRadius: 12,
+                                       fontWeight: 800,
+                                       fontSize: "0.95rem",
+                                       textAlign: "center",
+                                       display: "flex",
+                                       alignItems: "center",
+                                       justifyContent: "center",
+                                       gap: 8,
+                                       textDecoration: "none",
+                                       boxSizing: "border-box",
+                                       background: isActionCompleted
+                                         ? "rgba(16, 185, 129, 0.15)"
+                                         : "linear-gradient(135deg, #24A1DE 0%, #0088cc 100%)",
+                                       border: isActionCompleted ? "1px solid rgba(16, 185, 129, 0.4)" : "none",
+                                       color: isActionCompleted ? "#34d399" : "#fff",
+                                       boxShadow: isActionCompleted ? "none" : "0 0 20px rgba(36, 161, 222, 0.35)",
+                                       transition: "all 0.25s ease"
+                                     }}
+                                     onClick={() => {
+                                       setVisitedActions((prev) => ({ ...prev, [selectedQuest.id]: true }));
+                                     }}
+                                   >
+                                     {isActionCompleted
+                                       ? `✓ Step 1 Completed (Joined Telegram)`
+                                       : `✈️ Step 1: Open & Join Telegram Community →`}
+                                   </Link>
+                                 )}
+
+                                 {!isActionCompleted && (
+                                   <div style={{
+                                     background: "rgba(245, 158, 11, 0.12)",
+                                     border: "1px solid rgba(245, 158, 11, 0.35)",
+                                     padding: "10px 14px",
+                                     borderRadius: 12,
+                                     color: "#fbbf24",
+                                     fontSize: "0.8rem",
+                                     fontWeight: 700,
+                                     textAlign: "center",
+                                     lineHeight: 1.4
+                                   }}>
+                                     ⚠️ <strong>Step 1 Required:</strong> Tap the blue button above to open & join our official Telegram first!
+                                   </div>
+                                 )}
+
+                                 {/* Step 2: Info Card */}
+                                 <div style={{
+                                   background: "rgba(36, 161, 222, 0.08)",
+                                   border: "1px solid rgba(36, 161, 222, 0.25)",
+                                   borderRadius: 14,
+                                   padding: "14px 16px"
+                                 }}>
+                                   <span style={{ fontSize: "0.85rem", color: "#60a5fa", fontWeight: 800, display: "flex", alignItems: "center", gap: 6 }}>
+                                     <span>✈️</span> Step 2: Member Bot Verification
+                                   </span>
+                                   <span style={{ fontSize: "0.78rem", color: "rgba(255, 255, 255, 0.8)", display: "block", marginTop: 6, lineHeight: 1.45 }}>
+                                     Enter your Telegram <strong>@username</strong> or <strong>Numeric User ID</strong>. Our bot will verify your active membership in <strong>{(selectedQuest as any).telegram_chat_id || "@block_quest"}</strong>.
+                                   </span>
+                                   <span style={{ fontSize: "0.74rem", color: "#93c5fd", display: "block", marginTop: 6, fontStyle: "italic", background: "rgba(0,0,0,0.25)", padding: "6px 10px", borderRadius: 8 }}>
+                                     💡 Tip: Search <strong>@userinfobot</strong> on Telegram to instantly get your numeric ID if using @username fails.
+                                   </span>
+                                 </div>
+
+                                 {/* Username / ID Input */}
+                                 <input
+                                   type="text"
+                                   placeholder="Enter Telegram @username or Numeric ID..."
+                                   value={telegramUsernameInput}
+                                   onChange={(e) => setTelegramUsernameInput(e.target.value)}
+                                   disabled={!isActionCompleted}
+                                   style={{
+                                     width: "100%",
+                                     padding: "14px",
+                                     borderRadius: 12,
+                                     border: telegramUsernameInput.trim()
+                                       ? "1px solid #38bdf8"
+                                       : "1px solid rgba(36, 161, 222, 0.35)",
+                                     background: "rgba(10, 15, 26, 0.9)",
+                                     color: "#38bdf8",
+                                     fontSize: "0.95rem",
+                                     fontWeight: 700,
+                                     outline: "none",
+                                     boxSizing: "border-box",
+                                     opacity: isActionCompleted ? 1 : 0.45,
+                                     cursor: isActionCompleted ? "text" : "not-allowed",
+                                     boxShadow: telegramUsernameInput.trim() ? "0 0 15px rgba(56, 189, 248, 0.25)" : "none",
+                                     transition: "all 0.25s ease"
+                                   }}
+                                 />
+
+                                 {/* Claim Button */}
+                                 <button
+                                   onClick={async () => {
+                                     const email = ticketEmail || authenticatedUser?.email || qrPass?.email;
+                                     if (!email) {
+                                       showNotice("Please register or log in first before claiming Telegram XP.", "warning", "Login Required", "🔑");
+                                       return;
+                                     }
+                                     if (!telegramUsernameInput.trim()) {
+                                       showNotice("Please enter your Telegram username.", "warning", "Username Required", "⚠️");
+                                       return;
+                                     }
+                                     setClaiming(true);
+                                     try {
+                                       const res = await fetch("/api/auth/telegram/verify", {
+                                         method: "POST",
+                                         headers: { "Content-Type": "application/json" },
+                                         body: JSON.stringify({
+                                           quest_id: selectedQuest.id,
+                                           user_email: email,
+                                           telegram_username: telegramUsernameInput.trim(),
+                                         }),
+                                       });
+                                       const json = await safeJson(res);
+                                       if (!res.ok) {
+                                         showNotice(json.error || "Failed to verify Telegram membership.", "error", "Verification Failed", "🔒");
+                                         return;
+                                       }
+                                       showNotice(`Verified! You earned +${json.xp_awarded || selectedQuest.xp} XP!`, "success", "Telegram Verified!", "🎉");
+                                       setSelectedQuest(null);
+                                       syncUserData();
+                                     } catch (err: any) {
+                                       showNotice(err.message, "error", "Error", "✕");
+                                     } finally {
+                                       setClaiming(false);
+                                     }
+                                   }}
+                                   disabled={claiming || !telegramUsernameInput.trim() || !isActionCompleted}
+                                   className="modal-claim-btn"
+                                   style={{
+                                     width: "100%",
+                                     padding: "14px",
+                                     borderRadius: 12,
+                                     fontWeight: 800,
+                                     fontSize: "0.95rem",
+                                     background: (telegramUsernameInput.trim() && isActionCompleted)
+                                       ? "linear-gradient(135deg, #0088cc 0%, #24A1DE 100%)"
+                                       : "rgba(255,255,255,0.08)",
+                                     color: (telegramUsernameInput.trim() && isActionCompleted) ? "#fff" : "rgba(255,255,255,0.35)",
+                                     border: "none",
+                                     cursor: (telegramUsernameInput.trim() && isActionCompleted) ? "pointer" : "not-allowed",
+                                     boxShadow: (telegramUsernameInput.trim() && isActionCompleted) ? "0 0 25px rgba(36, 161, 222, 0.45)" : "none",
+                                     display: "flex",
+                                     alignItems: "center",
+                                    justifyContent: "center",
+                                     gap: 8,
+                                     opacity: (telegramUsernameInput.trim() && isActionCompleted) ? 1 : 0.5,
+                                     transition: "all 0.25s ease"
+                                   }}
+                                 >
+                                   {claiming
+                                     ? "✈️ Checking Telegram Bot..."
+                                     : !isActionCompleted
+                                       ? "🔒 Complete Step 1 Above First"
+                                       : !telegramUsernameInput.trim()
+                                         ? "⌨️ Enter Handle / ID Above to Verify"
+                                         : "✈️ Verify Telegram & Claim XP →"}
+                                 </button>
+                               </div>
+                             ) : (selectedQuest.id === "discord-member" || !!(selectedQuest as any).discord_guild_id || (selectedQuest.title || "").toLowerCase().includes("discord")) ? (
+                              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+                                {selectedQuest.actionUrl && (
+                                  <a
+                                    href={selectedQuest.actionUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                      width: "100%",
+                                      padding: "12px",
+                                      borderRadius: 12,
+                                      fontWeight: 700,
+                                      fontSize: "0.88rem",
+                                      background: "rgba(88, 101, 242, 0.15)",
+                                      border: "1px solid rgba(88, 101, 242, 0.4)",
+                                      color: "#818cf8",
+                                      textDecoration: "none",
+                                      textAlign: "center",
+                                      display: "block",
+                                      boxSizing: "border-box"
+                                    }}
+                                  >
+                                    🔗 Step 1: Join Discord Server First ↗
+                                  </a>
+                                )}
+                                <button
+                                  onClick={() => {
+                                    const email = ticketEmail || authenticatedUser?.email || qrPass?.email;
+                                    if (!email) {
+                                      showNotice("Please register or log in first before claiming Discord XP.", "warning", "Login Required", "🔑");
+                                      return;
+                                    }
+                                    window.location.href = `/api/auth/discord?email=${encodeURIComponent(email)}&quest_id=${selectedQuest.id}`;
+                                  }}
+                                  className="modal-claim-btn"
+                                  style={{
+                                    width: "100%",
+                                    padding: "14px",
+                                    borderRadius: 12,
+                                    fontWeight: 800,
+                                    fontSize: "0.95rem",
+                                    background: "linear-gradient(135deg, #5865F2 0%, #404EED 100%)",
+                                    color: "#fff",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    boxShadow: "0 0 20px rgba(88, 101, 242, 0.4)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: 8
+                                  }}
+                                >
+                                  💬 Step 2: Authorize & Verify Membership →
+                                </button>
+                              </div>
                              ) : (
                               <button
                                 onClick={handleClaimXp}

@@ -75,12 +75,19 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${gameRedirectUrl}?error=discord_token_error`);
     }
 
-    // 3. Fetch User Guilds from Discord API
-    const guildsResponse = await fetch("https://discord.com/api/v10/users/@me/guilds", {
-      headers: { Authorization: `Bearer ${tokenData.access_token}` },
-    });
+    // 3. Fetch User Profile and User Guilds from Discord API
+    const [profileRes, guildsResponse] = await Promise.all([
+      fetch("https://discord.com/api/v10/users/@me", {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      }),
+      fetch("https://discord.com/api/v10/users/@me/guilds", {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      }),
+    ]);
 
+    const discordProfile = await profileRes.json();
     const userGuilds = await guildsResponse.json();
+
     if (!guildsResponse.ok || !Array.isArray(userGuilds)) {
       console.error("Discord guilds fetch error:", userGuilds);
       return NextResponse.redirect(`${gameRedirectUrl}?error=discord_guild_fetch_failed`);
@@ -96,7 +103,7 @@ export async function GET(request: Request) {
     // 5. Record XP and Quest Completion in Supabase
     const { data: user, error: userError } = await supabase
       .from("registrations")
-      .select("id, total_xp")
+      .select("id, full_name, ticket_code, total_xp")
       .eq("email", email.trim().toLowerCase())
       .single();
 
@@ -104,14 +111,15 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${gameRedirectUrl}?error=user_not_found`);
     }
 
-    // Fetch quest awarded XP
+    // Fetch quest awarded XP & title
     const { data: quest } = await supabase
       .from("fiesta_event_quests")
-      .select("xp")
+      .select("title, xp")
       .eq("id", questId)
       .maybeSingle();
 
     const xpAmount = quest?.xp || 100;
+    const questTitle = quest?.title || "Join Discord Server";
 
     // Record quest completion
     const { error: completionError } = await supabase
@@ -130,26 +138,76 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${gameRedirectUrl}?error=db_error`);
     }
 
+    // Log to quest_verifications table as 'Approved' so it displays in Quest Logs & Admin panel
+    const discordUserId = discordProfile?.id;
+    const discordUsername = discordProfile?.username || "Quester";
+    const userMention = discordUserId ? `<@${discordUserId}>` : `@${discordUsername}`;
+
+    await supabase.from("quest_verifications").insert({
+      quest_id: questId,
+      quest_title: questTitle,
+      user_name: user.full_name || "Quester",
+      user_email: email.trim().toLowerCase(),
+      ticket_code: user.ticket_code || null,
+      xp: xpAmount,
+      proof_url: "Auto-Verified (Discord OAuth)",
+      user_message: `Verified Discord User: ${userMention} (@${discordUsername})`,
+      status: "Approved",
+      approved_by: "System (Discord OAuth)",
+      reviewed_at: new Date().toISOString(),
+    });
+
     // Calculate total updated XP
     const { data: compList } = await supabase
       .from("quest_completions")
-      .select("xp_awarded")
+      .select("quest_id, xp_awarded")
       .eq("registration_id", user.id);
 
     const { data: verifList } = await supabase
       .from("quest_verifications")
-      .select("xp")
+      .select("quest_id, xp")
       .eq("user_email", email.trim().toLowerCase())
       .eq("status", "Approved");
 
+    const compQuestIds = new Set((compList || []).map((c: any) => c.quest_id));
     const compXp = (compList || []).reduce((sum, c) => sum + (c.xp_awarded || 0), 0);
-    const verifXp = (verifList || []).reduce((sum, v) => sum + (v.xp || 0), 0);
+    const verifXp = (verifList || [])
+      .filter((v: any) => !compQuestIds.has(v.quest_id))
+      .reduce((sum, v) => sum + (v.xp || 0), 0);
     const calculatedTotalXp = compXp + verifXp;
 
     await supabase
       .from("registrations")
       .update({ total_xp: calculatedTotalXp })
       .eq("id", user.id);
+
+    // 6. Send Discord Announcement Message
+    const announcementMessage = `🚀 **Discord Quest Complete!** ${userMention} (@${discordUsername}) has verified their Discord membership and unlocked **+${xpAmount} XP**! ⚡`;
+
+    const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+    const botToken = process.env.DISCORD_BOT_TOKEN;
+    const channelId = process.env.DISCORD_CHANNEL_ID;
+
+    try {
+      if (webhookUrl) {
+        await fetch(webhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: announcementMessage }),
+        });
+      } else if (botToken && channelId) {
+        await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bot ${botToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ content: announcementMessage }),
+        });
+      }
+    } catch (msgErr) {
+      console.error("Failed to post Discord channel notification:", msgErr);
+    }
 
     return NextResponse.redirect(`${gameRedirectUrl}?status=discord_claimed&xp=${xpAmount}&total_xp=${calculatedTotalXp}`);
   } catch (err) {

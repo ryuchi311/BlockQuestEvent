@@ -43,6 +43,7 @@ interface Quest {
   expires_at?: string;
   depends_on_quest_id?: string;
   discord_guild_id?: string;
+  telegram_chat_id?: string;
   sort_order: number;
   created_by?: string;
   updated_by?: string;
@@ -1395,6 +1396,7 @@ export default function AdminPage() {
       expires_at: q.expires_at ?? "",
       depends_on_quest_id: q.depends_on_quest_id ?? "",
       discord_guild_id: q.discord_guild_id ?? "",
+      telegram_chat_id: q.telegram_chat_id ?? "",
       sort_order: q.sort_order,
     });
     setQuestError("");
@@ -5566,18 +5568,20 @@ export default function AdminPage() {
                       },
                       {
                         icon: "✈️",
-                        name: "Join Telegram",
+                        name: "Join Telegram (Auto Bot)",
                         data: {
                           title: "Join Official Telegram Group",
-                          description: "1. Join our BlockQuest PH Telegram community\n2. Say hi and upload a screenshot proof below!",
+                          description: "1. Join our official BlockQuest Telegram community\n2. Enter your Telegram @username or numeric User ID to instantly verify membership & claim XP!",
                           category: "social" as const,
-                          xp: 100,
-                          requires_proof: true,
+                          xp: 150,
+                          requires_proof: false,
                           requires_message: false,
                           is_quiz: false,
                           passcode: "",
-                          action_label: "Join Telegram",
-                          action_url: "https://t.me",
+                          action_label: "✈️ Join Telegram",
+                          action_url: "https://t.me/block_quest",
+                          telegram_chat_id: "@block_quest",
+                          discord_guild_id: "",
                         }
                       },
                       {
@@ -6056,7 +6060,7 @@ export default function AdminPage() {
 
                     {/* Discord Guild / Server Verification */}
                     <div
-                      className={`qf-mode-card${questForm.id === "discord-member" || !!questForm.discord_guild_id ? " qf-mode-card--active" : ""}`}
+                      className={`qf-mode-card${questForm.id === "discord-member" || (questForm.discord_guild_id && !questForm.telegram_chat_id) ? " qf-mode-card--active" : ""}`}
                       onClick={() => setQuestForm((f) => ({
                         ...f,
                         requires_proof: false,
@@ -6066,7 +6070,8 @@ export default function AdminPage() {
                         category: "social",
                         action_label: f.action_label || "Join & Verify Discord",
                         action_url: f.action_url || "https://discord.gg",
-                        discord_guild_id: f.discord_guild_id || "875130075996094525"
+                        discord_guild_id: f.discord_guild_id || "875130075996094525",
+                        telegram_chat_id: ""
                       }))}
                     >
                       <span className="qf-mode-card__icon">💬</span>
@@ -6075,10 +6080,33 @@ export default function AdminPage() {
                         <span className="qf-mode-card__desc">Verify user joined specific Discord Server ID.</span>
                       </div>
                     </div>
+
+                    {/* Telegram Bot Membership Verification */}
+                    <div
+                      className={`qf-mode-card${questForm.id === "join-tg" || !!questForm.telegram_chat_id ? " qf-mode-card--active" : ""}`}
+                      onClick={() => setQuestForm((f) => ({
+                        ...f,
+                        requires_proof: false,
+                        requires_message: false,
+                        is_quiz: false,
+                        passcode: "",
+                        category: "social",
+                        action_label: f.action_label || "Join Telegram Group",
+                        action_url: f.action_url || "https://t.me/block_quest",
+                        telegram_chat_id: f.telegram_chat_id || "@block_quest",
+                        discord_guild_id: ""
+                      }))}
+                    >
+                      <span className="qf-mode-card__icon">✈️</span>
+                      <div className="qf-mode-card__info">
+                        <span className="qf-mode-card__title">Telegram Bot Check</span>
+                        <span className="qf-mode-card__desc">Verify user joined Telegram Group/Channel (@username).</span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Mode-Specific Input Fields */}
-                  {(questForm.id === "discord-member" || questForm.discord_guild_id !== undefined) && (
+                  {(questForm.id === "discord-member" || questForm.discord_guild_id) && (
                     <div style={{ background: "rgba(88, 101, 242, 0.08)", border: "1px solid rgba(88, 101, 242, 0.3)", borderRadius: 12, padding: 14, marginBottom: 10 }}>
                       <label className="qf-label">
                         💬 Discord Server ID (Guild ID) *
@@ -6091,6 +6119,23 @@ export default function AdminPage() {
                           style={{ marginTop: 6, fontFamily: "monospace", fontWeight: 700 }}
                         />
                         <small>Right-click your Discord server icon in Discord &rarr; Copy Server ID</small>
+                      </label>
+                    </div>
+                  )}
+
+                  {(questForm.id === "join-tg" || questForm.telegram_chat_id) && (
+                    <div style={{ background: "rgba(36, 161, 222, 0.08)", border: "1px solid rgba(36, 161, 222, 0.3)", borderRadius: 12, padding: 14, marginBottom: 10 }}>
+                      <label className="qf-label">
+                        ✈️ Telegram Group / Channel ID *
+                        <input
+                          type="text"
+                          placeholder="e.g. @block_quest or -100123456789"
+                          value={questForm.telegram_chat_id ?? ""}
+                          onChange={(e) => setQuestForm((f) => ({ ...f, telegram_chat_id: e.target.value.trim() }))}
+                          className="qf-input"
+                          style={{ marginTop: 6, fontFamily: "monospace", fontWeight: 700, color: "#24a1de" }}
+                        />
+                        <small>Enter your Telegram Channel/Group handle starting with @ (e.g. @block_quest)</small>
                       </label>
                     </div>
                   )}
