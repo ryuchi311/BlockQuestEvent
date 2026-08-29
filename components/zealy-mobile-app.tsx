@@ -469,7 +469,7 @@ export default function ZealyMobileApp() {
           return mappedQuests.map((newQ) => {
             if (newQ.id === "checkin") {
               const existing = prevQuests.find((p) => p.id === "checkin");
-              if (existing?.status === "Done") return { ...newQ, status: "Done" };
+              if (existing?.status === "Done") return { ...newQ, status: "Done", completedAt: (existing as any).completedAt };
               return { ...newQ, status: isGateCheckedIn ? "Live" : "Soon" };
             }
             const existing = prevQuests.find((p) => p.id === newQ.id);
@@ -480,7 +480,7 @@ export default function ZealyMobileApp() {
                 existing.status === "Approved" ||
                 existing.status === "Rejected")
             ) {
-              return { ...newQ, status: existing.status };
+              return { ...newQ, status: existing.status, completedAt: (existing as any).completedAt };
             }
             return newQ;
           });
