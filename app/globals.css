@@ -866,9 +866,16 @@ a {
   align-items: center;
   justify-content: center;
   padding: 40px 20px;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 45%, rgba(245, 166, 35, 0.12) 0%, rgba(168, 85, 247, 0.16) 40%, rgba(9, 6, 18, 0.95) 75%, #050308 100%),
+    linear-gradient(180deg, #090612 0%, #050308 100%);
 }
 
 .home-shell {
+  position: relative;
+  z-index: 10;
   width: 100%;
   max-width: 900px;
   display: grid;
@@ -983,19 +990,20 @@ a {
   justify-content: space-between;
   padding: 40px 32px;
   border-radius: 28px;
-  background: rgba(17, 17, 28, 0.65);
-  border: 1px solid var(--border);
+  background: rgba(14, 10, 24, 0.72);
+  border: 1px solid rgba(168, 85, 247, 0.25);
   backdrop-filter: blur(20px);
   cursor: pointer;
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 25px rgba(168, 85, 247, 0.1);
 }
 
 .choice-card::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.08), transparent 40%);
+  background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(192, 132, 252, 0.12), transparent 45%);
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
@@ -1007,19 +1015,19 @@ a {
 
 .choice-card:hover {
   transform: translateY(-8px);
-  background: rgba(22, 22, 38, 0.85);
-  border-color: rgba(255, 255, 255, 0.25);
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+  background: rgba(20, 14, 36, 0.88);
+  border-color: rgba(192, 132, 252, 0.5);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.7), 0 0 45px rgba(168, 85, 247, 0.28);
 }
 
 .choice-card--primary:hover {
-  box-shadow: 0 30px 60px rgba(245, 166, 35, 0.12), var(--shadow-glow-primary);
-  border-color: rgba(245, 166, 35, 0.4);
+  box-shadow: 0 30px 70px rgba(245, 166, 35, 0.2), 0 0 40px rgba(245, 166, 35, 0.25);
+  border-color: rgba(245, 166, 35, 0.55);
 }
 
 .choice-card--secondary:hover {
-  box-shadow: 0 30px 60px rgba(59, 130, 246, 0.12), var(--shadow-glow-secondary);
-  border-color: rgba(59, 130, 246, 0.4);
+  box-shadow: 0 30px 70px rgba(168, 85, 247, 0.25), 0 0 45px rgba(168, 85, 247, 0.35);
+  border-color: rgba(192, 132, 252, 0.6);
 }
 
 .choice-icon {
@@ -1636,7 +1644,11 @@ a {
   align-items: center;
   justify-content: center;
   padding: 30px 20px;
-  background: radial-gradient(circle at top, rgba(139, 92, 246, 0.08) 0%, transparent 60%), var(--bg-dark);
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 65% 55% at 50% 50%, rgba(245, 166, 35, 0.12) 0%, rgba(168, 85, 247, 0.16) 40%, rgba(9, 6, 18, 0.95) 75%, #050308 100%),
+    linear-gradient(180deg, #090612 0%, #050308 100%);
 }
 
 /* Interactive Device Mockup for Desktop viewports */
@@ -1653,26 +1665,33 @@ a {
     position: relative;
     width: 410px;
     height: 820px;
-    background: #090912;
+    background: #090612;
     border-radius: 44px;
     padding: 12px;
     box-shadow:
       0 35px 80px rgba(0, 0, 0, 0.95),
-      0 0 0 3px rgba(245, 166, 35, 0.35),
-      0 0 0 7px #161626,
-      0 0 45px rgba(245, 166, 35, 0.2);
+      0 0 0 2px rgba(168, 85, 247, 0.35),
+      0 0 0 5px rgba(245, 166, 35, 0.2),
+      0 0 0 8px #120d22,
+      0 0 50px rgba(168, 85, 247, 0.22),
+      0 0 30px rgba(245, 166, 35, 0.15);
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    transition: box-shadow 0.4s ease;
+    transition: box-shadow 0.4s ease, border-color 0.4s ease;
+    border: 1px solid rgba(192, 132, 252, 0.25);
+    z-index: 10;
   }
 
   .mobile-simulator:hover {
     box-shadow:
-      0 40px 90px rgba(0, 0, 0, 0.98),
-      0 0 0 3px rgba(245, 166, 35, 0.5),
-      0 0 0 7px #1e1e34,
-      0 0 60px rgba(245, 166, 35, 0.35);
+      0 40px 95px rgba(0, 0, 0, 0.98),
+      0 0 0 2px rgba(168, 85, 247, 0.55),
+      0 0 0 5px rgba(245, 166, 35, 0.35),
+      0 0 0 8px #1a1233,
+      0 0 65px rgba(168, 85, 247, 0.35),
+      0 0 40px rgba(245, 166, 35, 0.25);
+    border-color: rgba(192, 132, 252, 0.45);
   }
 
   /* Smartphone Notch */
@@ -1684,11 +1703,11 @@ a {
     transform: translateX(-50%);
     width: 150px;
     height: 26px;
-    background: #050508;
+    background: #050308;
     border-bottom-left-radius: 18px;
     border-bottom-right-radius: 18px;
     z-index: 1000;
-    border: 1px solid rgba(245, 166, 35, 0.15);
+    border: 1px solid rgba(168, 85, 247, 0.25);
     border-top: none;
   }
 
@@ -1697,7 +1716,10 @@ a {
     height: 100%;
     border-radius: 34px;
     overflow: hidden; /* Fix: Container must be overflow hidden so bottom tabs float fixed */
-    background: radial-gradient(circle at 50% 0%, rgba(245, 166, 35, 0.08) 0%, transparent 60%), #07070e;
+    background:
+      radial-gradient(circle at 50% 30%, rgba(245, 166, 35, 0.08) 0%, rgba(168, 85, 247, 0.07) 45%, transparent 70%),
+      linear-gradient(180deg, #090612 0%, #050308 100%);
+    border: 1px solid rgba(168, 85, 247, 0.18);
     display: flex;
     flex-direction: column;
     position: relative;
@@ -1720,6 +1742,7 @@ a {
     flex-direction: column;
     box-shadow: none;
     border-radius: 0;
+    border: none;
     overflow: hidden;
   }
   .mobile-app {
@@ -1728,8 +1751,11 @@ a {
     height: 100dvh;
     display: flex;
     flex-direction: column;
-    background: radial-gradient(circle at 50% 0%, rgba(245, 166, 35, 0.08) 0%, transparent 60%), #07070e;
+    background:
+      radial-gradient(circle at 50% 30%, rgba(245, 166, 35, 0.08) 0%, rgba(168, 85, 247, 0.07) 45%, transparent 70%),
+      linear-gradient(180deg, #090612 0%, #050308 100%);
     border-radius: 0;
+    border: none;
     overflow: hidden;
   }
 }
