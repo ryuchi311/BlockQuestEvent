@@ -213,6 +213,50 @@ function SortableQuestRow({ id, order, children }: { id: string, order: number, 
   );
 }
 
+function generateShortSlug(title: string, category?: string): string {
+  if (!title || !title.trim()) return "";
+  const stopWords = new Set([
+    "a", "an", "the", "and", "or", "in", "on", "at", "to", "for", "with", "by", "of", "from",
+    "our", "your", "official", "complete", "physical", "public", "post", "blockquest", "blockquestph", "brgytamago", "fiesta", "web3", "attend", "enter"
+  ]);
+
+  const rawWords = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .split(/[\s-]+/)
+    .filter(Boolean);
+
+  const meaningfulWords = rawWords.filter((w) => !stopWords.has(w));
+  const wordsToUse = meaningfulWords.length > 0 ? meaningfulWords : rawWords;
+
+  // Take up to 2-3 words, max 16 chars
+  let slug = "";
+  for (const word of wordsToUse.slice(0, 3)) {
+    const candidate = slug ? `${slug}-${word}` : word;
+    if (candidate.length > 16) break;
+    slug = candidate;
+  }
+
+  if (!slug && wordsToUse.length > 0) {
+    slug = wordsToUse[0].slice(0, 16);
+  }
+
+  return slug.replace(/^-+|-+$/g, "") || "quest";
+}
+
+function generateRandomShortId(category = "qst"): string {
+  const prefixMap: Record<string, string> = {
+    social: "soc",
+    onboarding: "onb",
+    daily: "daily",
+    quiz: "quiz",
+    atfx: "atfx",
+  };
+  const prefix = prefixMap[category?.toLowerCase()] || "qst";
+  const rand = Math.random().toString(36).substring(2, 6);
+  return `${prefix}_${rand}`;
+}
+
 // ─── Admin Dashboard ─────────────────────────────────────────────────────────
 export default function AdminPage() {
   // ── Auth gate ──
@@ -462,6 +506,7 @@ export default function AdminPage() {
   const [hasSavedDraft, setHasSavedDraft] = useState(false);
   const [statusModalQuest, setStatusModalQuest] = useState<Quest | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [copiedQuestId, setCopiedQuestId] = useState<string | null>(null);
 
   // ── Staff (Superadmin only) ──
   const [adminUsersList, setAdminUsersList] = useState<any[]>([]);
@@ -3207,7 +3252,45 @@ export default function AdminPage() {
                       {filteredQuests.slice((questPage - 1) * questPageSize, (questPage - 1) * questPageSize + questPageSize).map((q) => (
                         <SortableQuestRow key={q.id} id={q.id} order={q.sort_order}>
                         <td>
-                          <code className="admin-quest-id">{q.id}</code>
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                            <code
+                              className="admin-quest-id"
+                              title={q.id}
+                              style={{
+                                maxWidth: 135,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                                display: "inline-block",
+                                verticalAlign: "middle"
+                              }}
+                            >
+                              {q.id}
+                            </code>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(q.id);
+                                setCopiedQuestId(q.id);
+                                setTimeout(() => setCopiedQuestId(null), 1500);
+                              }}
+                              title={copiedQuestId === q.id ? "Copied!" : `Copy "${q.id}"`}
+                              style={{
+                                background: copiedQuestId === q.id ? "rgba(16, 185, 129, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                                border: copiedQuestId === q.id ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(255, 255, 255, 0.1)",
+                                borderRadius: 4,
+                                cursor: "pointer",
+                                padding: "2px 5px",
+                                fontSize: "0.68rem",
+                                color: copiedQuestId === q.id ? "#34d399" : "var(--text-muted)",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                transition: "all 0.15s ease"
+                              }}
+                            >
+                              {copiedQuestId === q.id ? "✓" : "📋"}
+                            </button>
+                          </div>
                         </td>
                         <td className="admin-table__name">{q.title}</td>
                         <td>
@@ -5789,7 +5872,7 @@ export default function AdminPage() {
                         className="qf-preset-chip"
                         onClick={() => {
                           setQuestForm((prev) => {
-                            const autoId = preset.data.title.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+                            const autoId = generateShortSlug(preset.data.title, preset.data.category);
                             return {
                               ...prev,
                               ...preset.data,
@@ -5817,7 +5900,7 @@ export default function AdminPage() {
                       onChange={(e) => {
                         const val = e.target.value;
                         setQuestForm((prev) => {
-                          const autoId = val.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+                          const autoId = generateShortSlug(val, prev.category);
                           return {
                             ...prev,
                             title: val,
@@ -5837,7 +5920,58 @@ export default function AdminPage() {
                       const isDuplicateId = !editingQuest && !!questForm.id.trim() && quests.some((q) => q.id.toLowerCase() === questForm.id.trim().toLowerCase());
                       return (
                         <label className="qf-label">
-                          Quest ID (Slug) *
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                            <span>Quest ID (Slug) *</span>
+                            {!editingQuest && (
+                              <div style={{ display: "flex", gap: 6 }}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const randId = generateRandomShortId(questForm.category);
+                                    setQuestForm((f) => ({ ...f, id: randId }));
+                                  }}
+                                  title="Generate a random short ID (e.g. soc_9k2m)"
+                                  style={{
+                                    background: "rgba(245, 166, 35, 0.15)",
+                                    border: "1px solid rgba(245, 166, 35, 0.4)",
+                                    color: "#fbbf24",
+                                    borderRadius: 4,
+                                    padding: "2px 7px",
+                                    fontSize: "0.72rem",
+                                    cursor: "pointer",
+                                    fontWeight: 700,
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 4
+                                  }}
+                                >
+                                  🎲 Random ID
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const shortSlug = generateShortSlug(questForm.title, questForm.category);
+                                    setQuestForm((f) => ({ ...f, id: shortSlug }));
+                                  }}
+                                  title="Re-generate short concise slug from title"
+                                  style={{
+                                    background: "rgba(255, 255, 255, 0.08)",
+                                    border: "1px solid rgba(255, 255, 255, 0.18)",
+                                    color: "#cbd5e1",
+                                    borderRadius: 4,
+                                    padding: "2px 7px",
+                                    fontSize: "0.72rem",
+                                    cursor: "pointer",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 4
+                                  }}
+                                >
+                                  ⚡ Short Slug
+                                </button>
+                              </div>
+                            )}
+                          </div>
                           <input
                             type="text"
                             value={questForm.id}
@@ -5854,8 +5988,8 @@ export default function AdminPage() {
                           />
                           <small style={{ color: isDuplicateId ? "#f87171" : undefined, fontWeight: isDuplicateId ? 600 : undefined }}>
                             {isDuplicateId
-                              ? `⚠️ Quest ID "${questForm.id}" already exists! Please enter a unique ID.`
-                              : (editingQuest ? "Locked ID" : "Auto-generated from title · click to customize")}
+                              ? `⚠️ Quest ID "${questForm.id}" already exists! Please click "🎲 Random ID" or edit it.`
+                              : (editingQuest ? "Locked ID" : "Auto-shortened · or click 🎲 / ⚡ to change")}
                           </small>
                         </label>
                       );
