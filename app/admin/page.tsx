@@ -1410,6 +1410,11 @@ export default function AdminPage() {
     setQuestError("");
     try {
       const isEdit = !!editingQuest;
+      if (!isEdit && quests.some((q) => q.id.toLowerCase() === questForm.id.trim().toLowerCase())) {
+        setQuestError(`Quest ID "${questForm.id}" already exists. Please choose a different unique ID.`);
+        setQuestSaving(false);
+        return;
+      }
       const method = isEdit ? "PATCH" : "POST";
       const payload = {
         ...questForm,
@@ -5828,20 +5833,33 @@ export default function AdminPage() {
                   </label>
 
                   <div className="admin-form-row" style={{ gridTemplateColumns: "1fr 100px", marginTop: 12 }}>
-                    <label className="qf-label">
-                      Quest ID (Slug) *
-                      <input
-                        type="text"
-                        value={questForm.id}
-                        onChange={(e) => setQuestForm((f) => ({ ...f, id: e.target.value.toLowerCase().replace(/\s+/g, "-") }))}
-                        placeholder="e.g. follow-x"
-                        required
-                        disabled={!!editingQuest}
-                        className="qf-input"
-                        style={{ fontFamily: "monospace" }}
-                      />
-                      <small>{editingQuest ? "Locked ID" : "Auto-generated from title · click to customize"}</small>
-                    </label>
+                    {(() => {
+                      const isDuplicateId = !editingQuest && !!questForm.id.trim() && quests.some((q) => q.id.toLowerCase() === questForm.id.trim().toLowerCase());
+                      return (
+                        <label className="qf-label">
+                          Quest ID (Slug) *
+                          <input
+                            type="text"
+                            value={questForm.id}
+                            onChange={(e) => setQuestForm((f) => ({ ...f, id: e.target.value.toLowerCase().replace(/\s+/g, "-") }))}
+                            placeholder="e.g. follow-x"
+                            required
+                            disabled={!!editingQuest}
+                            className="qf-input"
+                            style={{
+                              fontFamily: "monospace",
+                              borderColor: isDuplicateId ? "#ef4444" : undefined,
+                              boxShadow: isDuplicateId ? "0 0 0 1px #ef4444" : undefined,
+                            }}
+                          />
+                          <small style={{ color: isDuplicateId ? "#f87171" : undefined, fontWeight: isDuplicateId ? 600 : undefined }}>
+                            {isDuplicateId
+                              ? `⚠️ Quest ID "${questForm.id}" already exists! Please enter a unique ID.`
+                              : (editingQuest ? "Locked ID" : "Auto-generated from title · click to customize")}
+                          </small>
+                        </label>
+                      );
+                    })()}
 
                     <label className="qf-label">
                       Sort Order
