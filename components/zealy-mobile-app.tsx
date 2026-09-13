@@ -3665,9 +3665,32 @@ export default function ZealyMobileApp() {
                   />
                 </div>
 
-                <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "16px", marginBottom: "16px", lineHeight: 1.4 }}>
+                <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "16px", marginBottom: "12px", lineHeight: 1.4 }}>
                   Present this enlarged QR code to the <strong>Gate Staff</strong> or <strong>Sponsor Booths</strong> for instant scanning.
                 </p>
+
+                <div style={{
+                  marginBottom: "16px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "8px 16px",
+                  background: "linear-gradient(135deg, rgba(245, 166, 35, 0.15) 0%, rgba(217, 119, 6, 0.2) 100%)",
+                  border: "1px solid rgba(245, 166, 35, 0.4)",
+                  borderRadius: "20px",
+                  boxShadow: "0 0 15px rgba(245, 166, 35, 0.15)"
+                }}>
+                  <span style={{ fontSize: "1rem" }}>🏆</span>
+                  <span style={{
+                    color: "#fbbf24",
+                    fontWeight: 800,
+                    fontSize: "0.85rem",
+                    letterSpacing: "0.02em",
+                    textTransform: "uppercase"
+                  }}>
+                    Play Quest & Win a Prize
+                  </span>
+                </div>
 
                 <button
                   onClick={() => setShowQrZoomModal(false)}

@@ -779,6 +779,28 @@ function RegistrationFormContent() {
               </p>
               <p>{qrPass.email}</p>
               <p>Show this at the entrance.</p>
+              <div style={{
+                marginTop: "12px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 16px",
+                background: "linear-gradient(135deg, rgba(245, 166, 35, 0.15) 0%, rgba(217, 119, 6, 0.2) 100%)",
+                border: "1px solid rgba(245, 166, 35, 0.4)",
+                borderRadius: "20px",
+                boxShadow: "0 0 15px rgba(245, 166, 35, 0.15)"
+              }}>
+                <span style={{ fontSize: "1rem" }}>🏆</span>
+                <span style={{
+                  color: "#fbbf24",
+                  fontWeight: 800,
+                  fontSize: "0.85rem",
+                  letterSpacing: "0.02em",
+                  textTransform: "uppercase"
+                }}>
+                  Play Quest & Win a Prize
+                </span>
+              </div>
             </div>
           </div>
         </section>
