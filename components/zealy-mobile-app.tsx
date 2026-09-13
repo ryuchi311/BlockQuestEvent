@@ -119,12 +119,28 @@ function QuestCardDescription({ description }: { description: string }) {
   );
 }
 
+function getDefaultQuestStatus(
+  q: { id?: string; status?: string; publish_at?: string },
+  isCheckedIn: boolean = false
+): "Live" | "Soon" | "Locked" {
+  if (q.id === "checkin") return isCheckedIn ? "Live" : "Soon";
+  if (q.publish_at) {
+    const publishTime = new Date(q.publish_at).getTime();
+    if (publishTime > Date.now()) return "Soon";
+    if (q.status === "Soon") return "Live";
+  }
+  return (q.status as "Live" | "Soon" | "Locked") || "Live";
+}
+
 export default function ZealyMobileApp() {
   const [mounted, setMounted] = React.useState(false);
   const [activeTab, setActiveTab] = useState<"quests" | "leaderboard" | "info" | "profile">("quests");
   const [quests, setQuests] = useState<Quest[]>(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("bq_quests");
+      const savedUser = localStorage.getItem("bq_user");
+      const userEmail = savedUser ? JSON.parse(savedUser)?.email : null;
+      const questsKey = userEmail ? `bq_quests_${userEmail}` : "bq_quests";
+      const saved = localStorage.getItem(questsKey);
       if (saved) {
         const parsed = JSON.parse(saved);
         // Merge in any new quests from initialQuests that aren't in local storage
@@ -138,7 +154,10 @@ export default function ZealyMobileApp() {
   const [leaderboard, setLeaderboard] = useState(initialLeaderboard);
   const [userXp, setUserXp] = useState(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("bq_xp");
+      const savedUser = localStorage.getItem("bq_user");
+      const userEmail = savedUser ? JSON.parse(savedUser)?.email : null;
+      const xpKey = userEmail ? `bq_xp_${userEmail}` : "bq_xp";
+      const saved = localStorage.getItem(xpKey);
       if (saved) return Number(saved);
     }
     return 0;
@@ -160,7 +179,10 @@ export default function ZealyMobileApp() {
   const [telegramUsernameInput, setTelegramUsernameInput] = useState("");
   const [visitedActions, setVisitedActions] = useState<Record<string, boolean>>(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("bq_visited");
+      const savedUser = localStorage.getItem("bq_user");
+      const userEmail = savedUser ? JSON.parse(savedUser)?.email : null;
+      const visitedKey = userEmail ? `bq_visited_${userEmail}` : "bq_visited";
+      const saved = localStorage.getItem(visitedKey);
       if (saved) return JSON.parse(saved);
     }
     return {};
@@ -239,7 +261,10 @@ export default function ZealyMobileApp() {
   const [pinSaving, setPinSaving] = useState(false);
   const [claimedQuestIds, setClaimedQuestIds] = useState<string[]>(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("bq_claimed");
+      const savedUser = localStorage.getItem("bq_user");
+      const userEmail = savedUser ? JSON.parse(savedUser)?.email : null;
+      const claimedKey = userEmail ? `bq_claimed_${userEmail}` : "bq_claimed";
+      const saved = localStorage.getItem(claimedKey);
       if (saved) return JSON.parse(saved);
     }
     return [];
@@ -271,6 +296,7 @@ export default function ZealyMobileApp() {
     setActiveTab("quests");
 
     if (typeof window !== "undefined") {
+      const email = authenticatedUser?.email;
       localStorage.removeItem("bq_user");
       localStorage.removeItem("bq_qr");
       localStorage.removeItem("bq_xp");
@@ -278,6 +304,13 @@ export default function ZealyMobileApp() {
       localStorage.removeItem("bq_quests");
       localStorage.removeItem("bq_visited");
       localStorage.removeItem("bq_claimed");
+      if (email) {
+        localStorage.removeItem(`bq_xp_${email}`);
+        localStorage.removeItem(`bq_rank_${email}`);
+        localStorage.removeItem(`bq_quests_${email}`);
+        localStorage.removeItem(`bq_visited_${email}`);
+        localStorage.removeItem(`bq_claimed_${email}`);
+      }
     }
     setClaimedQuestIds([]);
     setCompletedQuestRecords([]);
@@ -336,28 +369,38 @@ export default function ZealyMobileApp() {
 
   React.useEffect(() => {
     if (!mounted) return;
-    localStorage.setItem("bq_xp", userXp.toString());
-  }, [userXp, mounted]);
+    const email = authenticatedUser?.email;
+    const key = email ? `bq_xp_${email}` : "bq_xp";
+    localStorage.setItem(key, userXp.toString());
+  }, [userXp, mounted, authenticatedUser]);
 
   React.useEffect(() => {
     if (!mounted) return;
-    localStorage.setItem("bq_rank", userRank.toString());
-  }, [userRank, mounted]);
+    const email = authenticatedUser?.email;
+    const key = email ? `bq_rank_${email}` : "bq_rank";
+    localStorage.setItem(key, userRank.toString());
+  }, [userRank, mounted, authenticatedUser]);
 
   React.useEffect(() => {
     if (!mounted) return;
-    localStorage.setItem("bq_quests", JSON.stringify(quests));
-  }, [quests, mounted]);
+    const email = authenticatedUser?.email;
+    const key = email ? `bq_quests_${email}` : "bq_quests";
+    localStorage.setItem(key, JSON.stringify(quests));
+  }, [quests, mounted, authenticatedUser]);
 
   React.useEffect(() => {
     if (!mounted) return;
-    localStorage.setItem("bq_visited", JSON.stringify(visitedActions));
-  }, [visitedActions, mounted]);
+    const email = authenticatedUser?.email;
+    const key = email ? `bq_visited_${email}` : "bq_visited";
+    localStorage.setItem(key, JSON.stringify(visitedActions));
+  }, [visitedActions, mounted, authenticatedUser]);
 
   React.useEffect(() => {
     if (!mounted) return;
-    localStorage.setItem("bq_claimed", JSON.stringify(claimedQuestIds));
-  }, [claimedQuestIds, mounted]);
+    const email = authenticatedUser?.email;
+    const key = email ? `bq_claimed_${email}` : "bq_claimed";
+    localStorage.setItem(key, JSON.stringify(claimedQuestIds));
+  }, [claimedQuestIds, mounted, authenticatedUser]);
 
   // Event listeners for user activity tracking
   React.useEffect(() => {
@@ -464,15 +507,14 @@ export default function ZealyMobileApp() {
         }
         previousQuestsCountRef.current = mappedQuests.length;
 
-        // Preserve local quest verification status (Done, Pending Verification, Approved, Rejected) to prevent status flickering
+        // Preserve status only if the user is authenticated and has status or active verification
         setQuests((prevQuests) => {
           return mappedQuests.map((newQ) => {
+            const existing = prevQuests.find((p) => p.id === newQ.id);
             if (newQ.id === "checkin") {
-              const existing = prevQuests.find((p) => p.id === "checkin");
               if (existing?.status === "Done") return { ...newQ, status: "Done", completedAt: (existing as any).completedAt };
               return { ...newQ, status: isGateCheckedIn ? "Live" : "Soon" };
             }
-            const existing = prevQuests.find((p) => p.id === newQ.id);
             if (
               existing &&
               (existing.status === "Done" ||
@@ -492,7 +534,11 @@ export default function ZealyMobileApp() {
   }, [isGateCheckedIn]);
 
   const fetchUserVerifications = React.useCallback(async () => {
-    const email = ticketEmail || authenticatedUser?.email || qrPass?.email || "quester@blockquest.ph";
+    const email = authenticatedUser?.email || ticketEmail || qrPass?.email;
+    if (!email) {
+      setUserVerifications([]);
+      return;
+    }
     try {
       const [verifRes, msgRes] = await Promise.all([
         fetch(`/api/admin/verifications?email=${encodeURIComponent(email)}`),
@@ -535,7 +581,7 @@ export default function ZealyMobileApp() {
   }, [ticketEmail, authenticatedUser, qrPass]);
 
   const syncUserData = React.useCallback(async () => {
-    const email = ticketEmail || authenticatedUser?.email || qrPass?.email || "quester@blockquest.ph";
+    const email = authenticatedUser?.email || ticketEmail || qrPass?.email;
     if (!email) return;
 
     try {
@@ -590,26 +636,28 @@ export default function ZealyMobileApp() {
                 ? `Claim your bonus 250 XP for registering with promo code: ${promoCode}`
                 : "Claim your bonus XP for registering with an official promo code or referral link.",
               status: isDone ? "Done" : (promoCode ? "Live" : "Locked"),
-              completedAt: compMap.get(q.id) || (q as any).completedAt,
+              completedAt: isDone ? (compMap.get(q.id) || (q as any).completedAt) : undefined,
             };
           }
           if (compMap.has(q.id)) {
             return { ...q, status: "Done", completedAt: compMap.get(q.id) || (q as any).completedAt };
           }
           if (q.id === "checkin") {
-            return { ...q, status: isCheckedIn ? "Live" : "Soon" };
+            return { ...q, status: isCheckedIn ? "Live" : "Soon", completedAt: undefined };
           }
           const vData = verifMap.get(q.id);
           if (vData?.status === "Pending") {
-            return { ...q, status: "Pending Verification" };
+            return { ...q, status: "Pending Verification", completedAt: undefined };
           }
           if (vData?.status === "Approved") {
             return { ...q, status: "Done", completedAt: vData.createdAt || (q as any).completedAt };
           }
           if (vData?.status === "Rejected") {
-            return { ...q, status: "Rejected" };
+            return { ...q, status: "Rejected", completedAt: undefined };
           }
-          return q;
+          // Quest is neither completed nor verified by this user; restore its proper default status
+          const cleanStatus = getDefaultQuestStatus(q, isCheckedIn);
+          return { ...q, status: cleanStatus, completedAt: undefined };
         })
       );
     } catch {
@@ -959,7 +1007,15 @@ export default function ZealyMobileApp() {
       const promoCode = loginResult.promoCode;
       setUserPromoCode(promoCode || null);
 
-      // Restore existing completions and XP from database
+      // If switching accounts or logging into a new account, restore existing claimed and visited actions from scoped storage
+      if (typeof window !== "undefined") {
+        const scopedClaimed = localStorage.getItem(`bq_claimed_${loginResult.email}`);
+        setClaimedQuestIds(scopedClaimed ? JSON.parse(scopedClaimed) : []);
+        const scopedVisited = localStorage.getItem(`bq_visited_${loginResult.email}`);
+        setVisitedActions(scopedVisited ? JSON.parse(scopedVisited) : {});
+      }
+
+      // Restore existing completions and XP from database, ensuring uncompleted quests are clean
       setQuests((prevQuests) =>
         prevQuests.map((q) => {
           if (q.id === "promo-bonus") {
@@ -971,9 +1027,14 @@ export default function ZealyMobileApp() {
                 ? `Claim your bonus 250 XP for registering with promo code: ${promoCode}`
                 : "Claim your bonus XP for registering with an official promo code or referral link.",
               status: isDone ? "Done" : (promoCode ? "Live" : "Locked"),
+              completedAt: isDone ? (q as any).completedAt : undefined,
             };
           }
-          return completedIds.includes(q.id) ? { ...q, status: "Done" } : q;
+          if (completedIds.includes(q.id)) {
+            return { ...q, status: "Done" };
+          }
+          const cleanStatus = getDefaultQuestStatus(q, loginResult.isCheckedIn);
+          return { ...q, status: cleanStatus, completedAt: undefined };
         })
       );
       setUserXp(loginResult.totalXp || 0);
@@ -2295,7 +2356,7 @@ export default function ZealyMobileApp() {
                       {(() => {
                         const isDiscordQuest = selectedQuest.id === "discord-member" || !!(selectedQuest as any).discord_guild_id || (selectedQuest.title || "").toLowerCase().includes("discord");
                         const isTelegramQuest = selectedQuest.id === "join-tg" || !!(selectedQuest as any).telegram_chat_id || (selectedQuest.title || "").toLowerCase().includes("telegram");
-                        const hasAction = !!selectedQuest.actionUrl && !isDiscordQuest && !isTelegramQuest;
+                        const hasAction = !!selectedQuest.actionUrl;
                         const isActionCompleted = !hasAction || !!visitedActions[selectedQuest.id];
                         return (
                           <>
@@ -2925,175 +2986,254 @@ export default function ZealyMobileApp() {
                                 </button>
                               </div>
                              ) : (selectedQuest.id === "join-tg" || (selectedQuest as any).telegram_chat_id || (selectedQuest.title || "").toLowerCase().includes("telegram")) ? (
-                               <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
-                                 {/* Step 1: Action Button */}
-                                 {selectedQuest.actionUrl && (
-                                   <Link
-                                     href={selectedQuest.actionUrl}
-                                     target={selectedQuest.actionUrl.startsWith("http") ? "_blank" : undefined}
-                                     className="modal-action-btn"
-                                     style={{
-                                       width: "100%",
-                                       padding: "14px",
-                                       borderRadius: 12,
-                                       fontWeight: 800,
-                                       fontSize: "0.95rem",
-                                       textAlign: "center",
-                                       display: "flex",
-                                       alignItems: "center",
-                                       justifyContent: "center",
-                                       gap: 8,
-                                       textDecoration: "none",
-                                       boxSizing: "border-box",
-                                       background: isActionCompleted
-                                         ? "rgba(16, 185, 129, 0.15)"
-                                         : "linear-gradient(135deg, #24A1DE 0%, #0088cc 100%)",
-                                       border: isActionCompleted ? "1px solid rgba(16, 185, 129, 0.4)" : "none",
-                                       color: isActionCompleted ? "#34d399" : "#fff",
-                                       boxShadow: isActionCompleted ? "none" : "0 0 20px rgba(36, 161, 222, 0.35)",
-                                       transition: "all 0.25s ease"
-                                     }}
-                                     onClick={() => {
-                                       setVisitedActions((prev) => ({ ...prev, [selectedQuest.id]: true }));
-                                     }}
-                                   >
-                                     {isActionCompleted
-                                       ? `✓ Step 1 Completed (Joined Telegram)`
-                                       : `✈️ Step 1: Open & Join Telegram Community →`}
-                                   </Link>
-                                 )}
+                                <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 14 }}>
+                                  {/* STEP 1 CARD */}
+                                  <div style={{
+                                    background: isActionCompleted
+                                      ? "rgba(16, 185, 129, 0.08)"
+                                      : "rgba(36, 161, 222, 0.08)",
+                                    border: isActionCompleted
+                                      ? "1px solid rgba(16, 185, 129, 0.3)"
+                                      : "1px solid rgba(36, 161, 222, 0.3)",
+                                    borderRadius: 16,
+                                    padding: "16px",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 10,
+                                    transition: "all 0.3s ease"
+                                  }}>
+                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                      <span style={{
+                                        fontSize: "0.85rem",
+                                        fontWeight: 800,
+                                        letterSpacing: "0.03em",
+                                        color: isActionCompleted ? "#34d399" : "#38bdf8",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 6
+                                      }}>
+                                        <span>{isActionCompleted ? "✅" : "1️⃣"}</span>
+                                        STEP 1: Join the Community
+                                      </span>
+                                      <span style={{
+                                        fontSize: "0.72rem",
+                                        fontWeight: 700,
+                                        padding: "3px 8px",
+                                        borderRadius: 20,
+                                        background: isActionCompleted ? "rgba(16, 185, 129, 0.2)" : "rgba(36, 161, 222, 0.2)",
+                                        color: isActionCompleted ? "#34d399" : "#60a5fa"
+                                      }}>
+                                        {isActionCompleted ? "Completed" : "Required"}
+                                      </span>
+                                    </div>
 
-                                 {!isActionCompleted && (
-                                   <div style={{
-                                     background: "rgba(245, 158, 11, 0.12)",
-                                     border: "1px solid rgba(245, 158, 11, 0.35)",
-                                     padding: "10px 14px",
-                                     borderRadius: 12,
-                                     color: "#fbbf24",
-                                     fontSize: "0.8rem",
-                                     fontWeight: 700,
-                                     textAlign: "center",
-                                     lineHeight: 1.4
-                                   }}>
-                                     ⚠️ <strong>Step 1 Required:</strong> Tap the blue button above to open & join our official Telegram first!
-                                   </div>
-                                 )}
+                                    <p style={{ margin: 0, fontSize: "0.82rem", color: "rgba(255, 255, 255, 0.75)", lineHeight: 1.4 }}>
+                                      Tap the button below to open and join our official Telegram group.
+                                    </p>
 
-                                 {/* Step 2: Info Card */}
-                                 <div style={{
-                                   background: "rgba(36, 161, 222, 0.08)",
-                                   border: "1px solid rgba(36, 161, 222, 0.25)",
-                                   borderRadius: 14,
-                                   padding: "14px 16px"
-                                 }}>
-                                   <span style={{ fontSize: "0.85rem", color: "#60a5fa", fontWeight: 800, display: "flex", alignItems: "center", gap: 6 }}>
-                                     <span>✈️</span> Step 2: Member Bot Verification
-                                   </span>
-                                   <span style={{ fontSize: "0.78rem", color: "rgba(255, 255, 255, 0.8)", display: "block", marginTop: 6, lineHeight: 1.45 }}>
-                                     Enter your Telegram <strong>@username</strong> or <strong>Numeric User ID</strong>. Our bot will verify your active membership in <strong>{(selectedQuest as any).telegram_chat_id || "@block_quest"}</strong>.
-                                   </span>
-                                   <span style={{ fontSize: "0.74rem", color: "#93c5fd", display: "block", marginTop: 6, fontStyle: "italic", background: "rgba(0,0,0,0.25)", padding: "6px 10px", borderRadius: 8 }}>
-                                     💡 Tip: Search <strong>@userinfobot</strong> on Telegram to instantly get your numeric ID if using @username fails.
-                                   </span>
-                                 </div>
+                                    {selectedQuest.actionUrl && (
+                                      <Link
+                                        href={selectedQuest.actionUrl}
+                                        target={selectedQuest.actionUrl.startsWith("http") ? "_blank" : undefined}
+                                        className="modal-action-btn"
+                                        style={{
+                                          width: "100%",
+                                          padding: "13px 16px",
+                                          borderRadius: 12,
+                                          fontWeight: 800,
+                                          fontSize: "0.92rem",
+                                          textAlign: "center",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          gap: 8,
+                                          textDecoration: "none",
+                                          boxSizing: "border-box",
+                                          background: isActionCompleted
+                                            ? "rgba(16, 185, 129, 0.15)"
+                                            : "linear-gradient(135deg, #0088cc 0%, #24A1DE 100%)",
+                                          border: isActionCompleted ? "1px solid rgba(16, 185, 129, 0.4)" : "none",
+                                          color: isActionCompleted ? "#34d399" : "#ffffff",
+                                          boxShadow: isActionCompleted ? "none" : "0 4px 16px rgba(0, 136, 204, 0.4)",
+                                          cursor: "pointer",
+                                          transition: "all 0.25s ease"
+                                        }}
+                                        onClick={() => {
+                                          setVisitedActions((prev) => ({ ...prev, [selectedQuest.id]: true }));
+                                        }}
+                                      >
+                                        {isActionCompleted ? (
+                                          <>
+                                            <span>✓</span> Joined! Click to re-open link ↗
+                                          </>
+                                        ) : (
+                                          <>
+                                            <span>✈️</span> Open & Join Telegram Group ↗
+                                          </>
+                                        )}
+                                      </Link>
+                                    )}
+                                  </div>
 
-                                 {/* Username / ID Input */}
-                                 <input
-                                   type="text"
-                                   placeholder="Enter Telegram @username or Numeric ID..."
-                                   value={telegramUsernameInput}
-                                   onChange={(e) => setTelegramUsernameInput(e.target.value)}
-                                   disabled={!isActionCompleted}
-                                   style={{
-                                     width: "100%",
-                                     padding: "14px",
-                                     borderRadius: 12,
-                                     border: telegramUsernameInput.trim()
-                                       ? "1px solid #38bdf8"
-                                       : "1px solid rgba(36, 161, 222, 0.35)",
-                                     background: "rgba(10, 15, 26, 0.9)",
-                                     color: "#38bdf8",
-                                     fontSize: "0.95rem",
-                                     fontWeight: 700,
-                                     outline: "none",
-                                     boxSizing: "border-box",
-                                     opacity: isActionCompleted ? 1 : 0.45,
-                                     cursor: isActionCompleted ? "text" : "not-allowed",
-                                     boxShadow: telegramUsernameInput.trim() ? "0 0 15px rgba(56, 189, 248, 0.25)" : "none",
-                                     transition: "all 0.25s ease"
-                                   }}
-                                 />
+                                  {/* STEP 2 CARD */}
+                                  <div style={{
+                                    background: !isActionCompleted
+                                      ? "rgba(255, 255, 255, 0.03)"
+                                      : "rgba(36, 161, 222, 0.08)",
+                                    border: !isActionCompleted
+                                      ? "1px dashed rgba(255, 255, 255, 0.15)"
+                                      : "1px solid rgba(36, 161, 222, 0.3)",
+                                    borderRadius: 16,
+                                    padding: "16px",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 12,
+                                    opacity: isActionCompleted ? 1 : 0.65,
+                                    transition: "all 0.3s ease"
+                                  }}>
+                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                      <span style={{
+                                        fontSize: "0.85rem",
+                                        fontWeight: 800,
+                                        letterSpacing: "0.03em",
+                                        color: isActionCompleted ? "#38bdf8" : "rgba(255, 255, 255, 0.5)",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 6
+                                      }}>
+                                        <span>2️⃣</span> STEP 2: Verify Membership
+                                      </span>
+                                      {!isActionCompleted && (
+                                        <span style={{
+                                          fontSize: "0.72rem",
+                                          fontWeight: 700,
+                                          padding: "3px 8px",
+                                          borderRadius: 20,
+                                          background: "rgba(255, 255, 255, 0.08)",
+                                          color: "rgba(255, 255, 255, 0.5)"
+                                        }}>
+                                          Locked
+                                        </span>
+                                      )}
+                                    </div>
 
-                                 {/* Claim Button */}
-                                 <button
-                                   onClick={async () => {
-                                     const email = ticketEmail || authenticatedUser?.email || qrPass?.email;
-                                     if (!email) {
-                                       showNotice("Please register or log in first before claiming Telegram XP.", "warning", "Login Required", "🔑");
-                                       return;
-                                     }
-                                     if (!telegramUsernameInput.trim()) {
-                                       showNotice("Please enter your Telegram username.", "warning", "Username Required", "⚠️");
-                                       return;
-                                     }
-                                     setClaiming(true);
-                                     try {
-                                       const res = await fetch("/api/auth/telegram/verify", {
-                                         method: "POST",
-                                         headers: { "Content-Type": "application/json" },
-                                         body: JSON.stringify({
-                                           quest_id: selectedQuest.id,
-                                           user_email: email,
-                                           telegram_username: telegramUsernameInput.trim(),
-                                         }),
-                                       });
-                                       const json = await safeJson(res);
-                                       if (!res.ok) {
-                                         showNotice(json.error || "Failed to verify Telegram membership.", "error", "Verification Failed", "🔒");
-                                         return;
-                                       }
-                                       showNotice(`Verified! You earned +${json.xp_awarded || selectedQuest.xp} XP!`, "success", "Telegram Verified!", "🎉");
-                                       setSelectedQuest(null);
-                                       syncUserData();
-                                     } catch (err: any) {
-                                       showNotice(err.message, "error", "Error", "✕");
-                                     } finally {
-                                       setClaiming(false);
-                                     }
-                                   }}
-                                   disabled={claiming || !telegramUsernameInput.trim() || !isActionCompleted}
-                                   className="modal-claim-btn"
-                                   style={{
-                                     width: "100%",
-                                     padding: "14px",
-                                     borderRadius: 12,
-                                     fontWeight: 800,
-                                     fontSize: "0.95rem",
-                                     background: (telegramUsernameInput.trim() && isActionCompleted)
-                                       ? "linear-gradient(135deg, #0088cc 0%, #24A1DE 100%)"
-                                       : "rgba(255,255,255,0.08)",
-                                     color: (telegramUsernameInput.trim() && isActionCompleted) ? "#fff" : "rgba(255,255,255,0.35)",
-                                     border: "none",
-                                     cursor: (telegramUsernameInput.trim() && isActionCompleted) ? "pointer" : "not-allowed",
-                                     boxShadow: (telegramUsernameInput.trim() && isActionCompleted) ? "0 0 25px rgba(36, 161, 222, 0.45)" : "none",
-                                     display: "flex",
-                                     alignItems: "center",
-                                    justifyContent: "center",
-                                     gap: 8,
-                                     opacity: (telegramUsernameInput.trim() && isActionCompleted) ? 1 : 0.5,
-                                     transition: "all 0.25s ease"
-                                   }}
-                                 >
-                                   {claiming
-                                     ? "✈️ Checking Telegram Bot..."
-                                     : !isActionCompleted
-                                       ? "🔒 Complete Step 1 Above First"
-                                       : !telegramUsernameInput.trim()
-                                         ? "⌨️ Enter Handle / ID Above to Verify"
-                                         : "✈️ Verify Telegram & Claim XP →"}
-                                 </button>
-                               </div>
-                             ) : (selectedQuest.id === "discord-member" || !!(selectedQuest as any).discord_guild_id || (selectedQuest.title || "").toLowerCase().includes("discord")) ? (
+                                    <p style={{ margin: 0, fontSize: "0.82rem", color: "rgba(255, 255, 255, 0.75)", lineHeight: 1.45 }}>
+                                      Enter your Telegram <strong>@username</strong> or numeric ID. Our bot verifies your active membership in the group.
+                                    </p>
+
+                                    <div style={{ position: "relative" }}>
+                                      <input
+                                        type="text"
+                                        placeholder={isActionCompleted ? "e.g. @your_username or 12345678" : "Complete Step 1 above to unlock"}
+                                        value={telegramUsernameInput}
+                                        onChange={(e) => setTelegramUsernameInput(e.target.value)}
+                                        disabled={!isActionCompleted}
+                                        style={{
+                                          width: "100%",
+                                          padding: "13px 14px",
+                                          borderRadius: 12,
+                                          border: telegramUsernameInput.trim()
+                                            ? "1px solid #38bdf8"
+                                            : "1px solid rgba(255, 255, 255, 0.15)",
+                                          background: isActionCompleted ? "rgba(15, 23, 42, 0.85)" : "rgba(10, 15, 26, 0.4)",
+                                          color: "#f8fafc",
+                                          fontSize: "0.92rem",
+                                          fontWeight: 600,
+                                          outline: "none",
+                                          boxSizing: "border-box",
+                                          cursor: isActionCompleted ? "text" : "not-allowed",
+                                          boxShadow: (telegramUsernameInput.trim() && isActionCompleted) ? "0 0 16px rgba(56, 189, 248, 0.2)" : "none",
+                                          transition: "all 0.25s ease"
+                                        }}
+                                      />
+                                    </div>
+
+                                    <div style={{
+                                      fontSize: "0.74rem",
+                                      color: "rgba(147, 197, 253, 0.9)",
+                                      background: "rgba(15, 23, 42, 0.6)",
+                                      padding: "8px 10px",
+                                      borderRadius: 10,
+                                      lineHeight: 1.4,
+                                      display: "flex",
+                                      alignItems: "flex-start",
+                                      gap: 6
+                                    }}>
+                                      <span>💡</span>
+                                      <span><strong>Tip:</strong> If your account has no public @username or verification fails, message <strong>@userinfobot</strong> on Telegram to get your numeric ID.</span>
+                                    </div>
+
+                                    {/* Claim / Verify Button */}
+                                    <button
+                                      onClick={async () => {
+                                        const email = ticketEmail || authenticatedUser?.email || qrPass?.email;
+                                        if (!email) {
+                                          showNotice("Please register or log in first before claiming Telegram XP.", "warning", "Login Required", "🔑");
+                                          return;
+                                        }
+                                        if (!telegramUsernameInput.trim()) {
+                                          showNotice("Please enter your Telegram username or numeric ID.", "warning", "Input Required", "⚠️");
+                                          return;
+                                        }
+                                        setClaiming(true);
+                                        try {
+                                          const res = await fetch("/api/auth/telegram/verify", {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({
+                                              quest_id: selectedQuest.id,
+                                              user_email: email,
+                                              telegram_username: telegramUsernameInput.trim(),
+                                            }),
+                                          });
+                                          const json = await safeJson(res);
+                                          if (!res.ok) {
+                                            showNotice(json.error || "Failed to verify Telegram membership.", "error", "Verification Failed", "🔒");
+                                            return;
+                                          }
+                                          showNotice(`Verified! You earned +${json.xp_awarded || selectedQuest.xp} XP!`, "success", "Telegram Verified!", "🎉");
+                                          setSelectedQuest(null);
+                                          syncUserData();
+                                        } catch (err: any) {
+                                          showNotice(err.message, "error", "Error", "✕");
+                                        } finally {
+                                          setClaiming(false);
+                                        }
+                                      }}
+                                      disabled={claiming || !telegramUsernameInput.trim() || !isActionCompleted}
+                                      className="modal-claim-btn"
+                                      style={{
+                                        width: "100%",
+                                        padding: "14px",
+                                        borderRadius: 12,
+                                        fontWeight: 800,
+                                        fontSize: "0.95rem",
+                                        background: (telegramUsernameInput.trim() && isActionCompleted)
+                                          ? "linear-gradient(135deg, #0088cc 0%, #24A1DE 100%)"
+                                          : "rgba(255, 255, 255, 0.08)",
+                                        color: (telegramUsernameInput.trim() && isActionCompleted) ? "#ffffff" : "rgba(255, 255, 255, 0.35)",
+                                        border: "none",
+                                        cursor: (telegramUsernameInput.trim() && isActionCompleted) ? "pointer" : "not-allowed",
+                                        boxShadow: (telegramUsernameInput.trim() && isActionCompleted) ? "0 4px 20px rgba(0, 136, 204, 0.45)" : "none",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        gap: 8,
+                                        opacity: (telegramUsernameInput.trim() && isActionCompleted) ? 1 : 0.5,
+                                        transition: "all 0.25s ease"
+                                      }}
+                                    >
+                                      {claiming
+                                        ? "✈️ Checking Telegram Bot..."
+                                        : !isActionCompleted
+                                          ? "🔒 Complete Step 1 First"
+                                          : !telegramUsernameInput.trim()
+                                            ? "Enter Username / ID Above"
+                                            : "Verify Membership & Claim XP →"}
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (selectedQuest.id === "discord-member" || !!(selectedQuest as any).discord_guild_id || (selectedQuest.title || "").toLowerCase().includes("discord")) ? (
                               <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
                                 {selectedQuest.actionUrl && (
                                   <a
