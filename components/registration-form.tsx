@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import type { FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 type Status = {
   type: "idle" | "success" | "error";
@@ -779,28 +780,42 @@ function RegistrationFormContent() {
               </p>
               <p>{qrPass.email}</p>
               <p>Show this at the entrance.</p>
-              <div style={{
-                marginTop: "12px",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "8px 16px",
-                background: "linear-gradient(135deg, rgba(245, 166, 35, 0.15) 0%, rgba(217, 119, 6, 0.2) 100%)",
-                border: "1px solid rgba(245, 166, 35, 0.4)",
-                borderRadius: "20px",
-                boxShadow: "0 0 15px rgba(245, 166, 35, 0.15)"
-              }}>
-                <span style={{ fontSize: "1rem" }}>🏆</span>
+              <Link
+                href="/zealy"
+                style={{
+                  marginTop: "14px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "10px 20px",
+                  background: "linear-gradient(135deg, rgba(245, 166, 35, 0.22) 0%, rgba(217, 119, 6, 0.32) 100%)",
+                  border: "1px solid rgba(245, 166, 35, 0.6)",
+                  borderRadius: "24px",
+                  boxShadow: "0 0 20px rgba(245, 166, 35, 0.3)",
+                  textDecoration: "none",
+                  cursor: "pointer",
+                  transition: "all 0.25s ease"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+                  e.currentTarget.style.boxShadow = "0 0 25px rgba(245, 166, 35, 0.55)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "none";
+                  e.currentTarget.style.boxShadow = "0 0 20px rgba(245, 166, 35, 0.3)";
+                }}
+              >
+                <span style={{ fontSize: "1.1rem" }}>🏆</span>
                 <span style={{
                   color: "#fbbf24",
-                  fontWeight: 800,
-                  fontSize: "0.85rem",
-                  letterSpacing: "0.02em",
+                  fontWeight: 900,
+                  fontSize: "0.88rem",
+                  letterSpacing: "0.03em",
                   textTransform: "uppercase"
                 }}>
-                  Play Quest & Win a Prize
+                  Play Quest & Win a Prize →
                 </span>
-              </div>
+              </Link>
             </div>
           </div>
         </section>
