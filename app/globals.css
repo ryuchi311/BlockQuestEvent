@@ -3457,7 +3457,7 @@ a {
 /* Body — two panels side by side */
 .quest-modal-body {
   display: grid;
-  grid-template-columns: 1fr 310px;
+  grid-template-columns: 1fr 340px;
   gap: 0;
   overflow: hidden;
   flex: 1;
@@ -3720,6 +3720,9 @@ a {
   flex-shrink: 0;
   transition: all 0.25s ease;
 }
+.qf-proof-toggle__switch--on .qf-proof-toggle__knob {
+  left: 18px;
+}
 .qf-proof-toggle__switch--on {
   background: rgba(245,166,35,0.6) !important;
   border-color: rgba(245,166,35,0.8) !important;
@@ -3735,28 +3738,28 @@ a {
   transition: left 0.22s ease;
   box-shadow: 0 1px 4px rgba(0,0,0,0.5);
 }
-.qf-proof-toggle__switch--on .qf-proof-toggle__knob {
-  left: 18px;
-}
 
-/* Modal footer (inside form panel) */
+/* Modal footer (pinned at the bottom of .quest-modal-wide) */
 .quest-modal-footer {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 18px;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  border-top: 1px solid rgba(255,255,255,0.08);
   flex-shrink: 0;
-  background: rgba(255,255,255,0.01);
+  background: rgba(14, 14, 26, 0.98);
+  backdrop-filter: blur(12px);
+  z-index: 10;
 }
 
 /* ── RIGHT: Preview Panel ── */
 .quest-preview-panel {
-  padding: 14px 14px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: rgba(245,166,35,0.02);
+  background: rgba(245,166,35,0.025);
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(245,166,35,0.15) transparent;

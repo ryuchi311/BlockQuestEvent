@@ -627,7 +627,7 @@ export default function AdminPage() {
 
   // ── Pagination states ──
   const [questPage, setQuestPage] = useState(1);
-  const [questPageSize, setQuestPageSize] = useState(10);
+  const [questPageSize, setQuestPageSize] = useState(20);
   useEffect(() => setQuestPage(1), [questSearch, questStatusFilter, questCategoryFilter, questVerificationModeFilter, questPageSize]);
 
   const [verificationPage, setVerificationPage] = useState(1);
@@ -5805,7 +5805,7 @@ export default function AdminPage() {
             <div className="quest-modal-body">
 
               {/* LEFT: Form */}
-              <form onSubmit={saveQuest} className="quest-form-panel">
+              <form id="quest-editor-form" onSubmit={saveQuest} className="quest-form-panel">
 
                 {/* ⚡ Quick Preset Templates */}
                 <div className="qf-section" style={{ background: "rgba(245, 166, 35, 0.03)", padding: "14px 24px" }}>
@@ -6590,32 +6590,18 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {questError && <p className="admin-error-msg">{questError}</p>}
-
-                <div className="quest-modal-footer">
-                  <button type="button" className="admin-cancel-btn" onClick={closeModal}>Cancel</button>
-                  {!editingQuest && (
-                    <button
-                      type="button"
-                      className="admin-cancel-btn qf-draft-btn"
-                      onClick={saveDraftQuest}
-                      disabled={questSaving}
-                      title="Save quest as Draft — hidden from players until you publish it"
-                    >
-                      {questSaving ? "Saving…" : "📝 Save as Draft"}
-                    </button>
-                  )}
-                  <button type="submit" className="admin-save-btn" disabled={questSaving}>
-                    {questSaving ? "Saving…" : editingQuest
-                      ? (editingQuest.status === "Draft" ? "🚀 Publish Quest" : "💾 Save Changes")
-                      : "⚡ Create Quest"}
-                  </button>
-                </div>
+                {questError && <p className="admin-error-msg" style={{ margin: "10px 18px" }}>{questError}</p>}
               </form>
 
-              {/* RIGHT: Live Preview */}
+              {/* RIGHT: Live Preview Panel */}
               <div className="quest-preview-panel">
-                <div className="quest-preview-panel__label">👁 Live Mobile Preview</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div className="quest-preview-panel__label">👁 Live Player Preview</div>
+                  <span style={{ fontSize: "0.65rem", padding: "2px 6px", borderRadius: 4, background: "rgba(245,166,35,0.12)", color: "#fbbf24", fontWeight: 700, border: "1px solid rgba(245,166,35,0.25)" }}>
+                    Zealy Feed Mode
+                  </span>
+                </div>
+
                 <div className="quest-preview-card">
                   <div className="quest-preview-card__top">
                     <div className="quest-preview-card__badges">
@@ -6625,6 +6611,9 @@ export default function AdminPage() {
                       </span>
                       {questForm.requires_proof && (
                         <span className="quest-preview-badge quest-preview-badge--proof">📷 Proof</span>
+                      )}
+                      {questForm.requires_message && (
+                        <span className="quest-preview-badge" style={{ background: "rgba(56, 189, 248, 0.15)", color: "#38bdf8", border: "1px solid rgba(56, 189, 248, 0.35)" }}>💬 Note</span>
                       )}
                       {questForm.is_quiz && (
                         <span className="quest-preview-badge" style={{ background: "rgba(168, 85, 247, 0.2)", color: "#c084fc", border: "1px solid rgba(168, 85, 247, 0.4)" }}>❓ Quiz</span>
@@ -6650,14 +6639,53 @@ export default function AdminPage() {
                   )}
 
                   {questForm.expires_at && (
-                    <div style={{ fontSize: "0.72rem", color: "#f87171", margin: "6px 0", fontWeight: 700 }}>
+                    <div style={{ fontSize: "0.72rem", color: "#f87171", margin: "4px 0", fontWeight: 700 }}>
                       ⏱️ Flash Quest: Ends {new Date(questForm.expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   )}
 
                   {questForm.depends_on_quest_id && (
-                    <div style={{ fontSize: "0.72rem", color: "#94a3b8", margin: "6px 0" }}>
+                    <div style={{ fontSize: "0.72rem", color: "#94a3b8", margin: "4px 0" }}>
                       🔒 Locked until prerequisite is completed
+                    </div>
+                  )}
+
+                  {/* Dynamic interactive preview element depending on verification mode */}
+                  {questForm.requires_proof && (
+                    <div style={{ background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(245,166,35,0.3)", borderRadius: 8, padding: "8px 10px", display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: "1.1rem" }}>📷</span>
+                      <div style={{ fontSize: "0.7rem", color: "#94a3b8" }}>
+                        <strong style={{ color: "#e2e8f0", display: "block" }}>Player Upload Area</strong>
+                        Tap or drag screenshot here to attach proof
+                      </div>
+                    </div>
+                  )}
+
+                  {questForm.requires_message && (
+                    <div style={{ background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(56,189,248,0.3)", borderRadius: 8, padding: "8px 10px", display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: "1.1rem" }}>✍️</span>
+                      <div style={{ fontSize: "0.7rem", color: "#94a3b8" }}>
+                        <strong style={{ color: "#38bdf8", display: "block" }}>Player Note / Feedback Input</strong>
+                        Required text response or public post link
+                      </div>
+                    </div>
+                  )}
+
+                  {questForm.is_quiz && (
+                    <div style={{ background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.3)", borderRadius: 8, padding: "8px 10px" }}>
+                      <div style={{ fontSize: "0.7rem", color: "#c084fc", fontWeight: 700, marginBottom: 4 }}>Player Quiz Input</div>
+                      <div style={{ background: "rgba(0,0,0,0.3)", borderRadius: 6, padding: "5px 8px", fontSize: "0.75rem", color: "#64748b" }}>
+                        Answer: <span style={{ color: "#a855f7", fontWeight: 700 }}>{questForm.quiz_answer || "Not set yet"}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {questForm.passcode && (
+                    <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 8, padding: "8px 10px" }}>
+                      <div style={{ fontSize: "0.7rem", color: "#fbbf24", fontWeight: 700, marginBottom: 4 }}>Secret Passcode PIN</div>
+                      <div style={{ background: "rgba(0,0,0,0.3)", borderRadius: 6, padding: "5px 8px", fontSize: "0.75rem", color: "#fbbf24", fontFamily: "monospace", letterSpacing: "0.1em" }}>
+                        {questForm.passcode}
+                      </div>
                     </div>
                   )}
 
@@ -6666,13 +6694,14 @@ export default function AdminPage() {
                       <span>⚡</span>
                       <span className="quest-preview-xp__value">{questForm.xp || 0} XP</span>
                     </div>
-                    {questForm.action_label ? (
-                      <button className="quest-preview-action-btn" disabled>{questForm.action_label}</button>
-                    ) : (
-                      <button className={`quest-preview-claim-btn${questForm.requires_proof ? " quest-preview-claim-btn--proof" : ""}`} disabled>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      {questForm.action_label && (
+                        <button className="quest-preview-action-btn" type="button" disabled>{questForm.action_label}</button>
+                      )}
+                      <button className={`quest-preview-claim-btn${questForm.requires_proof ? " quest-preview-claim-btn--proof" : ""}`} type="button" disabled>
                         {questForm.requires_proof ? "📷 Upload Proof" : questForm.is_quiz ? "❓ Answer Quiz" : questForm.passcode ? "🔑 Enter Code" : "⚡ Claim XP"}
                       </button>
-                    )}
+                    </div>
                   </div>
                 </div>
 
@@ -6686,10 +6715,55 @@ export default function AdminPage() {
                   {questForm.action_url && (
                     <div className="quest-preview-meta__row">
                       <span>URL</span>
-                      <code style={{ maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{questForm.action_url}</code>
+                      <code style={{ maxWidth: 170, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{questForm.action_url}</code>
+                    </div>
+                  )}
+                  {questForm.telegram_chat_id && (
+                    <div className="quest-preview-meta__row">
+                      <span>Telegram</span><code>{questForm.telegram_chat_id}</code>
+                    </div>
+                  )}
+                  {questForm.discord_guild_id && (
+                    <div className="quest-preview-meta__row">
+                      <span>Discord Server</span><code>{questForm.discord_guild_id}</code>
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+
+            {/* Pinned Full-Width Modal Footer */}
+            <div className="quest-modal-footer">
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.74rem", color: "#94a3b8" }}>
+                <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: questForm.status === "Live" ? "#10b981" : questForm.status === "Draft" ? "#fbbf24" : "#6366f1" }} />
+                <span>Status: <strong style={{ color: "#fff" }}>{questForm.status || "Draft"}</strong></span>
+                <span>•</span>
+                <span>Reward: <strong style={{ color: "#ffd166" }}>+{questForm.xp || 0} XP</strong></span>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button type="button" className="admin-cancel-btn" onClick={closeModal}>Cancel</button>
+                {!editingQuest && (
+                  <button
+                    type="button"
+                    className="admin-cancel-btn qf-draft-btn"
+                    onClick={saveDraftQuest}
+                    disabled={questSaving}
+                    title="Save quest as Draft — hidden from players until you publish it"
+                  >
+                    {questSaving ? "Saving…" : "📝 Save as Draft"}
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  form="quest-editor-form"
+                  className="admin-save-btn"
+                  disabled={questSaving}
+                >
+                  {questSaving ? "Saving…" : editingQuest
+                    ? (editingQuest.status === "Draft" ? "🚀 Publish Quest" : "💾 Save Changes")
+                    : "⚡ Create Quest"}
+                </button>
               </div>
             </div>
           </div>
