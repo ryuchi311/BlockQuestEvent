@@ -257,6 +257,161 @@ function generateRandomShortId(category = "qst"): string {
   return `${prefix}_${rand}`;
 }
 
+interface ExportConfig {
+  title: string;
+  subtitle: string;
+  filenamePrefix: string;
+  sheetName: string;
+  columns: { header: string; width?: number }[];
+  rows: (string | number)[][];
+}
+
+function downloadExcelXml(config: ExportConfig) {
+  const { title, sheetName, filenamePrefix, columns, rows } = config;
+  const nowStr = new Date().toLocaleString();
+
+  const xmlHeader = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
+  <Title>${title}</Title>
+  <Created>${new Date().toISOString()}</Created>
+ </DocumentProperties>
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal">
+   <Alignment ss:Vertical="Center"/>
+   <Borders/>
+   <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#000000"/>
+   <Interior/>
+   <NumberFormat/>
+   <Protection/>
+  </Style>
+  <Style ss:ID="TitleStyle">
+   <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
+   <Font ss:FontName="Calibri" ss:Size="16" ss:Bold="1" ss:Color="#0f172a"/>
+   <Interior ss:Color="#e2e8f0" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="SubTitleStyle">
+   <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
+   <Font ss:FontName="Calibri" ss:Size="10" ss:Italic="1" ss:Color="#475569"/>
+  </Style>
+  <Style ss:ID="HeaderStyle">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#059669"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#cbd5e1"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#cbd5e1"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#cbd5e1"/>
+   </Borders>
+   <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#ffffff"/>
+   <Interior ss:Color="#10b981" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="RowEven">
+   <Alignment ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#e2e8f0"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#e2e8f0"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#e2e8f0"/>
+   </Borders>
+   <Font ss:FontName="Calibri" ss:Size="10" ss:Color="#1e293b"/>
+   <Interior ss:Color="#ffffff" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="RowOdd">
+   <Alignment ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#e2e8f0"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#e2e8f0"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#e2e8f0"/>
+   </Borders>
+   <Font ss:FontName="Calibri" ss:Size="10" ss:Color="#1e293b"/>
+   <Interior ss:Color="#f8fafc" ss:Pattern="Solid"/>
+  </Style>
+ </Styles>
+ <Worksheet ss:Name="${sheetName}">
+  <Table ss:ExpandedColumnCount="${columns.length}" ss:ExpandedRowCount="${rows.length + 4}" x:FullColumns="1" x:FullRows="1" ss:DefaultRowHeight="20">
+   ${columns.map((c) => `<Column ss:Width="${c.width || 120}"/>`).join("\n   ")}
+   <!-- Title Row -->
+   <Row ss:Height="28">
+    <Cell ss:StyleID="TitleStyle" ss:MergeAcross="${columns.length - 1}"><Data ss:Type="String">  📊 ${title}</Data></Cell>
+   </Row>
+   <!-- Meta Row -->
+   <Row ss:Height="18">
+    <Cell ss:StyleID="SubTitleStyle" ss:MergeAcross="${columns.length - 1}"><Data ss:Type="String">  Exported on: ${nowStr} | Total Records: ${rows.length}</Data></Cell>
+   </Row>
+   <!-- Header Row -->
+   <Row ss:Height="24">
+    ${columns.map((col) => `<Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">${col.header}</Data></Cell>`).join("\n    ")}
+   </Row>
+   <!-- Data Rows -->
+   ${rows
+     .map(
+       (r, i) => `   <Row ss:Height="20">
+    ${r
+      .map((val) => {
+        const isNum = typeof val === "number" && !isNaN(val);
+        const safeVal = String(val ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&apos;");
+        return `<Cell ss:StyleID="${i % 2 === 0 ? "RowEven" : "RowOdd"}"><Data ss:Type="${isNum ? "Number" : "String"}">${isNum ? val : safeVal}</Data></Cell>`;
+      })
+      .join("\n    ")}
+   </Row>`
+     )
+     .join("\n")}
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <Selected/>
+   <FreezePanes/>
+   <FrozenNoSplit/>
+   <SplitPane>
+    <RowNumber>3</RowNumber>
+   </SplitPane>
+   <ActivePane>2</ActivePane>
+  </WorksheetOptions>
+ </Worksheet>
+</Workbook>`;
+
+  const blob = new Blob([xmlHeader], { type: "application/vnd.ms-excel;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${filenamePrefix}_${new Date().toISOString().slice(0, 10)}.xls`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function downloadCsv(config: ExportConfig) {
+  const { filenamePrefix, columns, rows } = config;
+  const headers = columns.map((c) => `"${c.header.replace(/"/g, '""')}"`);
+  const dataLines = rows.map((r) =>
+    r
+      .map((val) => {
+        if (typeof val === "number") return val;
+        return `"${String(val ?? "").replace(/"/g, '""')}"`;
+      })
+      .join(",")
+  );
+  const csvContent = "\uFEFF" + [headers.join(","), ...dataLines].join("\r\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${filenamePrefix}_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 // ─── Admin Dashboard ─────────────────────────────────────────────────────────
 export default function AdminPage() {
   // ── Auth gate ──
@@ -572,6 +727,10 @@ export default function AdminPage() {
   const [revealQuestLogEmails, setRevealQuestLogEmails] = useState(false);
   const [revealedQuestLogKeys, setRevealedQuestLogKeys] = useState<Set<string>>(new Set());
   const [copiedMsgId, setCopiedMsgId] = useState<number | null>(null);
+
+  // ── Export Modal & Excel Template State ──
+  const [exportModalConfig, setExportModalConfig] = useState<ExportConfig | null>(null);
+  const [exportFormat, setExportFormat] = useState<"excel" | "csv">("excel");
 
   const [adminNoticeModal, setAdminNoticeModal] = useState<{
     isOpen: boolean;
@@ -1248,122 +1407,139 @@ export default function AdminPage() {
   }
 
   function exportToCSV() {
-    if (filteredAttendees.length === 0) return;
-    const headers = ["ID", "Full Name", "Email", "Phone", "Organization", "Ticket Code", "Checked In", "Checked In At", "Registered At"];
+    if (filteredAttendees.length === 0) {
+      showAdminNotice("No attendees found to export.", "warning", "Export Notice");
+      return;
+    }
+    const columns = [
+      { header: "ID", width: 60 },
+      { header: "Full Name", width: 160 },
+      { header: "Email Address", width: 220 },
+      { header: "Phone Number", width: 140 },
+      { header: "Organization / Company", width: 180 },
+      { header: "Ticket Code", width: 120 },
+      { header: "Checked In?", width: 90 },
+      { header: "Checked In At", width: 160 },
+      { header: "Registered Date", width: 160 },
+    ];
     const rows = filteredAttendees.map((a) => [
       a.id,
-      `"${(a.full_name || "").replace(/"/g, '""')}"`,
-      `"${(a.email || "").replace(/"/g, '""')}"`,
-      `"${(a.phone || "").replace(/"/g, '""')}"`,
-      `"${(a.organization || "").replace(/"/g, '""')}"`,
-      `"${a.ticket_code || ""}"`,
+      a.full_name || "",
+      a.email || "",
+      a.phone || "",
+      a.organization || "",
+      a.ticket_code || "",
       a.checked_in ? "Yes" : "No",
-      a.checked_in_at ? `"${new Date(a.checked_in_at).toLocaleString()}"` : "",
-      `"${new Date(a.created_at).toLocaleString()}"`,
+      a.checked_in_at ? new Date(a.checked_in_at).toLocaleString() : "",
+      new Date(a.created_at).toLocaleString(),
     ]);
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `blockquest_attendees_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+    setExportFormat("excel");
+    setExportModalConfig({
+      title: "BlockQuest Fiesta - Attendees Directory",
+      subtitle: "Full attendee registrations and physical check-in status log",
+      filenamePrefix: "BlockQuest_Attendees",
+      sheetName: "Attendees",
+      columns,
+      rows,
+    });
   }
 
   function exportVerificationsToCSV() {
     if (filteredVerifications.length === 0) {
-      alert("No quest verifications match the current filters.");
+      showAdminNotice("No quest verifications match the current filters.", "warning", "Export Notice");
       return;
     }
-    const headers = [
-      "ID",
-      "Quester Name",
-      "Email",
-      "Ticket Code",
-      "Quest Title",
-      "Category",
-      "XP",
-      "Status",
-      "User Message",
-      "Proof Screenshot URL",
-      "Reviewed By",
-      "Rejection Reason",
-      "Submitted At"
+    const columns = [
+      { header: "ID", width: 60 },
+      { header: "Quester Name", width: 160 },
+      { header: "Email Address", width: 220 },
+      { header: "Ticket Code", width: 110 },
+      { header: "Quest Title", width: 220 },
+      { header: "Category", width: 100 },
+      { header: "XP Reward", width: 90 },
+      { header: "Status", width: 90 },
+      { header: "User Message / Link", width: 250 },
+      { header: "Proof Screenshot URL", width: 280 },
+      { header: "Reviewed By", width: 120 },
+      { header: "Rejection Reason", width: 160 },
+      { header: "Submitted At", width: 160 },
     ];
 
     const rows = filteredVerifications.map((v) => {
       const qCategory = quests.find((q) => q.id === v.quest_id)?.category || "other";
       return [
         v.id,
-        `"${(v.user_name || "").replace(/"/g, '""')}"`,
-        `"${(v.user_email || "").replace(/"/g, '""')}"`,
-        `"${(v.ticket_code || "").replace(/"/g, '""')}"`,
-        `"${(v.quest_title || "").replace(/"/g, '""')}"`,
-        `"${qCategory}"`,
+        v.user_name || "",
+        v.user_email || "",
+        v.ticket_code || "",
+        v.quest_title || "",
+        qCategory,
         v.xp || 0,
-        `"${v.status}"`,
-        `"${(v.user_message || "").replace(/"/g, '""')}"`,
-        `"${(v.proof_url || "").replace(/"/g, '""')}"`,
-        `"${(v.approved_by || "").replace(/"/g, '""')}"`,
-        `"${(v.rejection_reason || "").replace(/"/g, '""')}"`,
-        `"${new Date(v.created_at).toLocaleString()}"`,
+        v.status || "Pending",
+        v.user_message || "",
+        v.proof_url || "",
+        v.approved_by || "",
+        v.rejection_reason || "",
+        new Date(v.created_at).toLocaleString(),
       ];
     });
 
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Quest_Verifications_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    setExportFormat("excel");
+    setExportModalConfig({
+      title: "BlockQuest Fiesta - Quest Verifications Log",
+      subtitle: "Screenshot proof submissions and admin approval audit trail",
+      filenamePrefix: "Quest_Verifications",
+      sheetName: "Verifications",
+      columns,
+      rows,
+    });
   }
 
   function exportMessageNotesToCSV() {
     if (filteredMessageVerifications.length === 0) {
-      alert("No message notes match the current filters.");
+      showAdminNotice("No message notes match the current filters.", "warning", "Export Notice");
       return;
     }
-    const headers = [
-      "ID",
-      "Quester Name",
-      "Email",
-      "Ticket Code",
-      "Quest Title",
-      "XP",
-      "Status",
-      "Message Note",
-      "Attached Photo URL",
-      "Reviewed By",
-      "Rejection Reason",
-      "Submitted At"
+    const columns = [
+      { header: "ID", width: 60 },
+      { header: "Quester Name", width: 160 },
+      { header: "Email Address", width: 220 },
+      { header: "Ticket Code", width: 110 },
+      { header: "Quest Title", width: 220 },
+      { header: "XP Reward", width: 90 },
+      { header: "Status", width: 90 },
+      { header: "Message Note / URL", width: 280 },
+      { header: "Attached Photo URL", width: 280 },
+      { header: "Reviewed By", width: 120 },
+      { header: "Rejection Reason", width: 160 },
+      { header: "Submitted At", width: 160 },
     ];
 
     const rows = filteredMessageVerifications.map((v) => [
       v.id,
-      `"${(v.user_name || "").replace(/"/g, '""')}"`,
-      `"${(v.user_email || "").replace(/"/g, '""')}"`,
-      `"${(v.ticket_code || "").replace(/"/g, '""')}"`,
-      `"${(v.quest_title || "").replace(/"/g, '""')}"`,
+      v.user_name || "",
+      v.user_email || "",
+      v.ticket_code || "",
+      v.quest_title || "",
       v.xp || 0,
-      `"${v.status}"`,
-      `"${(v.user_message || "").replace(/"/g, '""')}"`,
-      `"${(v.proof_url || "").replace(/"/g, '""')}"`,
-      `"${(v.approved_by || "").replace(/"/g, '""')}"`,
-      `"${(v.rejection_reason || "").replace(/"/g, '""')}"`,
-      `"${new Date(v.created_at).toLocaleString()}"`,
+      v.status || "Pending",
+      v.user_message || "",
+      v.proof_url || "",
+      v.approved_by || "",
+      v.rejection_reason || "",
+      new Date(v.created_at).toLocaleString(),
     ]);
 
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Attendee_Message_Notes_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    setExportFormat("excel");
+    setExportModalConfig({
+      title: "BlockQuest Fiesta - Attendee Message Notes",
+      subtitle: "Text feedback notes and social post submissions from questers",
+      filenamePrefix: "Attendee_Message_Notes",
+      sheetName: "MessageNotes",
+      columns,
+      rows,
+    });
   }
 
   // ─── Quest helpers ───────────────────────────────────────────────────────
@@ -4341,27 +4517,44 @@ export default function AdminPage() {
           });
 
           const exportToCSV = () => {
-            const headers = ["Quester Name", "Email", "Ticket Code", "Quest Title", "XP", "Type", "Status", "Reviewed By / Promo", "Notes", "Date"];
+            if (filteredLogs.length === 0) {
+              showAdminNotice("No audit log records match the current filters.", "warning", "Export Notice");
+              return;
+            }
+            const columns = [
+              { header: "Quester Name", width: 160 },
+              { header: "Email Address", width: 220 },
+              { header: "Ticket Code", width: 120 },
+              { header: "Quest Title", width: 220 },
+              { header: "XP Awarded", width: 90 },
+              { header: "Log Type", width: 140 },
+              { header: "Status", width: 90 },
+              { header: "Reviewed By / Promo", width: 140 },
+              { header: "Notes / Message", width: 260 },
+              { header: "Timestamp", width: 160 },
+            ];
             const rows = filteredLogs.map((item: any) => [
-              `"${item.user_name || ""}"`,
-              `"${item.user_email || ""}"`,
-              `"${item.ticket_code || ""}"`,
-              `"${item.quest_title || ""}"`,
+              item.user_name || "",
+              item.user_email || "",
+              item.ticket_code || "",
+              item.quest_title || "",
               item.xp || 0,
-              `"${item.logType}"`,
-              `"${item.status}"`,
-              `"${item.approved_by || (item.status === "Approved" ? "Admin" : "N/A")}"`,
-              `"${(item.user_message || "").replace(/"/g, '""')}"`,
-              `"${new Date(item.created_at).toLocaleString()}"`,
+              item.logType || "",
+              item.status || "",
+              item.approved_by || (item.status === "Approved" ? "Admin" : "N/A"),
+              item.user_message || "",
+              new Date(item.created_at).toLocaleString(),
             ]);
-            const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `Quest_Audit_Report_${new Date().toISOString().slice(0, 10)}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+
+            setExportFormat("excel");
+            setExportModalConfig({
+              title: "BlockQuest Fiesta - Quest Activity & Audit Report",
+              subtitle: "Consolidated event stream (Registrations, Verifications, and Notes)",
+              filenamePrefix: "Quest_Audit_Report",
+              sheetName: "AuditLog",
+              columns,
+              rows,
+            });
           };
 
           return (
@@ -5915,7 +6108,7 @@ export default function AdminPage() {
                     />
                   </label>
 
-                  <div className="admin-form-row" style={{ gridTemplateColumns: "1fr 100px", marginTop: 12 }}>
+                  <div className="admin-form-row" style={{ gridTemplateColumns: "1fr 90px", marginTop: 8 }}>
                     {(() => {
                       const isDuplicateId = !editingQuest && !!questForm.id.trim() && quests.some((q) => q.id.toLowerCase() === questForm.id.trim().toLowerCase());
                       return (
@@ -5923,7 +6116,7 @@ export default function AdminPage() {
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
                             <span>Quest ID (Slug) *</span>
                             {!editingQuest && (
-                              <div style={{ display: "flex", gap: 6 }}>
+                              <div style={{ display: "flex", gap: 5 }}>
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -5936,13 +6129,13 @@ export default function AdminPage() {
                                     border: "1px solid rgba(245, 166, 35, 0.4)",
                                     color: "#fbbf24",
                                     borderRadius: 4,
-                                    padding: "2px 7px",
-                                    fontSize: "0.72rem",
+                                    padding: "1px 6px",
+                                    fontSize: "0.68rem",
                                     cursor: "pointer",
                                     fontWeight: 700,
                                     display: "inline-flex",
                                     alignItems: "center",
-                                    gap: 4
+                                    gap: 3
                                   }}
                                 >
                                   🎲 Random ID
@@ -5959,12 +6152,12 @@ export default function AdminPage() {
                                     border: "1px solid rgba(255, 255, 255, 0.18)",
                                     color: "#cbd5e1",
                                     borderRadius: 4,
-                                    padding: "2px 7px",
-                                    fontSize: "0.72rem",
+                                    padding: "1px 6px",
+                                    fontSize: "0.68rem",
                                     cursor: "pointer",
                                     display: "inline-flex",
                                     alignItems: "center",
-                                    gap: 4
+                                    gap: 3
                                   }}
                                 >
                                   ⚡ Short Slug
@@ -6007,14 +6200,14 @@ export default function AdminPage() {
                     </label>
                   </div>
 
-                  <label className="qf-label" style={{ marginTop: 12 }}>
+                  <label className="qf-label" style={{ marginTop: 8 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span>Instructions / Description</span>
                       <div style={{ display: "flex", gap: 4 }}>
                         <button
                           type="button"
                           className="qf-pill"
-                          style={{ padding: "2px 8px", fontSize: "0.7rem" }}
+                          style={{ padding: "1px 7px", fontSize: "0.68rem" }}
                           onClick={() => setQuestForm((f) => ({
                             ...f,
                             description: (f.description ? f.description + "\n" : "") + "• Step 1:\n• Step 2:\n• Step 3:"
@@ -6025,7 +6218,7 @@ export default function AdminPage() {
                         <button
                           type="button"
                           className="qf-pill"
-                          style={{ padding: "2px 8px", fontSize: "0.7rem" }}
+                          style={{ padding: "1px 7px", fontSize: "0.68rem" }}
                           onClick={() => setQuestForm((f) => ({
                             ...f,
                             description: (f.description ? f.description + "\n" : "") + "1. Visit the page\n2. Complete action\n3. Upload screenshot proof"
@@ -6039,13 +6232,13 @@ export default function AdminPage() {
                       value={questForm.description ?? ""}
                       onChange={(e) => setQuestForm((f) => ({ ...f, description: e.target.value }))}
                       placeholder={`Format example:\n1. Follow @BlockQuest on X\n2. Retweet pinned tweet\n3. Upload screenshot proof below`}
-                      rows={4}
+                      rows={3}
                       className="qf-input"
                       style={{
                         whiteSpace: "pre-wrap",
                         fontFamily: "inherit",
-                        lineHeight: 1.5,
-                        minHeight: 80,
+                        lineHeight: 1.4,
+                        minHeight: 64,
                         resize: "vertical"
                       }}
                     />
@@ -6055,7 +6248,7 @@ export default function AdminPage() {
                 {/* ② Reward, Category & Status */}
                 <div className="qf-section">
                   <div className="qf-section__label">② Reward & Category</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "130px 1fr", gap: 14, marginBottom: 12 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 10, marginBottom: 8 }}>
                     <label className="qf-label">
                       XP Reward
                       <div style={{ position: "relative" }}>
@@ -6066,9 +6259,9 @@ export default function AdminPage() {
                           min={0}
                           step={10}
                           className="qf-input"
-                          style={{ paddingLeft: 34, fontWeight: 800, color: "#ffd166" }}
+                          style={{ paddingLeft: 28, fontWeight: 800, color: "#ffd166" }}
                         />
-                        <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "#f5a623", fontWeight: 800 }}>⚡</span>
+                        <span style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "#f5a623", fontWeight: 800, fontSize: "0.8rem" }}>⚡</span>
                       </div>
                     </label>
 
@@ -6503,6 +6696,125 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* ─── EXPORT MODAL (EXCEL TEMPLATE & CSV) ─── */}
+      {exportModalConfig && (
+        <div className="admin-modal-overlay" onClick={() => setExportModalConfig(null)} style={{ zIndex: 9999 }}>
+          <div className="export-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="export-modal__header">
+              <div className="export-modal__title">
+                <span style={{ fontSize: "1.6rem" }}>📊</span>
+                <div>
+                  <h2>Export Data Report</h2>
+                  <p>{exportModalConfig.subtitle}</p>
+                </div>
+              </div>
+              <button
+                className="admin-modal__close"
+                onClick={() => setExportModalConfig(null)}
+                style={{ background: "transparent", border: "none", color: "#94a3b8", fontSize: "1.2rem", cursor: "pointer" }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="export-modal__body">
+              <div className="export-summary-box">
+                <div className="export-summary-row">
+                  <span>Report Name</span>
+                  <strong>{exportModalConfig.title}</strong>
+                </div>
+                <div className="export-summary-row">
+                  <span>Target Records</span>
+                  <strong style={{ color: "#34d399" }}>{exportModalConfig.rows.length.toLocaleString()} items</strong>
+                </div>
+                <div className="export-summary-row">
+                  <span>Total Columns</span>
+                  <strong>{exportModalConfig.columns.length} columns</strong>
+                </div>
+                <div className="export-summary-row">
+                  <span>Default Filename</span>
+                  <code style={{ fontSize: "0.72rem", color: "#fbbf24" }}>
+                    {exportModalConfig.filenamePrefix}_{new Date().toISOString().slice(0, 10)}.{exportFormat === "excel" ? "xls" : "csv"}
+                  </code>
+                </div>
+              </div>
+
+              <div>
+                <label className="qf-label" style={{ marginBottom: 8 }}>Choose Export Template Format</label>
+                <div className="export-format-grid">
+                  {/* Excel Formatted Template Option */}
+                  <div
+                    className={`export-format-card${exportFormat === "excel" ? " export-format-card--active" : ""}`}
+                    onClick={() => setExportFormat("excel")}
+                  >
+                    <span className="export-format-card__icon">📗</span>
+                    <div className="export-format-card__info">
+                      <span className="export-format-card__title">
+                        Excel Template
+                        <span style={{ fontSize: "0.65rem", padding: "1px 6px", borderRadius: 4, background: "rgba(16,185,129,0.2)", color: "#34d399", fontWeight: 700 }}>
+                          Recommended
+                        </span>
+                      </span>
+                      <span className="export-format-card__desc">
+                        Pre-styled with emerald table headers, custom column widths, alternating zebra rows, and freeze panes.
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Standard CSV Option */}
+                  <div
+                    className={`export-format-card${exportFormat === "csv" ? " export-format-card--active" : ""}`}
+                    onClick={() => setExportFormat("csv")}
+                  >
+                    <span className="export-format-card__icon">📄</span>
+                    <div className="export-format-card__info">
+                      <span className="export-format-card__title">Standard CSV</span>
+                      <span className="export-format-card__desc">
+                        Raw comma-separated values with UTF-8 BOM encoding for Google Sheets, Notion, or custom data pipelines.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ background: "rgba(245, 166, 35, 0.05)", border: "1px solid rgba(245, 166, 35, 0.15)", borderRadius: 10, padding: "10px 14px", fontSize: "0.76rem", color: "#cbd5e1", lineHeight: 1.45 }}>
+                💡 <strong>Template Preview:</strong> The {exportFormat === "excel" ? "Excel Template" : "CSV file"} includes proper quoting, formatted timestamps, and full Unicode UTF-8 support for emojis and international character sets.
+              </div>
+            </div>
+
+            <div className="export-modal__footer">
+              <button
+                type="button"
+                className="admin-cancel-btn"
+                onClick={() => setExportModalConfig(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="admin-save-btn"
+                onClick={() => {
+                  if (exportFormat === "excel") {
+                    downloadExcelXml(exportModalConfig);
+                  } else {
+                    downloadCsv(exportModalConfig);
+                  }
+                  setExportModalConfig(null);
+                }}
+                style={{
+                  background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  color: "#fff",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6
+                }}
+              >
+                <span>{exportFormat === "excel" ? "📥 Download Excel (.xls)" : "📥 Download CSV"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Proof Fullscreen Image Modal with Interactive Zoom & Pan */}
       {selectedProofImage && (
