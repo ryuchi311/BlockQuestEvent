@@ -26,6 +26,27 @@ interface Quest {
   depends_on_quest_id?: string;
 }
 
+export interface MilestoneTier {
+  id?: number | string;
+  name: string;
+  xp: number;
+  icon: string;
+  color: string;
+  sort_order?: number;
+}
+
+const initialMilestones: MilestoneTier[] = [
+  { name: "Rookie Quester", xp: 500, icon: "🥉", color: "#cd7f32", sort_order: 1 },
+  { name: "Explorer", xp: 1200, icon: "🥈", color: "#94a3b8", sort_order: 2 },
+  { name: "Challenger", xp: 2500, icon: "⚔️", color: "#34d399", sort_order: 3 },
+  { name: "Master Quester", xp: 5000, icon: "🥇", color: "#ffd700", sort_order: 4 },
+  { name: "Diamond Hero", xp: 10000, icon: "💎", color: "#38bdf8", sort_order: 5 },
+  { name: "Fiesta Legend", xp: 20000, icon: "👑", color: "#c084fc", sort_order: 6 },
+  { name: "Grandmaster", xp: 35000, icon: "⚡", color: "#fbbf24", sort_order: 7 },
+  { name: "Mythic Sovereign", xp: 50000, icon: "🌌", color: "#f472b6", sort_order: 8 },
+];
+
+
 const initialQuests: Quest[] = [
   {
     id: "register",
@@ -169,6 +190,7 @@ export default function ZealyMobileApp() {
     }
     return 12;
   });
+  const [milestones, setMilestones] = useState<MilestoneTier[]>(initialMilestones);
   const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [proofImage, setProofImage] = useState<string | null>(null);
@@ -563,6 +585,18 @@ export default function ZealyMobileApp() {
     }
   }, [ticketEmail, authenticatedUser, qrPass]);
 
+  const fetchMilestones = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/milestones");
+      const json = await safeJson(res);
+      if (res.ok && Array.isArray(json.milestones) && json.milestones.length > 0) {
+        setMilestones(json.milestones);
+      }
+    } catch {
+      // ignore, keeps fallback
+    }
+  }, []);
+
   const fetchLeaderboard = React.useCallback(async () => {
     try {
       const res = await fetch("/api/leaderboard");
@@ -703,23 +737,26 @@ export default function ZealyMobileApp() {
   useEffect(() => {
     fetchUserVerifications();
     fetchLeaderboard();
+    fetchMilestones();
     syncUserData();
-  }, [fetchUserVerifications, fetchLeaderboard, syncUserData, activeTab]);
+  }, [fetchUserVerifications, fetchLeaderboard, fetchMilestones, syncUserData, activeTab]);
 
-  // Poll for new quests, verifications & user state sync every 3 seconds for fast live updates
+  // Poll for new quests, verifications, milestones & user state sync every 3 seconds for fast live updates
   useEffect(() => {
     loadApiQuests();
     fetchUserVerifications();
     fetchLeaderboard();
+    fetchMilestones();
     syncUserData();
     const interval = setInterval(() => {
       loadApiQuests();
       fetchUserVerifications();
       fetchLeaderboard();
+      fetchMilestones();
       syncUserData();
     }, 3000);
     return () => clearInterval(interval);
-  }, [loadApiQuests, fetchUserVerifications, fetchLeaderboard, syncUserData]);
+  }, [loadApiQuests, fetchUserVerifications, fetchLeaderboard, fetchMilestones, syncUserData]);
 
   const handleQuestClick = (quest: Quest) => {
     // Check prerequisite lock
@@ -2010,20 +2047,11 @@ export default function ZealyMobileApp() {
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 6, maxHeight: "230px", overflowY: "auto", paddingRight: 2 }}>
-                    {[
-                      { name: "Rookie Quester", xp: 500, icon: "🥉", color: "#cd7f32" },
-                      { name: "Explorer", xp: 1200, icon: "🥈", color: "#94a3b8" },
-                      { name: "Challenger", xp: 2500, icon: "⚔️", color: "#34d399" },
-                      { name: "Master Quester", xp: 5000, icon: "🥇", color: "#ffd700" },
-                      { name: "Diamond Hero", xp: 10000, icon: "💎", color: "#38bdf8" },
-                      { name: "Fiesta Legend", xp: 20000, icon: "👑", color: "#c084fc" },
-                      { name: "Grandmaster", xp: 35000, icon: "⚡", color: "#fbbf24" },
-                      { name: "Mythic Sovereign", xp: 50000, icon: "🌌", color: "#f472b6" },
-                    ].map((b) => {
+                    {(milestones && milestones.length > 0 ? milestones : initialMilestones).map((b) => {
                       const unlocked = userXp >= b.xp;
                       return (
                         <div
-                          key={b.name}
+                          key={b.id || b.name}
                           style={{
                             background: unlocked ? "rgba(255,255,255,0.06)" : "rgba(10, 14, 24, 0.45)",
                             border: `1px solid ${unlocked ? b.color : "rgba(255,255,255,0.07)"}`,

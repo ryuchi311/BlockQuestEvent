@@ -203,3 +203,17 @@ CREATE TABLE IF NOT EXISTS public.promo_codes (
 );
 
 GRANT ALL ON TABLE public.promo_codes TO postgres, service_role, anon, authenticated;
+
+-- Milestone Badges & Tiers table
+CREATE TABLE IF NOT EXISTS public.milestones (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name TEXT NOT NULL,
+  xp INTEGER NOT NULL DEFAULT 100,
+  icon TEXT NOT NULL DEFAULT '🥉',
+  color TEXT NOT NULL DEFAULT '#cd7f32',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+GRANT ALL ON TABLE public.milestones TO postgres, service_role, anon, authenticated;

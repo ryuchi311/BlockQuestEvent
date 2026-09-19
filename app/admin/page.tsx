@@ -76,8 +76,18 @@ interface AdminUser {
   requires_password_change?: boolean;
 }
 
+export interface MilestoneTier {
+  id: number | string;
+  name: string;
+  xp: number;
+  icon: string;
+  color: string;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
+}
 
-const ADMIN_TABS = ["scanner", "attendees", "quests", "verifications", "messages", "questlog", "socials", "booths", "staff", "promocodes"] as const;
+const ADMIN_TABS = ["scanner", "attendees", "quests", "milestones", "verifications", "messages", "questlog", "socials", "booths", "staff", "promocodes"] as const;
 type AdminTab = (typeof ADMIN_TABS)[number];
 
 const STATUS_OPTIONS: Quest["status"][] = ["Live", "Soon", "Done", "Draft"];
@@ -529,6 +539,14 @@ export default function AdminPage() {
   };
   const [verifications, setVerifications] = useState<QuestVerification[]>([]);
   const [promoCodes, setPromoCodes] = useState<any[]>([]);
+
+  // ── Milestones & Tiers State ──
+  const [milestones, setMilestones] = useState<MilestoneTier[]>([]);
+  const [showMilestoneModal, setShowMilestoneModal] = useState(false);
+  const [milestoneForm, setMilestoneForm] = useState({ id: "" as string | number, name: "", xp: 500, icon: "🥉", color: "#ffd700", sort_order: 1 });
+  const [milestoneSaving, setMilestoneSaving] = useState(false);
+  const [milestoneError, setMilestoneError] = useState("");
+  const [milestoneSearch, setMilestoneSearch] = useState("");
   
   // Promo Code State
   const [showPromoCodeModal, setShowPromoCodeModal] = useState(false);
@@ -1089,6 +1107,24 @@ export default function AdminPage() {
     }
   }, [adminUser, adminFetch]);
 
+  const fetchMilestones = useCallback(async (isBackground?: any) => {
+    const isBg = isBackground === true;
+    if (!isBg) {
+      setLoading(true);
+      setError("");
+    }
+    try {
+      const res = await adminFetch("/api/admin/milestones");
+      const json = await safeJson(res);
+      if (!res.ok) throw new Error(json.error || "Failed to load milestone tiers.");
+      setMilestones(json.milestones ?? []);
+    } catch (err: any) {
+      if (!isBg) setError(err.message);
+    } finally {
+      if (!isBg) setLoading(false);
+    }
+  }, [adminFetch]);
+
   // Load ALL data immediately on auth so stat cards are always accurate
   useEffect(() => {
     if (!authed) return;
@@ -1097,13 +1133,15 @@ export default function AdminPage() {
     fetchVerifications();
     fetchMessageNotes();
     fetchPromoCodes();
-  }, [authed, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes, fetchPromoCodes]);
+    fetchMilestones();
+  }, [authed, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes, fetchPromoCodes, fetchMilestones]);
 
   // Refresh current tab data when switching tabs
   useEffect(() => {
     if (!authed) return;
     if (tab === "attendees") fetchAttendees();
     else if (tab === "quests") fetchQuests();
+    else if (tab === "milestones") fetchMilestones();
     else if (tab === "verifications") fetchVerifications();
     else if (tab === "messages") fetchMessageNotes();
     else if (tab === "promocodes") fetchPromoCodes();
@@ -1114,7 +1152,7 @@ export default function AdminPage() {
     }
     else if (tab === "staff") fetchAdminUsers();
     else if (tab === "socials") fetchSocialMissions();
-  }, [tab, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes, fetchPromoCodes, fetchAdminUsers, fetchSocialMissions]);
+  }, [tab, fetchAttendees, fetchQuests, fetchMilestones, fetchVerifications, fetchMessageNotes, fetchPromoCodes, fetchAdminUsers, fetchSocialMissions]);
 
   // ── Auto Refresh (Background Silent Polling - No UI Flickering) ──
   useEffect(() => {
@@ -1122,6 +1160,7 @@ export default function AdminPage() {
     const interval = setInterval(() => {
       if (tab === "attendees") fetchAttendees(true);
       else if (tab === "quests") fetchQuests(true);
+      else if (tab === "milestones") fetchMilestones(true);
       else if (tab === "verifications") fetchVerifications(true);
       else if (tab === "messages") fetchMessageNotes(true);
       else if (tab === "promocodes") fetchPromoCodes(true);
@@ -1134,7 +1173,7 @@ export default function AdminPage() {
       else if (tab === "socials") fetchSocialMissions(true);
     }, 10000);
     return () => clearInterval(interval);
-  }, [authed, autoRefresh, tab, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes, fetchPromoCodes, fetchAdminUsers, fetchSocialMissions]);
+  }, [authed, autoRefresh, tab, fetchAttendees, fetchQuests, fetchMilestones, fetchVerifications, fetchMessageNotes, fetchPromoCodes, fetchAdminUsers, fetchSocialMissions]);
 
   const [rejectingItem, setRejectingItem] = useState<QuestVerification | null>(null);
   const [rejectionReasonInput, setRejectionReasonInput] = useState("");
@@ -2555,8 +2594,8 @@ export default function AdminPage() {
           if (role === "superadmin") return true;
           if (role === "verifier") return t === "verifications" || t === "messages" || t === "questlog";
           if (role === "manage_attendees" || role === "manage_quester") return t === "scanner" || t === "attendees" || t === "questlog";
-          if (role === "admin" || role === "manager") return t === "scanner" || t === "attendees" || t === "quests" || t === "verifications" || t === "messages" || t === "questlog" || t === "booths" || t === "promocodes";
-          if (role === "viewer") return t === "scanner" || t === "attendees" || t === "quests" || t === "verifications" || t === "messages" || t === "questlog";
+          if (role === "admin" || role === "manager") return t === "scanner" || t === "attendees" || t === "quests" || t === "milestones" || t === "verifications" || t === "messages" || t === "questlog" || t === "booths" || t === "promocodes";
+          if (role === "viewer") return t === "scanner" || t === "attendees" || t === "quests" || t === "milestones" || t === "verifications" || t === "messages" || t === "questlog";
           return false;
         }).map((t) => (
           <button
@@ -2571,19 +2610,21 @@ export default function AdminPage() {
                   ? "🎫"
                   : t === "quests"
                     ? "⚡"
-                    : t === "messages"
-                      ? "💬"
-                      : t === "questlog"
-                        ? "📊"
-                        : t === "booths"
-                          ? "🏪"
-                          : t === "staff"
-                            ? "🛡️"
-                            : t === "socials"
-                              ? "📣"
-                              : t === "promocodes"
-                                ? "🎁"
-                                : "🔍"}
+                    : t === "milestones"
+                      ? "🏆"
+                      : t === "messages"
+                        ? "💬"
+                        : t === "questlog"
+                          ? "📊"
+                          : t === "booths"
+                            ? "🏪"
+                            : t === "staff"
+                              ? "🛡️"
+                              : t === "socials"
+                                ? "📣"
+                                : t === "promocodes"
+                                  ? "🎁"
+                                  : "🔍"}
             </span>
             <span className="admin-tab-text">
               {t === "scanner"
@@ -2592,19 +2633,21 @@ export default function AdminPage() {
                   ? " Attendees"
                   : t === "quests"
                     ? " Event Quests"
-                    : t === "messages"
-                      ? ` Message Notes (${messageNotes.filter((v) => v.status === "Pending").length})`
-                      : t === "questlog"
-                        ? " Quest Log"
-                        : t === "booths"
-                          ? " Booth Stations"
-                          : t === "staff"
-                            ? " Staff / Admins"
-                            : t === "socials"
-                              ? " Social Missions"
-                              : t === "promocodes"
-                                ? " Promo Codes"
-                                : ` Quest Verifications (${verifications.filter((v) => !v.user_message && v.status === "Pending").length})`}
+                    : t === "milestones"
+                      ? " Milestones & Tiers"
+                      : t === "messages"
+                        ? ` Message Notes (${messageNotes.filter((v) => v.status === "Pending").length})`
+                        : t === "questlog"
+                          ? " Quest Log"
+                          : t === "booths"
+                            ? " Booth Stations"
+                            : t === "staff"
+                              ? " Staff / Admins"
+                              : t === "socials"
+                                ? " Social Missions"
+                                : t === "promocodes"
+                                  ? " Promo Codes"
+                                  : ` Quest Verifications (${verifications.filter((v) => !v.user_message && v.status === "Pending").length})`}
             </span>
           </button>
         ))}
@@ -8417,6 +8460,316 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* ─── MILESTONES & TIERS TAB ─── */}
+      {tab === "milestones" && (adminUser?.role === "superadmin" || adminUser?.role === "admin" || adminUser?.role === "manager" || adminUser?.role === "viewer") && !loading && (
+        <div className="admin-fade-in" style={{ padding: "0 4px" }}>
+          {/* Header & Actions Bar */}
+          <div className="admin-header-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, marginBottom: 20 }}>
+            <div>
+              <h2 style={{ display: "flex", alignItems: "center", gap: 10, margin: 0, fontSize: "1.4rem", fontWeight: 800 }}>
+                <span style={{ fontSize: "1.6rem" }}>🏆</span> Milestone Badges & Level Tiers
+              </h2>
+              <p style={{ margin: "4px 0 0", color: "var(--text-muted)", fontSize: "0.9rem" }}>
+                Configure milestone achievements, unlock thresholds (XP), badge icons, and card accent colors for attendees.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <input
+                type="text"
+                className="admin-search-input"
+                placeholder="Search milestone tiers..."
+                value={milestoneSearch}
+                onChange={(e) => setMilestoneSearch(e.target.value)}
+                style={{ width: 220, padding: "9px 14px", borderRadius: 10 }}
+              />
+              {(adminUser?.role === "superadmin" || adminUser?.role === "admin" || adminUser?.role === "manager") && (
+                <button
+                  onClick={() => {
+                    const nextOrder = milestones.length > 0 ? Math.max(...milestones.map(m => m.sort_order || 0)) + 1 : 1;
+                    setMilestoneForm({ id: "", name: "", xp: 1000, icon: "🎖️", color: "#ffd700", sort_order: nextOrder });
+                    setMilestoneError("");
+                    setShowMilestoneModal(true);
+                  }}
+                  className="admin-refresh-btn"
+                  style={{
+                    background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                    color: "#120b02",
+                    fontWeight: 800,
+                    boxShadow: "0 4px 14px rgba(245, 166, 35, 0.35)",
+                    padding: "9px 18px",
+                    borderRadius: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6
+                  }}
+                >
+                  <span>+</span> Add Milestone Tier
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Metrics Bar */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: 12,
+            marginBottom: 20
+          }}>
+            <div style={{
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: 14,
+              padding: "14px 18px",
+              display: "flex",
+              alignItems: "center",
+              gap: 12
+            }}>
+              <span style={{ fontSize: "1.8rem" }}>🏆</span>
+              <div>
+                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Total Milestone Tiers</div>
+                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fff" }}>{milestones.length}</div>
+              </div>
+            </div>
+
+            <div style={{
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: 14,
+              padding: "14px 18px",
+              display: "flex",
+              alignItems: "center",
+              gap: 12
+            }}>
+              <span style={{ fontSize: "1.8rem" }}>⚡</span>
+              <div>
+                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Entry Tier XP</div>
+                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#10b981" }}>
+                  {milestones.length > 0 ? `${Math.min(...milestones.map(m => m.xp))} XP` : "0 XP"}
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: 14,
+              padding: "14px 18px",
+              display: "flex",
+              alignItems: "center",
+              gap: 12
+            }}>
+              <span style={{ fontSize: "1.8rem" }}>👑</span>
+              <div>
+                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Apex Pinnacle Tier</div>
+                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--gold-light)" }}>
+                  {milestones.length > 0 ? `${Math.max(...milestones.map(m => m.xp)).toLocaleString()} XP` : "0 XP"}
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: 14,
+              padding: "14px 18px",
+              display: "flex",
+              alignItems: "center",
+              gap: 12
+            }}>
+              <span style={{ fontSize: "1.8rem" }}>📱</span>
+              <div>
+                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Live Sync Status</div>
+                <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#38bdf8" }}>
+                  Active on Mobile App
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Table */}
+          {milestones.length === 0 ? (
+            <div style={{
+              textAlign: "center",
+              padding: "60px 20px",
+              background: "rgba(255, 255, 255, 0.02)",
+              borderRadius: 16,
+              border: "1px dashed rgba(255, 255, 255, 0.1)"
+            }}>
+              <span style={{ fontSize: "3rem", display: "block", marginBottom: 12 }}>🏆</span>
+              <h3 style={{ margin: "0 0 6px", color: "#fff", fontSize: "1.1rem" }}>No milestone tiers found</h3>
+              <p style={{ margin: "0 0 16px", color: "var(--text-muted)", fontSize: "0.9rem" }}>
+                Add your first milestone tier to reward attendees when they accumulate XP.
+              </p>
+              {(adminUser?.role === "superadmin" || adminUser?.role === "admin" || adminUser?.role === "manager") && (
+                <button
+                  onClick={() => {
+                    setMilestoneForm({ id: "", name: "", xp: 500, icon: "🥉", color: "#ffd700", sort_order: 1 });
+                    setMilestoneError("");
+                    setShowMilestoneModal(true);
+                  }}
+                  className="admin-refresh-btn"
+                  style={{
+                    background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                    color: "#120b02",
+                    fontWeight: 800,
+                    padding: "9px 18px",
+                    borderRadius: 10
+                  }}
+                >
+                  + Add Milestone Tier
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="admin-table-container" style={{ background: "rgba(10, 10, 20, 0.6)", borderRadius: 16, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 60 }}>Order</th>
+                    <th>Badge & Tier Name</th>
+                    <th>XP Required</th>
+                    <th>Card Preview</th>
+                    <th>Color Accent</th>
+                    <th style={{ textAlign: "right" }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {milestones
+                    .filter(m => !milestoneSearch || m.name.toLowerCase().includes(milestoneSearch.toLowerCase()))
+                    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.xp - b.xp)
+                    .map((m) => {
+                      return (
+                        <tr key={m.id || m.name}>
+                          <td>
+                            <span style={{ fontWeight: 800, color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                              #{m.sort_order ?? "-"}
+                            </span>
+                          </td>
+
+                          <td>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <span style={{
+                                fontSize: "1.4rem",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                width: 36,
+                                height: 36,
+                                borderRadius: 8,
+                                background: `${m.color || "#ffd700"}20`,
+                                border: `1px solid ${m.color || "#ffd700"}50`
+                              }}>
+                                {m.icon || "🏆"}
+                              </span>
+                              <div>
+                                <strong style={{ color: "#fff", fontSize: "0.95rem" }}>{m.name}</strong>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td>
+                            <span style={{
+                              fontWeight: 800,
+                              color: "#f5a623",
+                              background: "rgba(245, 166, 35, 0.12)",
+                              padding: "4px 12px",
+                              borderRadius: 20,
+                              fontSize: "0.85rem",
+                              border: "1px solid rgba(245, 166, 35, 0.25)"
+                            }}>
+                              {m.xp.toLocaleString()} XP
+                            </span>
+                          </td>
+
+                          <td>
+                            <div style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                              padding: "5px 10px",
+                              borderRadius: 8,
+                              background: "rgba(255, 255, 255, 0.05)",
+                              border: `1px solid ${m.color || "#ffd700"}`,
+                              boxShadow: `0 0 10px ${m.color || "#ffd700"}22`
+                            }}>
+                              <span style={{ fontSize: "1rem" }}>{m.icon || "🏆"}</span>
+                              <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#fff" }}>{m.name}</span>
+                              <span style={{ fontSize: "0.68rem", color: m.color || "#ffd700", fontWeight: 700 }}>✓</span>
+                            </div>
+                          </td>
+
+                          <td>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{
+                                width: 16,
+                                height: 16,
+                                borderRadius: 4,
+                                backgroundColor: m.color || "#ffd700",
+                                display: "inline-block",
+                                border: "1px solid rgba(255,255,255,0.3)"
+                              }} />
+                              <code style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>{m.color || "#ffd700"}</code>
+                            </div>
+                          </td>
+
+                          <td style={{ textAlign: "right" }}>
+                            {(adminUser?.role === "superadmin" || adminUser?.role === "admin" || adminUser?.role === "manager") ? (
+                              <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                                <button
+                                  className="admin-edit-btn"
+                                  onClick={() => {
+                                    setMilestoneForm({
+                                      id: m.id,
+                                      name: m.name,
+                                      xp: m.xp,
+                                      icon: m.icon || "🏆",
+                                      color: m.color || "#ffd700",
+                                      sort_order: m.sort_order ?? 1,
+                                    });
+                                    setMilestoneError("");
+                                    setShowMilestoneModal(true);
+                                  }}
+                                  style={{ padding: "6px 12px", fontSize: "0.8rem" }}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  className="admin-delete-btn"
+                                  onClick={async () => {
+                                    if (!confirm(`Are you sure you want to delete milestone tier "${m.name}" (${m.xp} XP)?`)) return;
+                                    try {
+                                      const res = await adminFetch("/api/admin/milestones", {
+                                        method: "DELETE",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ id: m.id }),
+                                      });
+                                      if (!res.ok) throw new Error("Failed to delete milestone tier");
+                                      fetchMilestones();
+                                    } catch (e: any) {
+                                      alert(e.message);
+                                    }
+                                  }}
+                                  style={{ padding: "6px 12px", fontSize: "0.8rem" }}
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>View Only</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ─── Promo Code Form Modal ─── */}
       {showPromoCodeModal && (
         <div className="admin-modal-overlay" onClick={() => setShowPromoCodeModal(false)}>
@@ -8629,6 +8982,291 @@ export default function AdminPage() {
                   }}
                 >
                   {promoCodeSaving ? "Saving..." : promoCodeForm.id ? "Update Promo Code" : "Create Promo Code"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Milestone Tier Form Modal ─── */}
+      {showMilestoneModal && (
+        <div className="admin-modal-overlay" onClick={() => setShowMilestoneModal(false)}>
+          <div className="admin-modal" style={{ maxWidth: 520, borderRadius: 20, overflow: "hidden" }} onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal__header" style={{ padding: "24px 28px 16px", borderBottom: "1px solid rgba(255, 255, 255, 0.08)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: "1.6rem" }}>{milestoneForm.icon || "🏆"}</span>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "#fff" }}>
+                    {milestoneForm.id ? "Edit Milestone Tier" : "Add Milestone Tier"}
+                  </h2>
+                  <p style={{ margin: "2px 0 0", fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                    Configure tier achievement name, required XP, badge icon, and color theme.
+                  </p>
+                </div>
+              </div>
+              <button className="admin-modal__close" onClick={() => setShowMilestoneModal(false)}>✕</button>
+            </div>
+
+            <form
+              className="admin-quest-form"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setMilestoneSaving(true);
+                setMilestoneError("");
+                try {
+                  const res = await adminFetch("/api/admin/milestones", {
+                    method: milestoneForm.id ? "PATCH" : "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      id: milestoneForm.id || undefined,
+                      name: milestoneForm.name.trim(),
+                      xp: Number(milestoneForm.xp),
+                      icon: milestoneForm.icon.trim() || "🏆",
+                      color: milestoneForm.color.trim() || "#ffd700",
+                      sort_order: Number(milestoneForm.sort_order),
+                    }),
+                  });
+                  const json = await safeJson(res);
+                  if (!res.ok) throw new Error(json.error || "Failed to save milestone tier.");
+                  setShowMilestoneModal(false);
+                  fetchMilestones();
+                } catch (err: any) {
+                  setMilestoneError(err.message);
+                } finally {
+                  setMilestoneSaving(false);
+                }
+              }}
+              style={{ padding: "20px 28px 24px" }}
+            >
+              {milestoneError && (
+                <div style={{
+                  background: "rgba(239, 68, 68, 0.15)",
+                  border: "1px solid rgba(239, 68, 68, 0.3)",
+                  color: "#ef4444",
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  fontSize: "0.85rem",
+                  fontWeight: 600
+                }}>
+                  {milestoneError}
+                </div>
+              )}
+
+              <div className="admin-form-row">
+                <label style={{ flex: 2 }}>
+                  Tier Title / Badge Name *
+                  <input
+                    type="text"
+                    required
+                    value={milestoneForm.name}
+                    onChange={(e) => setMilestoneForm({ ...milestoneForm, name: e.target.value })}
+                    placeholder="e.g. Master Quester, Apex Legend"
+                  />
+                </label>
+
+                <label style={{ flex: 1 }}>
+                  Badge Icon *
+                  <input
+                    type="text"
+                    required
+                    value={milestoneForm.icon}
+                    onChange={(e) => setMilestoneForm({ ...milestoneForm, icon: e.target.value })}
+                    placeholder="e.g. 🏆"
+                    style={{ textAlign: "center", fontSize: "1.2rem" }}
+                  />
+                </label>
+              </div>
+
+              {/* Icon Presets */}
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", margin: "-6px 0 10px" }}>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 700 }}>Preset Icons:</span>
+                {["🥉", "🥈", "⚔️", "🥇", "💎", "👑", "⚡", "🌌", "🔥", "🎖️", "🌟", "🛡️", "🪐", "🏆"].map((ic) => (
+                  <button
+                    key={ic}
+                    type="button"
+                    onClick={() => setMilestoneForm({ ...milestoneForm, icon: ic })}
+                    style={{
+                      padding: "3px 7px",
+                      borderRadius: 6,
+                      fontSize: "1rem",
+                      background: milestoneForm.icon === ic ? "rgba(245, 166, 35, 0.25)" : "rgba(255, 255, 255, 0.05)",
+                      border: milestoneForm.icon === ic ? "1px solid rgba(245, 166, 35, 0.6)" : "1px solid rgba(255, 255, 255, 0.1)",
+                      cursor: "pointer"
+                    }}
+                  >
+                    {ic}
+                  </button>
+                ))}
+              </div>
+
+              <div className="admin-form-row">
+                <label>
+                  XP Required To Unlock *
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    step="100"
+                    value={milestoneForm.xp}
+                    onChange={(e) => setMilestoneForm({ ...milestoneForm, xp: Number(e.target.value) })}
+                  />
+                  <small>Attendees must accumulate this much total XP to unlock.</small>
+                </label>
+
+                <label>
+                  Sort Order *
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={milestoneForm.sort_order}
+                    onChange={(e) => setMilestoneForm({ ...milestoneForm, sort_order: Number(e.target.value) })}
+                  />
+                  <small>Progression sequence order (e.g. 1, 2, 3...)</small>
+                </label>
+              </div>
+
+              {/* XP Quick Presets */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "-6px 0 12px" }}>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 700 }}>XP Presets:</span>
+                {[500, 1200, 2500, 5000, 10000, 20000, 35000, 50000].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setMilestoneForm({ ...milestoneForm, xp: preset })}
+                    style={{
+                      padding: "2px 7px",
+                      borderRadius: 6,
+                      fontSize: "0.72rem",
+                      fontWeight: 700,
+                      background: milestoneForm.xp === preset ? "rgba(245, 166, 35, 0.25)" : "rgba(255, 255, 255, 0.05)",
+                      color: milestoneForm.xp === preset ? "var(--gold-light)" : "var(--text-secondary)",
+                      border: milestoneForm.xp === preset ? "1px solid rgba(245, 166, 35, 0.5)" : "1px solid rgba(255, 255, 255, 0.1)",
+                      cursor: "pointer"
+                    }}
+                  >
+                    {preset >= 1000 ? `${preset / 1000}k` : preset}
+                  </button>
+                ))}
+              </div>
+
+              <div className="admin-form-row">
+                <label style={{ flex: 1 }}>
+                  Accent Color Theme *
+                  <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 4 }}>
+                    <input
+                      type="color"
+                      value={milestoneForm.color}
+                      onChange={(e) => setMilestoneForm({ ...milestoneForm, color: e.target.value })}
+                      style={{ width: 44, height: 38, padding: 0, borderRadius: 8, border: "none", cursor: "pointer", background: "none" }}
+                    />
+                    <input
+                      type="text"
+                      required
+                      value={milestoneForm.color}
+                      onChange={(e) => setMilestoneForm({ ...milestoneForm, color: e.target.value })}
+                      placeholder="#ffd700"
+                      style={{ flex: 1, fontFamily: "monospace" }}
+                    />
+                  </div>
+                </label>
+              </div>
+
+              {/* Color Presets */}
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", margin: "-6px 0 14px" }}>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 700 }}>Color Presets:</span>
+                {[
+                  { name: "Bronze", hex: "#cd7f32" },
+                  { name: "Silver", hex: "#94a3b8" },
+                  { name: "Emerald", hex: "#34d399" },
+                  { name: "Gold", hex: "#ffd700" },
+                  { name: "Diamond", hex: "#38bdf8" },
+                  { name: "Amethyst", hex: "#c084fc" },
+                  { name: "Amber", hex: "#fbbf24" },
+                  { name: "Rose", hex: "#f472b6" },
+                  { name: "Crimson", hex: "#ef4444" },
+                ].map((col) => (
+                  <button
+                    key={col.hex}
+                    type="button"
+                    onClick={() => setMilestoneForm({ ...milestoneForm, color: col.hex })}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      padding: "3px 8px",
+                      borderRadius: 6,
+                      fontSize: "0.72rem",
+                      fontWeight: 700,
+                      background: milestoneForm.color.toLowerCase() === col.hex.toLowerCase() ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.05)",
+                      border: milestoneForm.color.toLowerCase() === col.hex.toLowerCase() ? `1px solid ${col.hex}` : "1px solid rgba(255,255,255,0.1)",
+                      color: "#fff",
+                      cursor: "pointer"
+                    }}
+                  >
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: col.hex }} />
+                    {col.name}
+                  </button>
+                ))}
+              </div>
+
+              {/* Live Preview Card */}
+              <div style={{
+                background: "rgba(255, 255, 255, 0.03)",
+                border: "1px dashed rgba(255, 255, 255, 0.15)",
+                padding: "14px",
+                borderRadius: 12,
+                marginTop: 6
+              }}>
+                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700, marginBottom: 8 }}>
+                  Quester App Live Card Preview:
+                </div>
+                <div style={{
+                  background: "rgba(255,255,255,0.06)",
+                  border: `1px solid ${milestoneForm.color || "#ffd700"}`,
+                  borderRadius: "8px",
+                  padding: "8px 12px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  boxShadow: `0 0 12px ${milestoneForm.color || "#ffd700"}25`
+                }}>
+                  <span style={{ fontSize: "1.3rem" }}>{milestoneForm.icon || "🏆"}</span>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <span style={{ fontSize: "0.82rem", fontWeight: 800, color: "#f8fafc" }}>
+                      {milestoneForm.name || "Milestone Title"}
+                    </span>
+                    <span style={{ fontSize: "0.7rem", color: milestoneForm.color || "#ffd700", fontWeight: 700 }}>
+                      ✓ Unlocked ({milestoneForm.xp.toLocaleString()} XP)
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="admin-modal__footer" style={{ marginTop: 16 }}>
+                <button
+                  type="button"
+                  className="admin-cancel-btn"
+                  onClick={() => setShowMilestoneModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={milestoneSaving}
+                  className="admin-save-btn"
+                  style={{
+                    background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                    color: "#120b02",
+                    fontWeight: 800,
+                    padding: "11px 22px",
+                    borderRadius: 10,
+                    border: "none",
+                    cursor: milestoneSaving ? "not-allowed" : "pointer"
+                  }}
+                >
+                  {milestoneSaving ? "Saving..." : milestoneForm.id ? "Update Milestone Tier" : "Create Milestone Tier"}
                 </button>
               </div>
             </form>
