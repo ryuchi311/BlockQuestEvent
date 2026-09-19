@@ -2448,90 +2448,215 @@ export default function AdminPage() {
         </div>
       </header>
 
+      {/* ─── Second Header (Sub-Header Bar) ─── */}
+      <div className="admin-subheader">
+        <div className="admin-subheader__left">
+          {/* Active Tab Breadcrumb */}
+          <div className="admin-subheader__crumb">
+            <span>
+              {tab === "scanner"
+                ? "📷 QR Gate Scanner"
+                : tab === "attendees"
+                  ? "🎫 Attendees Directory"
+                  : tab === "quests"
+                    ? "⚡ Event Quests Engine"
+                    : tab === "milestones"
+                      ? "🏆 Milestone Badges & Tiers"
+                      : tab === "verifications"
+                        ? "🔍 Quest Proof Verifications"
+                        : tab === "messages"
+                          ? "💬 Quester Message Notes"
+                          : tab === "questlog"
+                            ? "📊 Global Audit Quest Log"
+                            : tab === "booths"
+                              ? "🏪 Sponsor Booth Stations"
+                              : tab === "staff"
+                                ? "🛡️ Staff & Admin Credentials"
+                                : tab === "socials"
+                                  ? "📣 Social Missions"
+                                  : "🎁 Promo Codes & Referrals"}
+            </span>
+          </div>
+
+          {/* Live Sync Indicator */}
+          <div className="admin-subheader__pill" title="Real-time WebSocket & DB sync connected">
+            <span className="admin-subheader__pulse" />
+            <span>Database Live</span>
+          </div>
+
+          {/* Quick Metrics Ticker */}
+          <div className="admin-subheader__pill" style={{ borderColor: "rgba(245, 166, 35, 0.25)", color: "var(--gold-light)" }}>
+            <span>⚡ {liveQuestCount} Live Quests</span>
+            <span style={{ opacity: 0.4 }}>•</span>
+            <span>{attendees.filter((a: any) => a.checked_in).length} Checked In</span>
+            {verifications.filter((v) => v.status === "Pending").length > 0 && (
+              <>
+                <span style={{ opacity: 0.4 }}>•</span>
+                <span style={{ color: "#f59e0b" }}>🔍 {verifications.filter((v) => v.status === "Pending").length} Reviews Pending</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="admin-subheader__right">
+          {/* Auto Refresh Toggle */}
+          <button
+            type="button"
+            className={`admin-sub-btn ${autoRefresh ? "admin-sub-btn--active" : ""}`}
+            onClick={() => setAutoRefresh((prev) => !prev)}
+            title="Auto-refresh background data every 10 seconds"
+          >
+            <span>{autoRefresh ? "⏱️ 10s Auto: ON" : "⏱️ Auto: OFF"}</span>
+          </button>
+
+          {/* Instant Manual Refresh */}
+          <button
+            type="button"
+            className="admin-sub-btn"
+            onClick={() => {
+              if (tab === "attendees") fetchAttendees();
+              else if (tab === "quests") fetchQuests();
+              else if (tab === "milestones") fetchMilestones();
+              else if (tab === "verifications") fetchVerifications();
+              else if (tab === "messages") fetchMessageNotes();
+              else if (tab === "promocodes") fetchPromoCodes();
+              else if (tab === "staff") fetchAdminUsers();
+              else if (tab === "socials") fetchSocialMissions();
+              else {
+                fetchAttendees();
+                fetchQuests();
+                fetchVerifications();
+                fetchMessageNotes();
+              }
+            }}
+            title="Reload data for active view"
+          >
+            <span>↻ Refresh View</span>
+          </button>
+
+          {/* Quick Add Quest Button (Available when authorized) */}
+          {!isViewer && canManageQuests && (
+            <button
+              type="button"
+              className="admin-sub-btn"
+              onClick={() => {
+                setEditingQuest(null);
+                setQuestForm({ ...EMPTY_QUEST });
+                setShowQuestModal(true);
+              }}
+              style={{
+                background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                color: "#120b02",
+                fontWeight: 800,
+                border: "none",
+              }}
+            >
+              <span>+ Add Quest</span>
+            </button>
+          )}
+
+          {/* Quick Add Milestone (Available for admins/managers) */}
+          {(adminUser?.role === "superadmin" || adminUser?.role === "admin" || adminUser?.role === "manager") && (
+            <button
+              type="button"
+              className="admin-sub-btn"
+              onClick={() => {
+                const nextOrder = milestones.length > 0 ? Math.max(...milestones.map(m => m.sort_order || 0)) + 1 : 1;
+                setMilestoneForm({ id: "", name: "", xp: 1000, icon: "🎖️", color: "#ffd700", sort_order: nextOrder });
+                setMilestoneError("");
+                setShowMilestoneModal(true);
+              }}
+              style={{
+                borderColor: "rgba(245, 166, 35, 0.4)",
+                color: "var(--gold-light)"
+              }}
+            >
+              <span>🏆 + Tier</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {isViewer && (
         <div style={{
-          background: "rgba(59, 130, 246, 0.12)",
-          border: "1px solid rgba(59, 130, 246, 0.35)",
-          borderRadius: 14,
-          padding: "12px 18px",
-          margin: "14px 24px 0",
+          background: "rgba(59, 130, 246, 0.1)",
+          border: "1px solid rgba(59, 130, 246, 0.25)",
+          borderRadius: 8,
+          padding: "6px 14px",
+          margin: "8px 24px 0",
           display: "flex",
           alignItems: "center",
-          gap: 12,
+          gap: 8,
           color: "#93c5fd",
-          fontSize: "0.85rem",
-          fontWeight: 600,
-          boxShadow: "0 4px 16px rgba(0,0,0,0.25)"
+          fontSize: "0.78rem",
+          fontWeight: 600
         }}>
-          <span style={{ fontSize: "1.3rem" }}>👁️</span>
+          <span>👁️</span>
           <span>
-            <strong style={{ color: "#fff" }}>Read-Only Viewer Mode:</strong> You are logged in with <strong>Viewer</strong> privileges. You can inspect all attendee lists, quest definitions, verifications, and analytics, but creation, editing, and state modifications are restricted.
+            <strong style={{ color: "#fff" }}>Viewer Mode:</strong> Read-only access enabled. Modifying records is restricted.
           </span>
         </div>
       )}
 
       {isVerifier && (
         <div style={{
-          background: "rgba(245, 158, 11, 0.12)",
-          border: "1px solid rgba(245, 158, 11, 0.35)",
-          borderRadius: 14,
-          padding: "12px 18px",
-          margin: "14px 24px 0",
+          background: "rgba(245, 158, 11, 0.1)",
+          border: "1px solid rgba(245, 158, 11, 0.25)",
+          borderRadius: 8,
+          padding: "6px 14px",
+          margin: "8px 24px 0",
           display: "flex",
           alignItems: "center",
-          gap: 12,
+          gap: 8,
           color: "#fde68a",
-          fontSize: "0.85rem",
-          fontWeight: 600,
-          boxShadow: "0 4px 16px rgba(0,0,0,0.25)"
+          fontSize: "0.78rem",
+          fontWeight: 600
         }}>
-          <span style={{ fontSize: "1.3rem" }}>🔍</span>
+          <span>🔍</span>
           <span>
-            <strong style={{ color: "#fff" }}>Verification Specialist Mode:</strong> You are logged in with <strong>Verifier</strong> privileges. You can review proof screenshots, approve/reject submissions, verify message notes, and check in attendees. Quest and system configuration editing is restricted to Admins.
+            <strong style={{ color: "#fff" }}>Verifier Mode:</strong> Review proofs, messages, and attendances.
           </span>
         </div>
       )}
 
       {isManageAttendees && (
         <div style={{
-          background: "rgba(16, 185, 129, 0.12)",
-          border: "1px solid rgba(16, 185, 129, 0.35)",
-          borderRadius: 14,
-          padding: "12px 18px",
-          margin: "14px 24px 0",
+          background: "rgba(16, 185, 129, 0.1)",
+          border: "1px solid rgba(16, 185, 129, 0.25)",
+          borderRadius: 8,
+          padding: "6px 14px",
+          margin: "8px 24px 0",
           display: "flex",
           alignItems: "center",
-          gap: 12,
+          gap: 8,
           color: "#a7f3d0",
-          fontSize: "0.85rem",
-          fontWeight: 600,
-          boxShadow: "0 4px 16px rgba(0,0,0,0.25)"
+          fontSize: "0.78rem",
+          fontWeight: 600
         }}>
-          <span style={{ fontSize: "1.3rem" }}>🎫</span>
+          <span>🎫</span>
           <span>
-            <strong style={{ color: "#fff" }}>Gate & Attendee Management Mode:</strong> You are logged in with <strong>Manage Attendees</strong> privileges. You can operate the QR Gate Scanner, view attendee passes, and check in participants. Quest configurations and administrative settings are restricted.
+            <strong style={{ color: "#fff" }}>Gate Management:</strong> Manage gate entrance and attendee check-ins.
           </span>
         </div>
       )}
 
       {isManager && adminUser?.role !== "superadmin" && (
         <div style={{
-          background: "rgba(168, 85, 247, 0.12)",
-          border: "1px solid rgba(168, 85, 247, 0.35)",
-          borderRadius: 14,
-          padding: "12px 18px",
-          margin: "14px 24px 0",
+          background: "rgba(168, 85, 247, 0.1)",
+          border: "1px solid rgba(168, 85, 247, 0.25)",
+          borderRadius: 8,
+          padding: "6px 14px",
+          margin: "8px 24px 0",
           display: "flex",
           alignItems: "center",
-          gap: 12,
+          gap: 8,
           color: "#e9d5ff",
-          fontSize: "0.85rem",
-          fontWeight: 600,
-          boxShadow: "0 4px 16px rgba(0,0,0,0.25)"
+          fontSize: "0.78rem",
+          fontWeight: 600
         }}>
-          <span style={{ fontSize: "1.3rem" }}>⚡</span>
+          <span>⚡</span>
           <span>
-            <strong style={{ color: "#fff" }}>Event Manager Mode:</strong> You are logged in with <strong>Manager / Admin</strong> privileges. You have access to Quests, Attendee Lists, Proof Reviews, Sponsor Booths, and Promo Codes. Staff administration and account deletion are restricted to Superadmin.
+            <strong style={{ color: "#fff" }}>Manager Mode:</strong> Full management for Quests, Tiers, Booths, & Attendees.
           </span>
         </div>
       )}
