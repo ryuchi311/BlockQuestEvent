@@ -64,22 +64,44 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "quest_id and user_message are required." }, { status: 400 });
     }
 
+    const cleanEmail = (user_email || "").trim().toLowerCase();
+    if (!cleanEmail || cleanEmail === "quester@blockquest.ph" || cleanEmail === "user@blockquest.ph") {
+      return NextResponse.json(
+        { error: "A valid registered attendee email is required to submit message notes." },
+        { status: 400 }
+      );
+    }
+
+    const supabase = getSupabase();
+
+    // Verify attendee actually exists in registrations table
+    const { data: registeredUser } = await supabase
+      .from("registrations")
+      .select("id, full_name, email, ticket_code")
+      .ilike("email", cleanEmail)
+      .maybeSingle();
+
+    if (!registeredUser) {
+      return NextResponse.json(
+        { error: "Registration not found. Only registered ticket holders can submit quest messages." },
+        { status: 403 }
+      );
+    }
+
     const trimmedMsg = String(user_message).trim().slice(0, 1000);
 
     const newRecord = {
       quest_id,
       quest_title: quest_title || "Message Quest",
-      user_name: user_name || "Registered Quester",
-      user_email: (user_email || "quester@blockquest.ph").trim().toLowerCase(),
-      ticket_code: ticket_code || "BQF-GUEST",
+      user_name: user_name || registeredUser.full_name || "Registered Quester",
+      user_email: cleanEmail,
+      ticket_code: ticket_code || registeredUser.ticket_code || "BQF-REGISTERED",
       xp: xp || 100,
       user_message: trimmedMsg,
       status: "Pending",
       rejection_reason: null,
       created_at: new Date().toISOString(),
     };
-
-    const supabase = getSupabase();
 
     // Check for existing record for this quest+user, update if found
     const { data: existing } = await supabase

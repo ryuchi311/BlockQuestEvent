@@ -217,3 +217,13 @@ CREATE TABLE IF NOT EXISTS public.milestones (
 );
 
 GRANT ALL ON TABLE public.milestones TO postgres, service_role, anon, authenticated;
+
+-- Data Integrity & Relational Linkage Migrations:
+-- Link verification and message submissions to verified registrations
+ALTER TABLE public.quest_verifications ADD COLUMN IF NOT EXISTS registration_id BIGINT REFERENCES public.registrations(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_quest_verifications_user_email ON public.quest_verifications(user_email);
+CREATE INDEX IF NOT EXISTS idx_quest_verifications_status ON public.quest_verifications(status);
+
+ALTER TABLE public.quest_message_notes ADD COLUMN IF NOT EXISTS registration_id BIGINT REFERENCES public.registrations(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_quest_message_notes_user_email ON public.quest_message_notes(user_email);
+CREATE INDEX IF NOT EXISTS idx_quest_message_notes_status ON public.quest_message_notes(status);

@@ -126,6 +126,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "quest_id and proof_url or user_message are required." }, { status: 400 });
     }
 
+    const cleanEmail = (user_email || "").trim().toLowerCase();
+    if (!cleanEmail || cleanEmail === "quester@blockquest.ph" || cleanEmail === "user@blockquest.ph") {
+      return NextResponse.json(
+        { error: "A valid registered attendee email is required to submit quest verifications." },
+        { status: 400 }
+      );
+    }
+
+    const supabase = getSupabase();
+
+    // Verify attendee actually exists in registrations table
+    const { data: registeredUser } = await supabase
+      .from("registrations")
+      .select("id, full_name, email, ticket_code")
+      .ilike("email", cleanEmail)
+      .maybeSingle();
+
+    if (!registeredUser) {
+      return NextResponse.json(
+        { error: "Registration not found. Only registered ticket holders can submit quest proofs." },
+        { status: 403 }
+      );
+    }
+
     let finalProofUrl = proof_url || "Text Submission";
     let proofHash: string | null = null;
 
@@ -187,9 +211,9 @@ export async function POST(request: Request) {
       id: Date.now(),
       quest_id,
       quest_title: quest_title || "Quest Verification",
-      user_name: user_name || "Anonymous Quester",
-      user_email: user_email || "user@blockquest.ph",
-      ticket_code: ticket_code || "BQF-GUEST",
+      user_name: user_name || registeredUser.full_name || "Registered Quester",
+      user_email: cleanEmail,
+      ticket_code: ticket_code || registeredUser.ticket_code || "BQF-REGISTERED",
       xp: Number(xp) || 100,
       proof_url: finalProofUrl,
       user_message: user_message || null,

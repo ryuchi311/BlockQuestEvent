@@ -890,6 +890,17 @@ export default function ZealyMobileApp() {
 
     if (!hasProof && !hasMessage) return;
 
+    const email = ticketEmail || authenticatedUser?.email || qrPass?.email;
+    if (!email || email === "quester@blockquest.ph" || email === "user@blockquest.ph") {
+      showNotice(
+        "Please log in with your registered event ticket or email before submitting quest proofs!",
+        "warning",
+        "Registration Required",
+        "🎫"
+      );
+      return;
+    }
+
     setProofSubmitting(true);
     try {
       const endpoint = selectedQuest.requiresProof ? "/api/admin/verifications" : "/api/admin/messages";
@@ -900,8 +911,8 @@ export default function ZealyMobileApp() {
           quest_id: selectedQuest.id,
           quest_title: selectedQuest.title,
           user_name: authenticatedUser?.fullName || qrPass?.fullName || "Registered Quester",
-          user_email: ticketEmail || authenticatedUser?.email || "quester@blockquest.ph",
-          ticket_code: qrPass?.passCode || "BQF-GUEST",
+          user_email: email,
+          ticket_code: qrPass?.passCode || "BQF-REGISTERED",
           xp: selectedQuest.xp,
           proof_url: proofImage || "Social Post Link",
           user_message: userMessageInput.trim() || null,
