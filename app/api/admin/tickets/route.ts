@@ -47,9 +47,13 @@ export async function GET(request: Request) {
       query = query.eq("priority", priorityParam);
     }
     if (searchParam) {
-      query = query.or(
-        `ticket_ref.ilike.%${searchParam}%,user_name.ilike.%${searchParam}%,user_email.ilike.%${searchParam}%,subject.ilike.%${searchParam}%,ticket_code.ilike.%${searchParam}%`
-      );
+      // Sanitize input to prevent PostgREST syntax injection (strip commas, colons, parentheses, backslashes, percent, quotes)
+      const sanitized = searchParam.replace(/[,():"\\%*.]/g, "").trim();
+      if (sanitized) {
+        query = query.or(
+          `ticket_ref.ilike.%${sanitized}%,user_name.ilike.%${sanitized}%,user_email.ilike.%${sanitized}%,subject.ilike.%${sanitized}%,ticket_code.ilike.%${sanitized}%`
+        );
+      }
     }
 
     const { data, error } = await query;
@@ -73,10 +77,11 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const { id, status, admin_notes, priority } = body;
+    const id = Number(body.id);
+    const { status, admin_notes, priority } = body;
 
-    if (!id) {
-      return NextResponse.json({ error: "Ticket ID is required." }, { status: 400 });
+    if (!id || isNaN(id) || id <= 0) {
+      return NextResponse.json({ error: "Valid numeric ticket ID is required." }, { status: 400 });
     }
 
     const reviewerName = auth.user?.fullName || auth.user?.email || "Admin";
@@ -131,8 +136,9 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    const { id } = await request.json();
-    if (!id) return NextResponse.json({ error: "Ticket ID is required." }, { status: 400 });
+    const body = await request.json();
+    const id = Number(body.id);
+    if (!id || isNaN(id) || id <= 0) return NextResponse.json({ error: "Valid numeric ticket ID is required." }, { status: 400 });
 
     const supabase = getSupabase();
     const { error } = await supabase.from("support_tickets").delete().eq("id", id);

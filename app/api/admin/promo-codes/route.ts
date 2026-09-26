@@ -83,10 +83,11 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const { id, code, xp_bonus, max_uses, is_active } = body;
+    const id = Number(body.id);
+    const { code, xp_bonus, max_uses, is_active } = body;
 
-    if (!id) {
-      return NextResponse.json({ error: "Promo code ID is required." }, { status: 400 });
+    if (!id || isNaN(id) || id <= 0) {
+      return NextResponse.json({ error: "Valid numeric promo code ID is required." }, { status: 400 });
     }
 
     const updates: Record<string, any> = {};
@@ -128,8 +129,9 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    const { id } = await request.json();
-    if (!id) return NextResponse.json({ error: "Promo code ID is required." }, { status: 400 });
+    const body = await request.json();
+    const id = Number(body.id);
+    if (!id || isNaN(id) || id <= 0) return NextResponse.json({ error: "Valid numeric promo code ID is required." }, { status: 400 });
 
     const supabase = getSupabase();
     const { error } = await supabase.from("promo_codes").delete().eq("id", id);

@@ -62,12 +62,13 @@ export async function DELETE(request: Request) {
 
   try {
     const body = await request.json();
-    if (!body.id) {
-      return NextResponse.json({ error: "Mission ID is required" }, { status: 400 });
+    const id = Number(body.id);
+    if (!id || isNaN(id) || id <= 0) {
+      return NextResponse.json({ error: "Valid numeric Mission ID is required" }, { status: 400 });
     }
 
     const supabase = getSupabase();
-    const { error } = await supabase.from("social_missions").delete().eq("id", body.id);
+    const { error } = await supabase.from("social_missions").delete().eq("id", id);
 
     if (error) throw error;
     return NextResponse.json({ success: true });
@@ -85,10 +86,11 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const { id, platform, title, description, url, button_text, button_color, sort_order, is_active } = body;
+    const id = Number(body.id);
+    const { platform, title, description, url, button_text, button_color, sort_order, is_active } = body;
 
-    if (!id) {
-      return NextResponse.json({ error: "Mission ID is required" }, { status: 400 });
+    if (!id || isNaN(id) || id <= 0) {
+      return NextResponse.json({ error: "Valid numeric Mission ID is required" }, { status: 400 });
     }
 
     const updatePayload: Record<string, any> = {};

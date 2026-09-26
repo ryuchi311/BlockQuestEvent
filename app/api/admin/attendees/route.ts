@@ -55,8 +55,9 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const { id, tempPin } = body;
-    if (!id) return NextResponse.json({ error: "Attendee ID is required." }, { status: 400 });
+    const id = Number(body.id);
+    const tempPin = body.tempPin;
+    if (!id || isNaN(id) || id <= 0) return NextResponse.json({ error: "Valid attendee ID is required." }, { status: 400 });
 
     // Generate random 4-digit PIN if tempPin not supplied
     const finalPin = tempPin?.trim() || Math.floor(1000 + Math.random() * 9000).toString();
@@ -93,8 +94,8 @@ export async function DELETE(request: Request) {
 
   try {
     const body = await request.json();
-    const { id } = body;
-    if (!id) return NextResponse.json({ error: "Attendee ID is required." }, { status: 400 });
+    const id = Number(body.id);
+    if (!id || isNaN(id) || id <= 0) return NextResponse.json({ error: "Valid attendee ID is required." }, { status: 400 });
 
     const supabase = getSupabase();
 

@@ -122,10 +122,11 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const { id, full_name, email, role, password } = body;
+    const id = Number(body.id);
+    const { full_name, email, role, password } = body;
 
-    if (!id) {
-      return NextResponse.json({ error: "Admin id is required." }, { status: 400 });
+    if (!id || isNaN(id) || id <= 0) {
+      return NextResponse.json({ error: "Valid numeric admin ID is required." }, { status: 400 });
     }
 
     const updates: Record<string, any> = {};
@@ -169,8 +170,9 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    const { id } = await request.json();
-    if (!id) return NextResponse.json({ error: "Admin id is required." }, { status: 400 });
+    const body = await request.json();
+    const id = Number(body.id);
+    if (!id || isNaN(id) || id <= 0) return NextResponse.json({ error: "Valid numeric admin ID is required." }, { status: 400 });
 
     const supabase = getSupabase();
     const { error } = await supabase.from("admin_users").delete().eq("id", id);

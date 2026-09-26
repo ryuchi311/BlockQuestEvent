@@ -102,10 +102,11 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const { id, name, xp, icon, color, sort_order } = body;
+    const id = Number(body.id);
+    const { name, xp, icon, color, sort_order } = body;
 
-    if (!id) {
-      return NextResponse.json({ error: "Milestone ID is required." }, { status: 400 });
+    if (!id || isNaN(id) || id <= 0) {
+      return NextResponse.json({ error: "Valid numeric milestone ID is required." }, { status: 400 });
     }
 
     const updates: Record<string, any> = {
@@ -152,10 +153,10 @@ export async function DELETE(request: Request) {
 
   try {
     const body = await request.json();
-    const { id } = body;
+    const id = Number(body.id);
 
-    if (!id) {
-      return NextResponse.json({ error: "Milestone ID is required." }, { status: 400 });
+    if (!id || isNaN(id) || id <= 0) {
+      return NextResponse.json({ error: "Valid numeric milestone ID is required." }, { status: 400 });
     }
 
     const supabase = getSupabase();
