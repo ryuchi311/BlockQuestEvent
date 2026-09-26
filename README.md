@@ -8,7 +8,7 @@
 
 A full-stack, real-time event operations platform and gamified questing portal built for **BlockQuest Fiesta PH** (Manila's premier Web3 developer summit). 
 
-The suite powers end-to-end event operations—from attendee registration with legal compliance and instant QR pass generation, to high-speed entrance scanners, sponsor booth engagement stations, proof verification queues, and a mobile-first gamified questing experience.
+The suite powers end-to-end event operations—from attendee registration with legal compliance and instant QR pass generation, to high-speed entrance scanners, sponsor booth engagement stations, proof verification queues, attendee helpdesk & support ticketing, and a mobile-first gamified questing experience.
 
 ---
 
@@ -17,14 +17,37 @@ The suite powers end-to-end event operations—from attendee registration with l
 | Portal | Route | Target Audience | Key Capabilities |
 | :--- | :--- | :--- | :--- |
 | **🏠 Launchpad** | `/` | All Visitors | Glassmorphic interactive gateway leading to tickets or game portal. |
-| **🎫 Ticket Desk** | `/register` | Attendees | RA 10173 privacy compliant registration, social handles, and instant QR entry pass (`BQF-XXXXXX`) generation. |
-| **🎮 BlockQuest App** | `/zealy` | Attendees | Gamified mobile app with daily missions, trivia quizzes, passcodes, flash countdowns, quest chains, milestone badges, and live leaderboards. |
-| **📷 Gate Scanner** | `/scan` | Gate Staff | Sub-second camera QR scanner (`html5-qrcode`) for pass validation and check-ins with manual search fallback. |
+| **🎫 Ticket Desk** | `/register` | Attendees | RA 10173 privacy compliant registration, social handles, and instant QR entry pass (`BQF-XXXXXX`) generation with wallet pass styling. |
+| **🎮 BlockQuest App** | `/zealy` | Attendees | Gamified mobile app with daily missions, trivia quizzes, passcodes, flash countdowns, quest chains, milestone badges, live leaderboards, and user feedback/support ticket center. |
+| **📷 Gate Scanner** | `/scan` | Gate Staff | Sub-second camera QR scanner (`html5-qrcode`) for pass validation and check-ins with manual search fallback and audio cues. |
 | **🏪 Booth Scanner** | `/booth-scan` | Sponsor Booths | Station scanner awarding XP (+150 XP) to attendees visiting booths with duplicate check-in protection. |
-| **⚙️ Admin Dashboard** | `/admin` | Organizers & Staff | Complete operational control center with RBAC (6 roles), metrics, paginated attendees, quest builder, verifier queue, booth scanner logs, and staff provisioning. |
-| **🧭 Shortcut Hub** | `/shortcuts` | Staff & Sponsors | Quick launcher bookmark hub for on-site live operations. |
+| **⚙️ Admin Dashboard** | `/admin` | Organizers & Staff | Complete operational control center with RBAC (6 roles), 12 specialized operations tabs, drag-and-drop quest builder, proof verifier, support ticket helpdesk, audit logs, and staff provisioning. |
+| **🧭 Shortcut Hub** | `/shortcuts` | Staff & Sponsors | Quick launcher bookmark hub for on-site live operations and station bookmarks. |
 | **🧪 Stress Test** | `/stress-test` | Engineers / QA | Automated load and stress testing simulator for API performance benchmarking. |
 | **📖 Visual Manual** | `/manual-presentation.html` | Organizers & Partners | Interactive HTML presentation manual, architecture diagrams, and operational playbooks. |
+
+---
+
+## 🛡️ Admin Dashboard Modules & Tabs (`/admin`)
+
+The Admin Dashboard provides 12 specialized operation tabs tailored to different staff roles:
+
+1. **📷 QR Gate Scanner (`scanner`)**: Live camera scanner directly embedded within the admin suite for entrance check-ins.
+2. **🎫 Attendees Directory (`attendees`)**: Paginated attendee records (10/20/50/100 per page), instant search, check-in status toggles, Excel/CSV export, and pass resends.
+3. **⚡ Event Quests Engine (`quests`)**: 
+   - Drag-and-drop reordering with persistent database sort order.
+   - Comprehensive quest builder: Instant, Screenshot Proof, Quester Message Note, Quiz Trivia (with auto-grading), Secret Passcode, Discord Server Join, and Telegram Chat Join.
+   - **Quick Presets** with automatic collision-safe slug generation (`generateUniqueSlug`) preventing duplicate quest IDs.
+   - Real-time `⚠️ Already Taken` / `✓ Available` badges with **✨ Auto-Fix ID** and **🎲 Random ID** buttons.
+4. **🏆 Milestone Badges & Tiers (`milestones`)**: Dynamic tier configuration (e.g. Bronze, Silver, Gold, Platinum, VIP Legend) with customizable XP requirements, icons, and badge colors.
+5. **🔍 Quest Proof Verifications (`verifications`)**: Screenshot proof review queue with high-res zoom, pan inspection, instant approve/reject actions, and XP award triggers.
+6. **💬 Quester Message Notes (`messages`)**: Dedicated queue for reviewing attendee text responses, code submission links, and text-only quest requirements.
+7. **🆘 Help & Support Tickets (`tickets`)**: Live helpdesk ticket desk. Filters by status (Open, In Progress, Resolved, Closed), type (feedback, issue, bug, question, complaint), priority, and keyword search. Full modal for staff notes, resolution, and responder tracking.
+8. **📊 Global Audit Quest Log (`questlog`)**: Real-time event log tracking all quest completions, booth check-ins, manual awards, and staff interactions.
+9. **🏪 Sponsor Booth Stations (`booths`)**: Manage sponsor booth codes, custom XP values, scan quotas, and export booth engagement metrics.
+10. **🛡️ Staff & Admin Credentials (`staff`)**: Role-based access control management, temporary password provisioning, forced password resets, and audit trails.
+11. **📣 Social Missions (`socials`)**: Rapidly configure X (Twitter), Facebook, and Discord follow/retweet campaigns with custom CTA button colors.
+12. **🎁 Promo Codes (`promocodes`)**: Create referral and flash bonus codes with claim limits and expiration dates.
 
 ---
 
@@ -43,6 +66,9 @@ The suite powers end-to-end event operations—from attendee registration with l
   - Cloudflare Workers & Pages enabled
   - Cloudflare Wrangler CLI authenticated (`npx wrangler login`)
   - (Optional) Custom domain connected to Cloudflare DNS (e.g. `event.block-quest.com`)
+- **(Optional) Third-Party Integrations**:
+  - **Discord Bot**: Guild ID, Bot Token, or Webhook URL for automated community join verification.
+  - **Telegram Bot**: Bot Token for verifying chat/channel memberships.
 
 ---
 
@@ -63,9 +89,28 @@ SUPABASE_STORAGE_BUCKET=blockquestbucket
 # ==============================================================================
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-supabase-anon-key
+
+# ==============================================================================
+# Discord OAuth & Server Verification (Optional)
+# ==============================================================================
+DISCORD_CLIENT_ID=your-discord-client-id
+DISCORD_CLIENT_SECRET=your-discord-client-secret
+DISCORD_GUILD_ID=your-discord-guild-id
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+DISCORD_CHANNEL_ID=your-channel-id
+
+# ==============================================================================
+# Telegram Bot API Verification (Optional)
+# ==============================================================================
+TELEGRAM_BOT_TOKEN=your-telegram-bot-token
+
+# ==============================================================================
+# Application URL
+# ==============================================================================
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-> ⚠️ **SECURITY WARNING**: Never expose `SUPABASE_SERVICE_ROLE_KEY` in client-side code or public repositories. It is strictly used in server-side API routes.
+> ⚠️ **SECURITY WARNING**: Never expose `SUPABASE_SERVICE_ROLE_KEY`, `DISCORD_CLIENT_SECRET`, or `TELEGRAM_BOT_TOKEN` in client-side code or public repositories. They are strictly read in server-side API routes.
 
 ---
 
@@ -73,7 +118,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-supabase-anon-key
 
 1. Log in to your [Supabase Dashboard](https://supabase.com/dashboard) and open the **SQL Editor**.
 2. Run the master schema in [`schema.sql`](file:///schema.sql):
-   - Sets up `registrations`, `fiesta_event_quests`, `user_quest_progress`, `staff_roles`, `booth_scan_logs`, and audit tables.
+   - Sets up `registrations`, `fiesta_event_quests`, `user_quest_progress`, `quest_completions`, `support_tickets`, `staff_roles`, `booth_scan_logs`, and audit tables.
    - Creates automatic ticket generation triggers (`BQF-XXXXXX`).
 3. (Optional) Run seed scripts:
    - **Admin Account**: `npm run seed:admin`
@@ -119,7 +164,7 @@ npx wrangler whoami
 
 ### Step 2: Configure Cloudflare Secrets & Environment Variables
 
-Cloudflare Workers need the Supabase configuration at runtime. You have two options:
+Cloudflare Workers need the Supabase and API configuration at runtime. You have two options:
 
 #### Option A: Using Wrangler CLI (Recommended for Secrets)
 ```bash
@@ -131,13 +176,19 @@ npx wrangler secret put SUPABASE_URL
 npx wrangler secret put SUPABASE_STORAGE_BUCKET
 npx wrangler secret put NEXT_PUBLIC_SUPABASE_URL
 npx wrangler secret put NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+
+# Optional integrations
+npx wrangler secret put DISCORD_CLIENT_ID
+npx wrangler secret put DISCORD_CLIENT_SECRET
+npx wrangler secret put DISCORD_GUILD_ID
+npx wrangler secret put TELEGRAM_BOT_TOKEN
 ```
 
 #### Option B: Via Cloudflare Dashboard
 1. Go to **Cloudflare Dashboard** > **Workers & Pages**.
 2. Select your `blockquest-event` Worker.
 3. Go to **Settings** > **Variables and Secrets**.
-4. Add the environment variables and encrypt `SUPABASE_SERVICE_ROLE_KEY`.
+4. Add the environment variables and encrypt secrets.
 
 ---
 
@@ -224,12 +275,13 @@ In your **Supabase Dashboard** > **Authentication** > **URL Configuration**:
 
 | Role | Route Access | Capabilities |
 | :--- | :--- | :--- |
-| **👑 Superadmin** | Full System (`/admin/*`, `/scan`, `/booth-scan`, `/zealy`) | System configuration, staff provisioning, quest editing, attendee management, CSV export. |
-| **💼 Event Manager** | `/admin`, `/scan`, `/booth-scan` | Attendee check-ins, quest creation/editing, metric review. |
+| **👑 Superadmin** | Full System (`/admin/*`, `/scan`, `/booth-scan`, `/zealy`) | System configuration, staff provisioning, quest editing, attendee management, CSV export, support tickets, and audit trails. |
+| **💼 Event Manager** | `/admin`, `/scan`, `/booth-scan` | Attendee check-ins, quest creation/editing, milestone tier management, metric review, and support ticket triage. |
 | **📷 Gate Scanner** | `/scan` | Pass scanning and attendee gate check-in only. |
 | **🏪 Booth Staff** | `/booth-scan` | Station scanning to log attendee booth visits and award XP. |
-| **🔍 Quest Verifier** | `/admin` (Verifications Tab) | Reviews screenshot proof uploads and approves/rejects XP claims. |
-| **👁️ Viewer** | `/admin` (Metrics & Attendees) | Read-only analytics and attendee directory. |
+| **🔍 Quest Verifier** | `/admin` (Verifications, Messages, Tickets, Quest Log) | Reviews screenshot proof uploads, quester message notes, attendee support tickets, and approves/rejects XP claims. |
+| **🎫 Gate Management** | `/admin` (Scanner, Attendees, Tickets, Quest Log) | Dedicated attendee check-in management and ticket assistance. |
+| **👁️ Viewer** | `/admin` (Read-only on stats, attendees, quests, tickets) | Read-only analytics, metric reviews, and attendee directory. |
 
 ---
 
@@ -238,8 +290,15 @@ In your **Supabase Dashboard** > **Authentication** > **URL Configuration**:
 ```
 BlockQuestEvent/
 ├── app/                        # Next.js App Router (Pages, Layouts & Server API Routes)
-│   ├── admin/                  # Organizer Control Center (6 RBAC modules)
-│   ├── api/                    # Server-side API endpoints (Auth, Quests, Scan, Admin)
+│   ├── admin/                  # Organizer Control Center (12 operational tabs)
+│   ├── api/                    # Server-side API endpoints
+│   │   ├── admin/              # Admin-authenticated endpoints (quests, tickets, users, checkin, etc.)
+│   │   ├── auth/               # Third-party auth callbacks (Discord OAuth, Telegram verification)
+│   │   ├── support/            # User-facing support & feedback ticket submission
+│   │   ├── user/               # Attendee quest claim, passcode sync, and profile endpoints
+│   │   ├── booth-scan/         # Sponsor booth QR scanning endpoint
+│   │   ├── leaderboard/        # Real-time XP leaderboard ranking
+│   │   └── register/           # Attendee dual-consent registration & ticket generator
 │   ├── booth-scan/             # Sponsor Booth Station QR Scanner
 │   ├── register/               # Attendee Registration & Ticket Pass Page
 │   ├── scan/                   # Live Camera QR Gate Check-in Scanner
@@ -251,7 +310,7 @@ BlockQuestEvent/
 ├── components/                 # Core UI Components
 │   ├── registration-form.tsx   # Dual-Consent Registration Form & QR Pass UI
 │   ├── qr-scanner.tsx          # HTML5 Camera QR Scanner Engine
-│   └── zealy-mobile-app.tsx    # Mobile Quest App, Quizzes, Badges & Leaderboard
+│   └── zealy-mobile-app.tsx    # Mobile Quest App, Quizzes, Badges, Feedback Modal & Leaderboard
 ├── public/                     # Static media, partner logos, presentation manual
 ├── open-next.config.ts         # OpenNext Cloudflare Adapter Configuration
 ├── wrangler.jsonc              # Cloudflare Workers & Custom Domain Config
