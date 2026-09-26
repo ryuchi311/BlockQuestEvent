@@ -153,6 +153,10 @@ CREATE TABLE IF NOT EXISTS public.quest_completions (
   UNIQUE(quest_id, registration_id)
 );
 
+-- Note: quest_id supports dynamic system quests (e.g. 'register', 'checkin', 'booth-*', 'promo-bonus')
+-- Any strict foreign key constraint referencing fiesta_event_quests(id) should be dropped:
+ALTER TABLE public.quest_completions DROP CONSTRAINT IF EXISTS quest_completions_quest_id_fkey;
+
 GRANT ALL ON TABLE public.quest_completions TO postgres, service_role, anon, authenticated;
 
 -- Social Missions table for Registration form

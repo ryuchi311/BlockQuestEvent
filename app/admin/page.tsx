@@ -273,7 +273,31 @@ function generateShortSlug(title: string, category?: string): string {
   return slug.replace(/^-+|-+$/g, "") || "quest";
 }
 
-function generateRandomShortId(category = "qst"): string {
+function generateUniqueSlug(title: string, category?: string, existingQuests: { id: string }[] = []): string {
+  const baseSlug = generateShortSlug(title, category);
+  if (!baseSlug) return "quest";
+  const existingSet = new Set(existingQuests.map((q) => q.id.toLowerCase().trim()));
+  
+  if (!existingSet.has(baseSlug.toLowerCase())) {
+    return baseSlug;
+  }
+
+  // If already exists, try appending incremental number e.g. -2, -3...
+  let counter = 2;
+  while (counter <= 99) {
+    const candidate = `${baseSlug}-${counter}`;
+    if (!existingSet.has(candidate.toLowerCase())) {
+      return candidate;
+    }
+    counter++;
+  }
+
+  // If still colliding, append short random 3-char suffix
+  const rand = Math.random().toString(36).substring(2, 5);
+  return `${baseSlug}-${rand}`;
+}
+
+function generateRandomShortId(category = "qst", existingQuests: { id: string }[] = []): string {
   const prefixMap: Record<string, string> = {
     social: "soc",
     onboarding: "onb",
@@ -282,8 +306,16 @@ function generateRandomShortId(category = "qst"): string {
     atfx: "atfx",
   };
   const prefix = prefixMap[category?.toLowerCase()] || "qst";
-  const rand = Math.random().toString(36).substring(2, 6);
-  return `${prefix}_${rand}`;
+  const existingSet = new Set(existingQuests.map((q) => q.id.toLowerCase().trim()));
+  
+  for (let i = 0; i < 20; i++) {
+    const rand = Math.random().toString(36).substring(2, 6);
+    const candidate = `${prefix}_${rand}`;
+    if (!existingSet.has(candidate.toLowerCase())) {
+      return candidate;
+    }
+  }
+  return `${prefix}_${Date.now().toString(36).slice(-4)}`;
 }
 
 interface ExportConfig {
@@ -1946,6 +1978,11 @@ export default function AdminPage() {
     setQuestError("");
     try {
       const isEdit = !!editingQuest;
+      if (!isEdit && quests.some((q) => q.id.toLowerCase() === questForm.id.trim().toLowerCase())) {
+        setQuestError(`Quest ID "${questForm.id}" already exists. Please choose a different unique ID.`);
+        setQuestSaving(false);
+        return;
+      }
       const method = isEdit ? "PATCH" : "POST";
       const payload = {
         ...questForm,
@@ -6910,7 +6947,7 @@ export default function AdminPage() {
                         className="qf-preset-chip"
                         onClick={() => {
                           setQuestForm((prev) => {
-                            const autoId = generateShortSlug(preset.data.title, preset.data.category);
+                            const autoId = generateUniqueSlug(preset.data.title, preset.data.category, quests);
                             return {
                               ...prev,
                               ...preset.data,
@@ -6938,7 +6975,7 @@ export default function AdminPage() {
                       onChange={(e) => {
                         const val = e.target.value;
                         setQuestForm((prev) => {
-                          const autoId = generateShortSlug(val, prev.category);
+                          const autoId = generateUniqueSlug(val, prev.category, quests);
                           return {
                             ...prev,
                             title: val,
@@ -6956,16 +6993,55 @@ export default function AdminPage() {
                   <div className="admin-form-row" style={{ gridTemplateColumns: "1fr 90px", marginTop: 8 }}>
                     {(() => {
                       const isDuplicateId = !editingQuest && !!questForm.id.trim() && quests.some((q) => q.id.toLowerCase() === questForm.id.trim().toLowerCase());
+                      const matchingQuest = isDuplicateId ? quests.find((q) => q.id.toLowerCase() === questForm.id.trim().toLowerCase()) : null;
                       return (
                         <label className="qf-label">
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                            <span>Quest ID (Slug) *</span>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <span>Quest ID (Slug) *</span>
+                              {!editingQuest && (
+                                isDuplicateId ? (
+                                  <span style={{ fontSize: "0.68rem", background: "rgba(239,68,68,0.2)", color: "#f87171", border: "1px solid rgba(239,68,68,0.4)", padding: "1px 6px", borderRadius: 4, fontWeight: 700 }}>
+                                    ⚠️ Already Taken
+                                  </span>
+                                ) : questForm.id.trim() ? (
+                                  <span style={{ fontSize: "0.68rem", background: "rgba(16,185,129,0.15)", color: "#34d399", border: "1px solid rgba(16,185,129,0.3)", padding: "1px 6px", borderRadius: 4, fontWeight: 600 }}>
+                                    ✓ Available
+                                  </span>
+                                ) : null
+                              )}
+                            </div>
                             {!editingQuest && (
                               <div style={{ display: "flex", gap: 5 }}>
+                                {isDuplicateId && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const uniqueSlug = generateUniqueSlug(questForm.title || questForm.id, questForm.category, quests);
+                                      setQuestForm((f) => ({ ...f, id: uniqueSlug }));
+                                    }}
+                                    title="Auto-make this ID unique"
+                                    style={{
+                                      background: "rgba(59, 130, 246, 0.2)",
+                                      border: "1px solid rgba(59, 130, 246, 0.5)",
+                                      color: "#60a5fa",
+                                      borderRadius: 4,
+                                      padding: "1px 6px",
+                                      fontSize: "0.68rem",
+                                      cursor: "pointer",
+                                      fontWeight: 700,
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: 3
+                                    }}
+                                  >
+                                    ✨ Auto-Fix ID
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const randId = generateRandomShortId(questForm.category);
+                                    const randId = generateRandomShortId(questForm.category, quests);
                                     setQuestForm((f) => ({ ...f, id: randId }));
                                   }}
                                   title="Generate a random short ID (e.g. soc_9k2m)"
@@ -6988,10 +7064,10 @@ export default function AdminPage() {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const shortSlug = generateShortSlug(questForm.title, questForm.category);
+                                    const shortSlug = generateUniqueSlug(questForm.title, questForm.category, quests);
                                     setQuestForm((f) => ({ ...f, id: shortSlug }));
                                   }}
-                                  title="Re-generate short concise slug from title"
+                                  title="Re-generate unique slug from title"
                                   style={{
                                     background: "rgba(255, 255, 255, 0.08)",
                                     border: "1px solid rgba(255, 255, 255, 0.18)",
@@ -7022,13 +7098,22 @@ export default function AdminPage() {
                               fontFamily: "monospace",
                               borderColor: isDuplicateId ? "#ef4444" : undefined,
                               boxShadow: isDuplicateId ? "0 0 0 1px #ef4444" : undefined,
+                              background: isDuplicateId ? "rgba(239, 68, 68, 0.08)" : undefined,
                             }}
                           />
-                          <small style={{ color: isDuplicateId ? "#f87171" : undefined, fontWeight: isDuplicateId ? 600 : undefined }}>
-                            {isDuplicateId
-                              ? `⚠️ Quest ID "${questForm.id}" already exists! Please click "🎲 Random ID" or edit it.`
-                              : (editingQuest ? "Locked ID" : "Auto-shortened · or click 🎲 / ⚡ to change")}
-                          </small>
+                          {isDuplicateId ? (
+                            <div style={{ marginTop: 4, padding: "5px 8px", background: "rgba(239, 68, 68, 0.12)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: 6, fontSize: "0.74rem", color: "#fca5a5" }}>
+                              <strong>⚠️ Quest ID &quot;{questForm.id}&quot; already exists!</strong>
+                              {matchingQuest ? ` (Used by &quot;${matchingQuest.title}&quot;)` : ""}
+                              <div style={{ marginTop: 2, color: "#cbd5e1" }}>
+                                Click <strong>✨ Auto-Fix ID</strong> or <strong>🎲 Random ID</strong> above to generate a unique ID.
+                              </div>
+                            </div>
+                          ) : (
+                            <small style={{ color: editingQuest ? "#94a3b8" : "#64748b" }}>
+                              {editingQuest ? "Locked ID" : "Unique identifier used in URLs & completions"}
+                            </small>
+                          )}
                         </label>
                       );
                     })()}
@@ -7586,30 +7671,40 @@ export default function AdminPage() {
                 <span>Reward: <strong style={{ color: "#ffd166" }}>+{questForm.xp || 0} XP</strong></span>
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button type="button" className="admin-cancel-btn" onClick={closeModal}>Cancel</button>
-                {!editingQuest && (
-                  <button
-                    type="button"
-                    className="admin-cancel-btn qf-draft-btn"
-                    onClick={saveDraftQuest}
-                    disabled={questSaving}
-                    title="Save quest as Draft — hidden from players until you publish it"
-                  >
-                    {questSaving ? "Saving…" : "📝 Save as Draft"}
-                  </button>
-                )}
-                <button
-                  type="submit"
-                  form="quest-editor-form"
-                  className="admin-save-btn"
-                  disabled={questSaving}
-                >
-                  {questSaving ? "Saving…" : editingQuest
-                    ? (editingQuest.status === "Draft" ? "🚀 Publish Quest" : "💾 Save Changes")
-                    : "⚡ Create Quest"}
-                </button>
-              </div>
+              {(() => {
+                const isDuplicateId = !editingQuest && !!questForm.id.trim() && quests.some((q) => q.id.toLowerCase() === questForm.id.trim().toLowerCase());
+                return (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <button type="button" className="admin-cancel-btn" onClick={closeModal}>Cancel</button>
+                    {!editingQuest && (
+                      <button
+                        type="button"
+                        className="admin-cancel-btn qf-draft-btn"
+                        onClick={saveDraftQuest}
+                        disabled={questSaving || isDuplicateId}
+                        title={isDuplicateId ? "Cannot save: Quest ID already exists!" : "Save quest as Draft — hidden from players until you publish it"}
+                      >
+                        {questSaving ? "Saving…" : "📝 Save as Draft"}
+                      </button>
+                    )}
+                    <button
+                      type="submit"
+                      form="quest-editor-form"
+                      className="admin-save-btn"
+                      disabled={questSaving || isDuplicateId}
+                      title={isDuplicateId ? "Cannot create: Quest ID already exists!" : undefined}
+                      style={{
+                        opacity: isDuplicateId ? 0.5 : 1,
+                        cursor: isDuplicateId ? "not-allowed" : "pointer"
+                      }}
+                    >
+                      {questSaving ? "Saving…" : editingQuest
+                        ? (editingQuest.status === "Draft" ? "🚀 Publish Quest" : "💾 Save Changes")
+                        : "⚡ Create Quest"}
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
