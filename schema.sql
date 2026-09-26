@@ -227,3 +227,30 @@ CREATE INDEX IF NOT EXISTS idx_quest_verifications_status ON public.quest_verifi
 ALTER TABLE public.quest_message_notes ADD COLUMN IF NOT EXISTS registration_id BIGINT REFERENCES public.registrations(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_quest_message_notes_user_email ON public.quest_message_notes(user_email);
 CREATE INDEX IF NOT EXISTS idx_quest_message_notes_status ON public.quest_message_notes(status);
+
+-- Support & Feedback Tickets Table
+CREATE TABLE IF NOT EXISTS public.support_tickets (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  ticket_ref TEXT NOT NULL UNIQUE, -- e.g. TKT-7K9A2M
+  user_name TEXT NOT NULL,
+  user_email TEXT NOT NULL,
+  ticket_code TEXT, -- Attendee QR ticket code if registered
+  type TEXT NOT NULL DEFAULT 'feedback', -- 'feedback', 'issue', 'bug', 'question', 'complaint'
+  category TEXT NOT NULL DEFAULT 'general', -- 'general', 'quests', 'qr_ticket', 'booth', 'rewards', 'other'
+  subject TEXT NOT NULL,
+  description TEXT NOT NULL,
+  priority TEXT NOT NULL DEFAULT 'medium', -- 'low', 'medium', 'high', 'urgent'
+  status TEXT NOT NULL DEFAULT 'Open', -- 'Open', 'In Progress', 'Resolved', 'Closed'
+  admin_notes TEXT,
+  resolved_by TEXT,
+  resolved_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_support_tickets_user_email ON public.support_tickets(user_email);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON public.support_tickets(status);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_priority ON public.support_tickets(priority);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_created_at ON public.support_tickets(created_at DESC);
+
+GRANT ALL ON TABLE public.support_tickets TO postgres, service_role, anon, authenticated;

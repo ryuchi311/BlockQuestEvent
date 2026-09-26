@@ -87,7 +87,26 @@ export interface MilestoneTier {
   updated_at?: string;
 }
 
-const ADMIN_TABS = ["scanner", "attendees", "quests", "milestones", "verifications", "messages", "questlog", "socials", "booths", "staff", "promocodes"] as const;
+export interface SupportTicket {
+  id: number;
+  ticket_ref: string;
+  user_name: string;
+  user_email: string;
+  ticket_code: string | null;
+  type: "feedback" | "issue" | "bug" | "question" | "complaint";
+  category: "general" | "quests" | "qr_ticket" | "booth" | "rewards" | "technical" | "other";
+  subject: string;
+  description: string;
+  priority: "low" | "medium" | "high" | "urgent";
+  status: "Open" | "In Progress" | "Resolved" | "Closed";
+  admin_notes: string | null;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+const ADMIN_TABS = ["scanner", "attendees", "quests", "milestones", "verifications", "messages", "tickets", "questlog", "socials", "booths", "staff", "promocodes"] as const;
 type AdminTab = (typeof ADMIN_TABS)[number];
 
 const STATUS_OPTIONS: Quest["status"][] = ["Live", "Soon", "Done", "Draft"];
@@ -626,6 +645,16 @@ export default function AdminPage() {
   const [messageSearch, setMessageSearch] = useState("");
   const [messageStatusFilter, setMessageStatusFilter] = useState<"all" | QuestVerification["status"]>("all");
 
+  // ── Support & Feedback Tickets state & search filter ──
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
+  const [ticketSearch, setTicketSearch] = useState("");
+  const [ticketStatusFilter, setTicketStatusFilter] = useState<"all" | SupportTicket["status"]>("all");
+  const [ticketTypeFilter, setTicketTypeFilter] = useState<string>("all");
+  const [ticketPriorityFilter, setTicketPriorityFilter] = useState<string>("all");
+  const [actionModalTicket, setActionModalTicket] = useState<SupportTicket | null>(null);
+  const [ticketAdminNotesInput, setTicketAdminNotesInput] = useState("");
+  const [ticketUpdatingStatus, setTicketUpdatingStatus] = useState(false);
+
   // ── Quest Log customizable reporting table state ──
   const [questLogSearch, setQuestLogSearch] = useState("");
   const [questLogStatusFilter, setQuestLogStatusFilter] = useState<string>("all");
@@ -655,6 +684,10 @@ export default function AdminPage() {
   const [messagePage, setMessagePage] = useState(1);
   const [messagePageSize, setMessagePageSize] = useState(10);
   useEffect(() => setMessagePage(1), [messageSearch, messageStatusFilter, messagePageSize]);
+
+  const [ticketPage, setTicketPage] = useState(1);
+  const [ticketPageSize, setTicketPageSize] = useState(10);
+  useEffect(() => setTicketPage(1), [ticketSearch, ticketStatusFilter, ticketTypeFilter, ticketPriorityFilter, ticketPageSize]);
 
   const [questLogPage, setQuestLogPage] = useState(1);
   const [questLogPageSize, setQuestLogPageSize] = useState(10);
@@ -1050,6 +1083,24 @@ export default function AdminPage() {
     }
   }, [adminFetch]);
 
+  const fetchSupportTickets = useCallback(async (isBackground?: any) => {
+    const isBg = isBackground === true;
+    if (!isBg) {
+      setLoading(true);
+      setError("");
+    }
+    try {
+      const res = await adminFetch("/api/admin/tickets?limit=2000");
+      const json = await safeJson(res);
+      if (!res.ok) throw new Error(json.error || "Failed to load support tickets.");
+      setSupportTickets(json.tickets ?? []);
+    } catch (err: any) {
+      if (!isBg) setError(err.message);
+    } finally {
+      if (!isBg) setLoading(false);
+    }
+  }, [adminFetch]);
+
   const fetchAdminUsers = useCallback(async (isBackground?: any) => {
     if (adminUser?.role !== "superadmin" && adminUser?.role !== "admin") return;
     const isBg = isBackground === true;
@@ -1132,9 +1183,10 @@ export default function AdminPage() {
     fetchQuests();
     fetchVerifications();
     fetchMessageNotes();
+    fetchSupportTickets();
     fetchPromoCodes();
     fetchMilestones();
-  }, [authed, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes, fetchPromoCodes, fetchMilestones]);
+  }, [authed, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes, fetchSupportTickets, fetchPromoCodes, fetchMilestones]);
 
   // Refresh current tab data when switching tabs
   useEffect(() => {
@@ -1144,6 +1196,7 @@ export default function AdminPage() {
     else if (tab === "milestones") fetchMilestones();
     else if (tab === "verifications") fetchVerifications();
     else if (tab === "messages") fetchMessageNotes();
+    else if (tab === "tickets") fetchSupportTickets();
     else if (tab === "promocodes") fetchPromoCodes();
     else if (tab === "questlog") {
       fetchAttendees();
@@ -1152,7 +1205,7 @@ export default function AdminPage() {
     }
     else if (tab === "staff") fetchAdminUsers();
     else if (tab === "socials") fetchSocialMissions();
-  }, [tab, fetchAttendees, fetchQuests, fetchMilestones, fetchVerifications, fetchMessageNotes, fetchPromoCodes, fetchAdminUsers, fetchSocialMissions]);
+  }, [tab, fetchAttendees, fetchQuests, fetchMilestones, fetchVerifications, fetchMessageNotes, fetchSupportTickets, fetchPromoCodes, fetchAdminUsers, fetchSocialMissions]);
 
   // ── Auto Refresh (Background Silent Polling - No UI Flickering) ──
   useEffect(() => {
@@ -1163,6 +1216,7 @@ export default function AdminPage() {
       else if (tab === "milestones") fetchMilestones(true);
       else if (tab === "verifications") fetchVerifications(true);
       else if (tab === "messages") fetchMessageNotes(true);
+      else if (tab === "tickets") fetchSupportTickets(true);
       else if (tab === "promocodes") fetchPromoCodes(true);
       else if (tab === "questlog") {
         fetchAttendees(true);
@@ -1173,7 +1227,7 @@ export default function AdminPage() {
       else if (tab === "socials") fetchSocialMissions(true);
     }, 10000);
     return () => clearInterval(interval);
-  }, [authed, autoRefresh, tab, fetchAttendees, fetchQuests, fetchMilestones, fetchVerifications, fetchMessageNotes, fetchPromoCodes, fetchAdminUsers, fetchSocialMissions]);
+  }, [authed, autoRefresh, tab, fetchAttendees, fetchQuests, fetchMilestones, fetchVerifications, fetchMessageNotes, fetchSupportTickets, fetchPromoCodes, fetchAdminUsers, fetchSocialMissions]);
 
   const [rejectingItem, setRejectingItem] = useState<QuestVerification | null>(null);
   const [rejectionReasonInput, setRejectionReasonInput] = useState("");
@@ -1358,6 +1412,67 @@ export default function AdminPage() {
     if (diff !== 0) return diff;
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
+
+  // ─── Support & Feedback Tickets helpers ──────────────────────────────────
+  const filteredSupportTickets = supportTickets.filter((t) => {
+    const query = ticketSearch.toLowerCase();
+    const matchesQuery =
+      !query ||
+      t.ticket_ref.toLowerCase().includes(query) ||
+      t.user_name.toLowerCase().includes(query) ||
+      t.user_email.toLowerCase().includes(query) ||
+      t.subject.toLowerCase().includes(query) ||
+      t.description.toLowerCase().includes(query) ||
+      (t.ticket_code ?? "").toLowerCase().includes(query) ||
+      (t.admin_notes ?? "").toLowerCase().includes(query);
+
+    if (!matchesQuery) return false;
+    if (ticketStatusFilter !== "all" && t.status !== ticketStatusFilter) return false;
+    if (ticketTypeFilter !== "all" && t.type !== ticketTypeFilter) return false;
+    if (ticketPriorityFilter !== "all" && t.priority !== ticketPriorityFilter) return false;
+    return true;
+  }).sort((a, b) => {
+    const getStatusWeight = (st: string) => {
+      if (st === "Open") return 0;
+      if (st === "In Progress") return 1;
+      if (st === "Resolved") return 2;
+      return 3; // Closed
+    };
+    const diff = getStatusWeight(a.status) - getStatusWeight(b.status);
+    if (diff !== 0) return diff;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
+  async function handleUpdateTicket(ticketId: number, newStatus: SupportTicket["status"], notes?: string) {
+    setTicketUpdatingStatus(true);
+    try {
+      const res = await adminFetch("/api/admin/tickets", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: ticketId,
+          status: newStatus,
+          admin_notes: notes !== undefined ? notes : ticketAdminNotesInput,
+        }),
+      });
+
+      const json = await safeJson(res);
+      if (!res.ok) throw new Error(json.error || "Failed to update ticket");
+
+      setSupportTickets((prev) =>
+        prev.map((t) => (t.id === ticketId ? json.ticket : t))
+      );
+
+      if (actionModalTicket && actionModalTicket.id === ticketId) {
+        setActionModalTicket(json.ticket);
+      }
+      showAdminNotice(`Ticket #${json.ticket?.ticket_ref || ticketId} marked as ${newStatus}!`, "success", "Ticket Updated");
+    } catch (err: any) {
+      showAdminNotice(err.message || "Failed to update ticket", "error", "Ticket Error");
+    } finally {
+      setTicketUpdatingStatus(false);
+    }
+  }
 
   function copyTicket(attendee: Attendee) {
     navigator.clipboard.writeText(attendee.ticket_code ?? "");
@@ -1576,6 +1691,59 @@ export default function AdminPage() {
       subtitle: "Text feedback notes and social post submissions from questers",
       filenamePrefix: "Attendee_Message_Notes",
       sheetName: "MessageNotes",
+      columns,
+      rows,
+    });
+  }
+
+  function exportSupportTicketsToCSV() {
+    const listToExport = filteredSupportTickets;
+    if (listToExport.length === 0) {
+      showAdminNotice("No support tickets match the current filters.", "warning", "Export Notice");
+      return;
+    }
+    const columns = [
+      { header: "ID", width: 60 },
+      { header: "Ticket Ref", width: 120 },
+      { header: "User Name", width: 160 },
+      { header: "Email Address", width: 220 },
+      { header: "Attendee Pass", width: 110 },
+      { header: "Type", width: 100 },
+      { header: "Category", width: 110 },
+      { header: "Priority", width: 90 },
+      { header: "Status", width: 100 },
+      { header: "Subject", width: 240 },
+      { header: "Description", width: 320 },
+      { header: "Admin Notes / Resolution", width: 280 },
+      { header: "Resolved By", width: 120 },
+      { header: "Resolved At", width: 160 },
+      { header: "Created At", width: 160 },
+    ];
+
+    const rows = listToExport.map((t) => [
+      t.id,
+      t.ticket_ref || "",
+      t.user_name || "",
+      t.user_email || "",
+      t.ticket_code || "",
+      t.type || "",
+      t.category || "",
+      t.priority || "",
+      t.status || "",
+      t.subject || "",
+      t.description || "",
+      t.admin_notes || "",
+      t.resolved_by || "",
+      t.resolved_at ? new Date(t.resolved_at).toLocaleString() : "",
+      new Date(t.created_at).toLocaleString(),
+    ]);
+
+    setExportFormat("excel");
+    setExportModalConfig({
+      title: "BlockQuest Fiesta - Help & Support Tickets",
+      subtitle: "Quester feedback, issue reports, bug tickets, and admin resolution log",
+      filenamePrefix: "Support_Tickets_Log",
+      sheetName: "SupportTickets",
       columns,
       rows,
     });
@@ -2434,6 +2602,35 @@ export default function AdminPage() {
               ⚡ + Add Quest
             </button>
           )}
+          <button
+            onClick={() => setTab("tickets")}
+            className="admin-nav-link"
+            style={{
+              borderColor: "rgba(239, 68, 68, 0.5)",
+              color: "#fca5a5",
+              background: tab === "tickets" ? "rgba(239, 68, 68, 0.25)" : "rgba(239, 68, 68, 0.1)",
+              cursor: "pointer",
+              fontWeight: 700,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6
+            }}
+            title="Open Help & Support Tickets Desk"
+          >
+            <span>🎫 Support Tickets</span>
+            {supportTickets.filter((st) => st.status === "Open" || st.status === "In Progress").length > 0 && (
+              <span style={{
+                background: "#ef4444",
+                color: "#fff",
+                borderRadius: 10,
+                padding: "1px 6px",
+                fontSize: "0.68rem",
+                fontWeight: 900
+              }}>
+                {supportTickets.filter((st) => st.status === "Open" || st.status === "In Progress").length}
+              </span>
+            )}
+          </button>
           <a href="/shortcuts" className="admin-nav-link" style={{ borderColor: "rgba(59, 130, 246, 0.4)", color: "#60a5fa" }}>🧭 Shortcuts</a>
           <a href="/manual-presentation.html" target="_blank" rel="noreferrer" className="admin-nav-link" style={{ borderColor: "rgba(16, 185, 129, 0.4)", color: "#34d399" }}>📖 Manual ↗</a>
           <a href="/" className="admin-nav-link" onClick={(e) => handleNavigate(e, "/")}>Home Portal</a>
@@ -2466,15 +2663,17 @@ export default function AdminPage() {
                         ? "🔍 Quest Proof Verifications"
                         : tab === "messages"
                           ? "💬 Quester Message Notes"
-                          : tab === "questlog"
-                            ? "📊 Global Audit Quest Log"
-                            : tab === "booths"
-                              ? "🏪 Sponsor Booth Stations"
-                              : tab === "staff"
-                                ? "🛡️ Staff & Admin Credentials"
-                                : tab === "socials"
-                                  ? "📣 Social Missions"
-                                  : "🎁 Promo Codes & Referrals"}
+                          : tab === "tickets"
+                            ? "🎫 Help & Support Tickets"
+                            : tab === "questlog"
+                              ? "📊 Global Audit Quest Log"
+                              : tab === "booths"
+                                ? "🏪 Sponsor Booth Stations"
+                                : tab === "staff"
+                                  ? "🛡️ Staff & Admin Credentials"
+                                  : tab === "socials"
+                                    ? "📣 Social Missions"
+                                    : "🎁 Promo Codes & Referrals"}
             </span>
           </div>
 
@@ -2493,6 +2692,12 @@ export default function AdminPage() {
               <>
                 <span style={{ opacity: 0.4 }}>•</span>
                 <span style={{ color: "#f59e0b" }}>🔍 {verifications.filter((v) => v.status === "Pending").length} Reviews Pending</span>
+              </>
+            )}
+            {supportTickets.filter((st) => st.status === "Open" || st.status === "In Progress").length > 0 && (
+              <>
+                <span style={{ opacity: 0.4 }}>•</span>
+                <span style={{ color: "#ef4444" }}>🎫 {supportTickets.filter((st) => st.status === "Open" || st.status === "In Progress").length} Tickets Active</span>
               </>
             )}
           </div>
@@ -2519,6 +2724,7 @@ export default function AdminPage() {
               else if (tab === "milestones") fetchMilestones();
               else if (tab === "verifications") fetchVerifications();
               else if (tab === "messages") fetchMessageNotes();
+              else if (tab === "tickets") fetchSupportTickets();
               else if (tab === "promocodes") fetchPromoCodes();
               else if (tab === "staff") fetchAdminUsers();
               else if (tab === "socials") fetchSocialMissions();
@@ -2527,6 +2733,7 @@ export default function AdminPage() {
                 fetchQuests();
                 fetchVerifications();
                 fetchMessageNotes();
+                fetchSupportTickets();
               }
             }}
             title="Reload data for active view"
@@ -2710,6 +2917,32 @@ export default function AdminPage() {
             </p>
           </div>
         </div>
+        <div
+          className="admin-stat-card"
+          style={{
+            borderLeft: "3px solid rgba(239, 68, 68, 0.8)",
+            cursor: "pointer",
+            background: tab === "tickets" ? "rgba(239, 68, 68, 0.12)" : undefined
+          }}
+          onClick={() => setTab("tickets")}
+          title="Click to open Help & Support Tickets Desk"
+        >
+          <span className="admin-stat-card__icon">🆘</span>
+          <div style={{ minWidth: 0, overflow: "hidden" }}>
+            <p className="admin-stat-card__label">Support Tickets</p>
+            <p
+              className="admin-stat-card__value"
+              style={{
+                color: supportTickets.filter((st) => st.status === "Open" || st.status === "In Progress").length > 0 ? "#f87171" : undefined
+              }}
+            >
+              {supportTickets.filter((st) => st.status === "Open" || st.status === "In Progress").length}
+              <span style={{ fontSize: "0.68rem", fontWeight: "normal", color: "var(--text-muted)", marginLeft: 4 }}>
+                / {supportTickets.length}
+              </span>
+            </p>
+          </div>
+        </div>
       </section>
 
       {/* Tabs */}
@@ -2717,10 +2950,10 @@ export default function AdminPage() {
         {ADMIN_TABS.filter((t) => {
           const role = adminUser?.role;
           if (role === "superadmin") return true;
-          if (role === "verifier") return t === "verifications" || t === "messages" || t === "questlog";
-          if (role === "manage_attendees" || role === "manage_quester") return t === "scanner" || t === "attendees" || t === "questlog";
-          if (role === "admin" || role === "manager") return t === "scanner" || t === "attendees" || t === "quests" || t === "milestones" || t === "verifications" || t === "messages" || t === "questlog" || t === "booths" || t === "promocodes";
-          if (role === "viewer") return t === "scanner" || t === "attendees" || t === "quests" || t === "milestones" || t === "verifications" || t === "messages" || t === "questlog";
+          if (role === "verifier") return t === "verifications" || t === "messages" || t === "tickets" || t === "questlog";
+          if (role === "manage_attendees" || role === "manage_quester") return t === "scanner" || t === "attendees" || t === "tickets" || t === "questlog";
+          if (role === "admin" || role === "manager") return t === "scanner" || t === "attendees" || t === "quests" || t === "milestones" || t === "verifications" || t === "messages" || t === "tickets" || t === "questlog" || t === "booths" || t === "promocodes";
+          if (role === "viewer") return t === "scanner" || t === "attendees" || t === "quests" || t === "milestones" || t === "verifications" || t === "messages" || t === "tickets" || t === "questlog";
           return false;
         }).map((t) => (
           <button
@@ -2739,17 +2972,19 @@ export default function AdminPage() {
                       ? "🏆"
                       : t === "messages"
                         ? "💬"
-                        : t === "questlog"
-                          ? "📊"
-                          : t === "booths"
-                            ? "🏪"
-                            : t === "staff"
-                              ? "🛡️"
-                              : t === "socials"
-                                ? "📣"
-                                : t === "promocodes"
-                                  ? "🎁"
-                                  : "🔍"}
+                        : t === "tickets"
+                          ? "🆘"
+                          : t === "questlog"
+                            ? "📊"
+                            : t === "booths"
+                              ? "🏪"
+                              : t === "staff"
+                                ? "🛡️"
+                                : t === "socials"
+                                  ? "📣"
+                                  : t === "promocodes"
+                                    ? "🎁"
+                                    : "🔍"}
             </span>
             <span className="admin-tab-text">
               {t === "scanner"
@@ -2762,17 +2997,19 @@ export default function AdminPage() {
                       ? " Milestones & Tiers"
                       : t === "messages"
                         ? ` Message Notes (${messageNotes.filter((v) => v.status === "Pending").length})`
-                        : t === "questlog"
-                          ? " Quest Log"
-                          : t === "booths"
-                            ? " Booth Stations"
-                            : t === "staff"
-                              ? " Staff / Admins"
-                              : t === "socials"
-                                ? " Social Missions"
-                                : t === "promocodes"
-                                  ? " Promo Codes"
-                                  : ` Quest Verifications (${verifications.filter((v) => !v.user_message && v.status === "Pending").length})`}
+                        : t === "tickets"
+                          ? ` Help & Support Tickets (${supportTickets.filter((st) => st.status === "Open" || st.status === "In Progress").length})`
+                          : t === "questlog"
+                            ? " Quest Log"
+                            : t === "booths"
+                              ? " Booth Stations"
+                              : t === "staff"
+                                ? " Staff / Admins"
+                                : t === "socials"
+                                  ? " Social Missions"
+                                  : t === "promocodes"
+                                    ? " Promo Codes"
+                                    : ` Quest Verifications (${verifications.filter((v) => !v.user_message && v.status === "Pending").length})`}
             </span>
           </button>
         ))}
@@ -4635,6 +4872,446 @@ export default function AdminPage() {
               totalItems={filteredMessageVerifications.length}
               onPageChange={setMessagePage}
               onPageSizeChange={setMessagePageSize}
+            />
+          </>
+        )}
+
+        {/* ─── SUPPORT & FEEDBACK TICKETS TAB ─── */}
+        {tab === "tickets" && !loading && (
+          <>
+            {/* Status & Priority Filter Pills */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              flexWrap: "wrap",
+              marginBottom: 14
+            }}>
+              {/* All / Total Pill */}
+              <button
+                type="button"
+                onClick={() => { setTicketStatusFilter("all"); setTicketTypeFilter("all"); setTicketPriorityFilter("all"); }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "5px 12px",
+                  borderRadius: 20,
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  background: ticketStatusFilter === "all" ? "rgba(255, 255, 255, 0.15)" : "rgba(15, 23, 42, 0.6)",
+                  border: ticketStatusFilter === "all" ? "1px solid rgba(255, 255, 255, 0.5)" : "1px solid rgba(255, 255, 255, 0.1)",
+                  color: "#fff",
+                  boxShadow: ticketStatusFilter === "all" ? "0 0 10px rgba(255, 255, 255, 0.15)" : "none"
+                }}
+              >
+                <span>🎫 All Tickets</span>
+                <span style={{
+                  background: "rgba(255, 255, 255, 0.15)",
+                  padding: "1px 7px",
+                  borderRadius: 10,
+                  fontSize: "0.76rem"
+                }}>
+                  {supportTickets.length}
+                </span>
+              </button>
+
+              {/* Open Pill */}
+              <button
+                type="button"
+                onClick={() => setTicketStatusFilter("Open")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "5px 12px",
+                  borderRadius: 20,
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  background: ticketStatusFilter === "Open" ? "rgba(239, 68, 68, 0.25)" : "rgba(239, 68, 68, 0.08)",
+                  border: ticketStatusFilter === "Open" ? "1px solid rgba(239, 68, 68, 0.8)" : "1px solid rgba(239, 68, 68, 0.25)",
+                  color: "#f87171",
+                  boxShadow: ticketStatusFilter === "Open" ? "0 0 12px rgba(239, 68, 68, 0.3)" : "none"
+                }}
+              >
+                <span>🔴 Open</span>
+                <span style={{
+                  background: "rgba(239, 68, 68, 0.25)",
+                  padding: "1px 7px",
+                  borderRadius: 10,
+                  fontSize: "0.76rem",
+                  color: "#fee2e2"
+                }}>
+                  {supportTickets.filter((t) => t.status === "Open").length}
+                </span>
+              </button>
+
+              {/* In Progress Pill */}
+              <button
+                type="button"
+                onClick={() => setTicketStatusFilter("In Progress")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "5px 12px",
+                  borderRadius: 20,
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  background: ticketStatusFilter === "In Progress" ? "rgba(245, 158, 11, 0.25)" : "rgba(245, 158, 11, 0.08)",
+                  border: ticketStatusFilter === "In Progress" ? "1px solid rgba(245, 158, 11, 0.8)" : "1px solid rgba(245, 158, 11, 0.25)",
+                  color: "#fbbf24",
+                  boxShadow: ticketStatusFilter === "In Progress" ? "0 0 12px rgba(245, 158, 11, 0.3)" : "none"
+                }}
+              >
+                <span>🟡 In Progress</span>
+                <span style={{
+                  background: "rgba(245, 158, 11, 0.25)",
+                  padding: "1px 7px",
+                  borderRadius: 10,
+                  fontSize: "0.76rem",
+                  color: "#fef3c7"
+                }}>
+                  {supportTickets.filter((t) => t.status === "In Progress").length}
+                </span>
+              </button>
+
+              {/* Resolved Pill */}
+              <button
+                type="button"
+                onClick={() => setTicketStatusFilter("Resolved")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "5px 12px",
+                  borderRadius: 20,
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  background: ticketStatusFilter === "Resolved" ? "rgba(16, 185, 129, 0.25)" : "rgba(16, 185, 129, 0.08)",
+                  border: ticketStatusFilter === "Resolved" ? "1px solid rgba(16, 185, 129, 0.8)" : "1px solid rgba(16, 185, 129, 0.25)",
+                  color: "#34d399",
+                  boxShadow: ticketStatusFilter === "Resolved" ? "0 0 12px rgba(16, 185, 129, 0.3)" : "none"
+                }}
+              >
+                <span>✓ Resolved</span>
+                <span style={{
+                  background: "rgba(16, 185, 129, 0.25)",
+                  padding: "1px 7px",
+                  borderRadius: 10,
+                  fontSize: "0.76rem",
+                  color: "#d1fae5"
+                }}>
+                  {supportTickets.filter((t) => t.status === "Resolved").length}
+                </span>
+              </button>
+
+              {/* Closed Pill */}
+              <button
+                type="button"
+                onClick={() => setTicketStatusFilter("Closed")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "5px 12px",
+                  borderRadius: 20,
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  background: ticketStatusFilter === "Closed" ? "rgba(100, 116, 139, 0.3)" : "rgba(100, 116, 139, 0.1)",
+                  border: ticketStatusFilter === "Closed" ? "1px solid rgba(100, 116, 139, 0.8)" : "1px solid rgba(100, 116, 139, 0.2)",
+                  color: "#94a3b8",
+                  boxShadow: ticketStatusFilter === "Closed" ? "0 0 12px rgba(100, 116, 139, 0.3)" : "none"
+                }}
+              >
+                <span>🔒 Closed</span>
+                <span style={{
+                  background: "rgba(100, 116, 139, 0.25)",
+                  padding: "1px 7px",
+                  borderRadius: 10,
+                  fontSize: "0.76rem",
+                  color: "#e2e8f0"
+                }}>
+                  {supportTickets.filter((t) => t.status === "Closed").length}
+                </span>
+              </button>
+            </div>
+
+            {/* Toolbar Filters */}
+            <div className="admin-toolbar" style={{ flexWrap: "wrap", gap: 10 }}>
+              <input
+                type="search"
+                placeholder="Search tickets by Ref #, user, subject, description, pass code..."
+                value={ticketSearch}
+                onChange={(e) => setTicketSearch(e.target.value)}
+                className="admin-search-input"
+                style={{ flex: 1, minWidth: 260 }}
+              />
+
+              <select
+                className="admin-filter-select"
+                value={ticketTypeFilter}
+                onChange={(e) => setTicketTypeFilter(e.target.value)}
+              >
+                <option value="all">All Ticket Types</option>
+                <option value="feedback">💬 Feedback</option>
+                <option value="issue">⚠️ Issue</option>
+                <option value="bug">🐛 Bug Report</option>
+                <option value="question">❓ Question</option>
+                <option value="complaint">🛑 Complaint</option>
+              </select>
+
+              <select
+                className="admin-filter-select"
+                value={ticketPriorityFilter}
+                onChange={(e) => setTicketPriorityFilter(e.target.value)}
+              >
+                <option value="all">All Priorities</option>
+                <option value="urgent">🔴 Urgent</option>
+                <option value="high">🟠 High</option>
+                <option value="medium">🟡 Medium</option>
+                <option value="low">🟢 Low</option>
+              </select>
+
+              <select
+                className="admin-filter-select"
+                value={ticketStatusFilter}
+                onChange={(e) => setTicketStatusFilter(e.target.value as any)}
+              >
+                <option value="all">All Statuses</option>
+                <option value="Open">🔴 Open</option>
+                <option value="In Progress">🟡 In Progress</option>
+                <option value="Resolved">✓ Resolved</option>
+                <option value="Closed">🔒 Closed</option>
+              </select>
+
+              <button className="admin-refresh-btn" onClick={fetchSupportTickets} title="Refresh Tickets">
+                ↻ Refresh
+              </button>
+
+              <button
+                className="admin-refresh-btn"
+                onClick={exportSupportTicketsToCSV}
+                title="Export currently filtered support tickets to Excel/CSV"
+                style={{
+                  background: "rgba(16, 185, 129, 0.15)",
+                  borderColor: "rgba(16, 185, 129, 0.4)",
+                  color: "#34d399",
+                }}
+              >
+                📥 Export CSV ({filteredSupportTickets.length})
+              </button>
+            </div>
+
+            {/* Support Tickets Table */}
+            <div className="admin-table-wrapper">
+              <div className="admin-table-header" style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <h2 style={{ fontSize: "1.15rem", margin: 0, color: "var(--gold-light)", display: "flex", alignItems: "center", gap: 8 }}>
+                  <span>🎫</span> Help & Support Tickets ({filteredSupportTickets.length})
+                </h2>
+                <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                  Quester feedback, issue reports, bug tickets & admin resolution desk
+                </span>
+              </div>
+
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>🎫 Ticket Ref</th>
+                    <th>👤 Quester</th>
+                    <th>📌 Type & Category</th>
+                    <th>📝 Subject & Details</th>
+                    <th>⚡ Priority</th>
+                    <th>🏷️ Status</th>
+                    <th>⚙️ Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredSupportTickets.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="admin-table__empty">
+                        🎉 No support tickets found matching current filters.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredSupportTickets
+                      .slice((ticketPage - 1) * ticketPageSize, (ticketPage - 1) * ticketPageSize + ticketPageSize)
+                      .map((t) => (
+                        <tr key={t.id}>
+                          <td>
+                            <div style={{ fontWeight: 900, color: "#ffd166", letterSpacing: "1px", fontSize: "0.95rem" }}>
+                              {t.ticket_ref}
+                            </div>
+                            <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 2 }}>
+                              {new Date(t.created_at).toLocaleDateString()}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 700, color: "#fff", fontSize: "0.9rem" }}>{t.user_name}</div>
+                            <div style={{ fontSize: "0.76rem", color: "var(--text-secondary)" }}>{t.user_email}</div>
+                            {t.ticket_code && (
+                              <div style={{ fontSize: "0.72rem", color: "#60a5fa", marginTop: 2 }}>
+                                🎟️ {t.ticket_code}
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                              <span style={{
+                                fontSize: "0.72rem",
+                                fontWeight: 800,
+                                textTransform: "uppercase",
+                                padding: "2px 8px",
+                                borderRadius: 6,
+                                display: "inline-block",
+                                width: "fit-content",
+                                background: t.type === "bug"
+                                  ? "rgba(239, 68, 68, 0.2)"
+                                  : t.type === "issue"
+                                  ? "rgba(245, 158, 11, 0.2)"
+                                  : "rgba(59, 130, 246, 0.2)",
+                                color: t.type === "bug" ? "#f87171" : t.type === "issue" ? "#fbbf24" : "#60a5fa",
+                                border: t.type === "bug" ? "1px solid rgba(239,68,68,0.4)" : t.type === "issue" ? "1px solid rgba(245,158,11,0.4)" : "1px solid rgba(59,130,246,0.4)"
+                              }}>
+                                {t.type === "bug" ? "🐛 Bug" : t.type === "issue" ? "⚠️ Issue" : t.type === "feedback" ? "💬 Feedback" : t.type}
+                              </span>
+                              <span style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>
+                                {t.category}
+                              </span>
+                            </div>
+                          </td>
+                          <td style={{ maxWidth: 360, minWidth: 220, overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                            <div style={{ fontWeight: 800, color: "#f8fafc", fontSize: "0.9rem", marginBottom: 4 }}>
+                              {t.subject}
+                            </div>
+                            <div style={{
+                              fontSize: "0.8rem",
+                              color: "var(--text-secondary)",
+                              lineHeight: 1.4,
+                              background: "rgba(0,0,0,0.25)",
+                              padding: "6px 10px",
+                              borderRadius: 8,
+                              border: "1px solid rgba(255,255,255,0.06)"
+                            }}>
+                              {t.description}
+                            </div>
+                            {t.admin_notes && (
+                              <div style={{
+                                marginTop: 6,
+                                fontSize: "0.76rem",
+                                color: "#34d399",
+                                background: "rgba(16, 185, 129, 0.1)",
+                                border: "1px solid rgba(16, 185, 129, 0.3)",
+                                padding: "4px 8px",
+                                borderRadius: 6
+                              }}>
+                                <strong>Admin Note:</strong> {t.admin_notes}
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            <span style={{
+                              fontSize: "0.72rem",
+                              fontWeight: 800,
+                              padding: "3px 8px",
+                              borderRadius: 6,
+                              textTransform: "uppercase",
+                              background: t.priority === "urgent"
+                                ? "rgba(239, 68, 68, 0.25)"
+                                : t.priority === "high"
+                                ? "rgba(245, 158, 11, 0.25)"
+                                : "rgba(100, 116, 139, 0.2)",
+                              color: t.priority === "urgent" ? "#ef4444" : t.priority === "high" ? "#fbbf24" : "#94a3b8",
+                              border: t.priority === "urgent" ? "1px solid rgba(239,68,68,0.5)" : t.priority === "high" ? "1px solid rgba(245,158,11,0.5)" : "1px solid rgba(100,116,139,0.3)"
+                            }}>
+                              {t.priority}
+                            </span>
+                          </td>
+                          <td>
+                            <div>
+                              <span className={`admin-status-badge ${
+                                t.status === "Resolved"
+                                  ? "admin-status-badge--live"
+                                  : t.status === "In Progress"
+                                  ? "admin-status-badge--soon"
+                                  : t.status === "Closed"
+                                  ? "admin-status-badge--done"
+                                  : ""
+                              }`}
+                              style={t.status === "Open" ? { background: "rgba(239, 68, 68, 0.2)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.4)" } : undefined}
+                              >
+                                {t.status === "Resolved" ? "✓ Resolved" : t.status === "In Progress" ? "⏳ In Progress" : t.status === "Closed" ? "🔒 Closed" : "🔴 Open"}
+                              </span>
+                              {t.resolved_by && (
+                                <div style={{ fontSize: "0.68rem", color: "#60a5fa", marginTop: 4 }}>
+                                  by {t.resolved_by}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td>
+                            {adminUser?.role === "viewer" ? (
+                              <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>Read-only</span>
+                            ) : (
+                              <button
+                                className="admin-edit-btn"
+                                onClick={() => {
+                                  setActionModalTicket(t);
+                                  setTicketAdminNotesInput(t.admin_notes || "");
+                                }}
+                                style={{
+                                  background: t.status === "Open"
+                                    ? "linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(220, 38, 38, 0.25) 100%)"
+                                    : t.status === "In Progress"
+                                    ? "linear-gradient(135deg, rgba(245, 166, 35, 0.25) 0%, rgba(217, 119, 6, 0.25) 100%)"
+                                    : "rgba(16, 185, 129, 0.18)",
+                                  borderColor: t.status === "Open"
+                                    ? "rgba(239, 68, 68, 0.6)"
+                                    : t.status === "In Progress"
+                                    ? "rgba(245, 166, 35, 0.6)"
+                                    : "rgba(16, 185, 129, 0.4)",
+                                  color: t.status === "Open"
+                                    ? "#f87171"
+                                    : t.status === "In Progress"
+                                    ? "#fbbf24"
+                                    : "#34d399",
+                                  padding: "6px 14px",
+                                  fontSize: "0.8rem",
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 6
+                                }}
+                                title="Open Ticket Action & Response Modal"
+                              >
+                                <span>⚡ Manage Ticket</span>
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <PaginationBar
+              currentPage={ticketPage}
+              pageSize={ticketPageSize}
+              totalItems={filteredSupportTickets.length}
+              onPageChange={setTicketPage}
+              onPageSizeChange={setTicketPageSize}
             />
           </>
         )}
@@ -7965,6 +8642,268 @@ export default function AdminPage() {
                   Close Modal
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Support Ticket Action & Response Modal ── */}
+      {actionModalTicket && (
+        <div
+          className="admin-modal-overlay"
+          onClick={() => {
+            if (!ticketUpdatingStatus) {
+              setActionModalTicket(null);
+              setTicketAdminNotesInput("");
+            }
+          }}
+          style={{ zIndex: 1000, background: "rgba(0,0,0,0.85)" }}
+        >
+          <div
+            className="admin-modal"
+            style={{ maxWidth: 640, width: "94%", padding: "26px 28px", maxHeight: "90vh", overflowY: "auto" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18, borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 14 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: "1.3rem" }}>🎫</span>
+                  <h3 style={{ margin: 0, fontSize: "1.25rem", color: "var(--gold-light)", fontWeight: 800 }}>
+                    Support Ticket {actionModalTicket.ticket_ref}
+                  </h3>
+                </div>
+                <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
+                  Review quester submission, record administrative response, and update status
+                </p>
+              </div>
+              <button
+                className="admin-modal__close"
+                onClick={() => {
+                  if (!ticketUpdatingStatus) {
+                    setActionModalTicket(null);
+                    setTicketAdminNotesInput("");
+                  }
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Ticket Info Summary Card */}
+            <div style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 14,
+              padding: "16px 18px",
+              marginBottom: 20
+            }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                <div>
+                  <span style={{ fontSize: "0.74rem", color: "var(--text-muted)", display: "block" }}>Submitted By:</span>
+                  <span style={{ fontSize: "0.95rem", color: "#fff", fontWeight: 700 }}>{actionModalTicket.user_name}</span>
+                  <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)", display: "block" }}>{actionModalTicket.user_email}</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: "0.74rem", color: "var(--text-muted)", display: "block" }}>Ticket Ref & Event Pass:</span>
+                  <span style={{ fontSize: "1rem", color: "#ffd166", fontWeight: 900, letterSpacing: "1px" }}>{actionModalTicket.ticket_ref}</span>
+                  {actionModalTicket.ticket_code && (
+                    <span style={{ fontSize: "0.78rem", color: "#60a5fa", display: "block" }}>🎟️ {actionModalTicket.ticket_code}</span>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                <span style={{
+                  fontSize: "0.75rem",
+                  fontWeight: 800,
+                  textTransform: "uppercase",
+                  padding: "3px 10px",
+                  borderRadius: 6,
+                  background: actionModalTicket.type === "bug" ? "rgba(239, 68, 68, 0.2)" : actionModalTicket.type === "issue" ? "rgba(245, 158, 11, 0.2)" : "rgba(59, 130, 246, 0.2)",
+                  color: actionModalTicket.type === "bug" ? "#f87171" : actionModalTicket.type === "issue" ? "#fbbf24" : "#60a5fa",
+                  border: "1px solid rgba(255,255,255,0.12)"
+                }}>
+                  {actionModalTicket.type.toUpperCase()}
+                </span>
+
+                <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", background: "rgba(255,255,255,0.06)", padding: "3px 8px", borderRadius: 6 }}>
+                  Category: <strong style={{ color: "#fff" }}>{actionModalTicket.category}</strong>
+                </span>
+
+                <span style={{
+                  fontSize: "0.75rem",
+                  fontWeight: 800,
+                  padding: "3px 8px",
+                  borderRadius: 6,
+                  background: actionModalTicket.priority === "urgent" ? "rgba(239, 68, 68, 0.2)" : actionModalTicket.priority === "high" ? "rgba(245, 158, 11, 0.2)" : "rgba(255,255,255,0.06)",
+                  color: actionModalTicket.priority === "urgent" ? "#ef4444" : actionModalTicket.priority === "high" ? "#fbbf24" : "#94a3b8"
+                }}>
+                  Priority: {actionModalTicket.priority.toUpperCase()}
+                </span>
+
+                <span className={`admin-status-badge ${
+                  actionModalTicket.status === "Resolved"
+                    ? "admin-status-badge--live"
+                    : actionModalTicket.status === "In Progress"
+                    ? "admin-status-badge--soon"
+                    : actionModalTicket.status === "Closed"
+                    ? "admin-status-badge--done"
+                    : ""
+                }`}
+                style={actionModalTicket.status === "Open" ? { background: "rgba(239, 68, 68, 0.2)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.4)" } : undefined}
+                >
+                  Status: {actionModalTicket.status}
+                </span>
+              </div>
+            </div>
+
+            {/* Subject and Description */}
+            <div style={{ marginBottom: 20 }}>
+              <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                📝 Subject / Summary
+              </span>
+              <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#fff", marginBottom: 12 }}>
+                {actionModalTicket.subject}
+              </div>
+
+              <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                📄 Detailed Description
+              </span>
+              <div style={{
+                fontSize: "0.88rem",
+                color: "#f8fafc",
+                lineHeight: 1.55,
+                background: "rgba(0,0,0,0.3)",
+                padding: "14px 16px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.08)",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word"
+              }}>
+                {actionModalTicket.description}
+              </div>
+            </div>
+
+            {/* Admin Response & Action */}
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 18 }}>
+              <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                ✍️ Admin Notes / Action Response
+              </span>
+
+              <textarea
+                rows={3}
+                className="qf-input"
+                placeholder="Type resolution notes, internal findings, or response details for this ticket..."
+                value={ticketAdminNotesInput}
+                onChange={(e) => setTicketAdminNotesInput(e.target.value)}
+                style={{ width: "100%", fontSize: "0.85rem", resize: "vertical", marginBottom: 14 }}
+              />
+
+              {/* Status Action Buttons */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 14 }}>
+                <button
+                  type="button"
+                  disabled={ticketUpdatingStatus}
+                  onClick={() => handleUpdateTicket(actionModalTicket.id, "In Progress", ticketAdminNotesInput)}
+                  style={{
+                    padding: "11px",
+                    borderRadius: 10,
+                    background: "rgba(245, 158, 11, 0.2)",
+                    border: "1px solid rgba(245, 158, 11, 0.5)",
+                    color: "#fbbf24",
+                    fontWeight: 800,
+                    fontSize: "0.85rem",
+                    cursor: ticketUpdatingStatus ? "not-allowed" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6
+                  }}
+                >
+                  <span>🟡 Mark In Progress</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={ticketUpdatingStatus}
+                  onClick={() => handleUpdateTicket(actionModalTicket.id, "Resolved", ticketAdminNotesInput)}
+                  style={{
+                    padding: "11px",
+                    borderRadius: 10,
+                    background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                    border: "none",
+                    color: "#fff",
+                    fontWeight: 800,
+                    fontSize: "0.85rem",
+                    cursor: ticketUpdatingStatus ? "not-allowed" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    boxShadow: "0 4px 12px rgba(16, 185, 129, 0.35)"
+                  }}
+                >
+                  <span>✓ Mark Resolved</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={ticketUpdatingStatus}
+                  onClick={() => handleUpdateTicket(actionModalTicket.id, "Closed", ticketAdminNotesInput)}
+                  style={{
+                    padding: "11px",
+                    borderRadius: 10,
+                    background: "rgba(100, 116, 139, 0.2)",
+                    border: "1px solid rgba(100, 116, 139, 0.4)",
+                    color: "#94a3b8",
+                    fontWeight: 800,
+                    fontSize: "0.85rem",
+                    cursor: ticketUpdatingStatus ? "not-allowed" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6
+                  }}
+                >
+                  <span>🔒 Mark Closed</span>
+                </button>
+              </div>
+
+              {actionModalTicket.status !== "Open" && (
+                <button
+                  type="button"
+                  disabled={ticketUpdatingStatus}
+                  onClick={() => handleUpdateTicket(actionModalTicket.id, "Open", ticketAdminNotesInput)}
+                  style={{
+                    width: "100%",
+                    padding: "9px",
+                    borderRadius: 8,
+                    background: "rgba(239, 68, 68, 0.1)",
+                    border: "1px solid rgba(239, 68, 68, 0.3)",
+                    color: "#f87171",
+                    fontSize: "0.8rem",
+                    fontWeight: 700,
+                    cursor: ticketUpdatingStatus ? "not-allowed" : "pointer",
+                    marginBottom: 12
+                  }}
+                >
+                  🔄 Reopen Ticket (Status: Open)
+                </button>
+              )}
+
+              {/* Close Modal */}
+              <button
+                type="button"
+                className="admin-cancel-btn"
+                onClick={() => {
+                  setActionModalTicket(null);
+                  setTicketAdminNotesInput("");
+                }}
+                style={{ width: "100%", padding: "10px", textAlign: "center" }}
+              >
+                Close Modal
+              </button>
             </div>
           </div>
         </div>

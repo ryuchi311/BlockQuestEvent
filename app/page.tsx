@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Footer from "../components/footer";
+import FeedbackTicketModal from "../components/feedback-ticket-modal";
 
 export default function Home() {
   const portalRef = useRef<HTMLDivElement>(null);
   const bgCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -252,7 +254,27 @@ export default function Home() {
             </span>
           </Link>
         </div>
-        <div style={{ textAlign: "center", marginTop: "32px", display: "flex", justifyContent: "center" }}>
+        <div style={{ textAlign: "center", marginTop: "32px", display: "flex", justifyContent: "center", alignItems: "center", gap: 16 }}>
+          <button
+            type="button"
+            onClick={() => setShowFeedbackModal(true)}
+            style={{
+              fontSize: "0.78rem",
+              color: "#fbbf24",
+              background: "rgba(245, 166, 35, 0.08)",
+              border: "1px solid rgba(245, 166, 35, 0.3)",
+              borderRadius: 20,
+              padding: "4px 14px",
+              cursor: "pointer",
+              letterSpacing: "0.04em",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              transition: "all 0.2s ease"
+            }}
+          >
+            <span>💬</span> Feedback & Support
+          </button>
           <Link
             href="/shortcut"
             style={{
@@ -269,6 +291,11 @@ export default function Home() {
             🧭 Shortcut
           </Link>
         </div>
+
+        <FeedbackTicketModal
+          isOpen={showFeedbackModal}
+          onClose={() => setShowFeedbackModal(false)}
+        />
 
         <Footer />
       </section>

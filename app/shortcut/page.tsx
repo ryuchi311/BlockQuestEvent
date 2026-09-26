@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import FeedbackTicketModal from "../../components/feedback-ticket-modal";
 
 export default function ShortcutsPage() {
   const [mounted, setMounted] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -461,8 +463,37 @@ export default function ShortcutsPage() {
                 <span style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>/</span>
               </div>
             </Link>
+
+            <button
+              type="button"
+              onClick={() => setShowFeedbackModal(true)}
+              style={{
+                background: "rgba(245, 166, 35, 0.08)",
+                border: "1px solid rgba(245, 166, 35, 0.35)",
+                padding: "14px 16px",
+                borderRadius: 12,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                textAlign: "left",
+                transition: "all 0.2s",
+                fontFamily: "inherit",
+              }}
+            >
+              <span style={{ fontSize: "1.4rem" }}>💬</span>
+              <div>
+                <strong style={{ color: "#ffd166", fontSize: "0.9rem", display: "block" }}>Feedback & Support Ticket</strong>
+                <span style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>Submit feedback or report issue</span>
+              </div>
+            </button>
           </div>
         </div>
+
+        <FeedbackTicketModal
+          isOpen={showFeedbackModal}
+          onClose={() => setShowFeedbackModal(false)}
+        />
 
         {/* Footer Note */}
         <div style={{ textAlign: "center", marginTop: 36, fontSize: "0.8rem", color: "var(--text-muted)" }}>

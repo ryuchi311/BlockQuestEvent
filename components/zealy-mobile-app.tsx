@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import ZealyIntroAnimation from "./zealy-intro-animation";
 import InstallPrompt from "./install-prompt";
+import FeedbackTicketModal from "./feedback-ticket-modal";
 
 interface Quest {
   id: string;
@@ -221,6 +222,7 @@ export default function ZealyMobileApp() {
   } | null>(null);
   const [showQrZoomModal, setShowQrZoomModal] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   const showNotice = React.useCallback((
     message: string,
@@ -2242,6 +2244,76 @@ export default function ZealyMobileApp() {
                     );
                   })()}
                 </div>
+
+                {/* 💬 Helpdesk & Feedback Support Card */}
+                <div
+                  className="info-card"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.04) 100%)",
+                    border: "1px solid rgba(59, 130, 246, 0.28)",
+                    borderRadius: 16,
+                    padding: "16px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 10,
+                          background: "rgba(59, 130, 246, 0.2)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "1.2rem",
+                        }}
+                      >
+                        💬
+                      </div>
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: "0.92rem", fontWeight: 800, color: "#fff" }}>
+                          Feedback & Support
+                        </h4>
+                        <p style={{ margin: "2px 0 0", fontSize: "0.74rem", color: "var(--text-secondary)" }}>
+                          Report issues or submit tickets to event admins
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowFeedbackModal(true)}
+                    style={{
+                      width: "100%",
+                      padding: "11px 16px",
+                      borderRadius: 12,
+                      border: "none",
+                      background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                      color: "#fff",
+                      fontSize: "0.85rem",
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      boxShadow: "0 4px 14px rgba(37, 99, 235, 0.3)",
+                      transition: "transform 0.15s ease",
+                    }}
+                    onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.98)")}
+                    onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                  >
+                    <span>🎫 Create Support Ticket / Send Feedback</span>
+                    <span>→</span>
+                  </button>
+                </div>
+
                 {qrPass && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
                     <button
@@ -3761,6 +3833,18 @@ export default function ZealyMobileApp() {
               </div>
             </div>
           )}
+
+          {/* ── Feedback & Support Ticket Modal ── */}
+          <FeedbackTicketModal
+            isOpen={showFeedbackModal}
+            onClose={() => setShowFeedbackModal(false)}
+            defaultEmail={ticketEmail || authenticatedUser?.email || qrPass?.email || ""}
+            defaultName={authenticatedUser?.fullName || qrPass?.fullName || ""}
+            defaultTicketCode={qrPass?.passCode || authenticatedUser?.ticket_code || ""}
+            onSuccess={(ref) => {
+              showNotice(`Your support ticket #${ref} was submitted successfully! Our event admin team will review it.`, "success", "Ticket Submitted");
+            }}
+          />
         </div>
       </div>
       <InstallPrompt />

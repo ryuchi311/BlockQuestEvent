@@ -2960,19 +2960,20 @@ a {
 /* ── Stats (Compact) ────────────────────────────────────────── */
 .admin-stats {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 8px;
-  padding: 12px 24px 0;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  padding: 10px 24px 0;
 }
 
 .admin-stat-card {
   background: rgba(255,255,255,0.025);
   border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 9px;
-  padding: 8px 12px;
+  border-radius: 8px;
+  padding: 6px 10px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
+  min-width: 0;
   transition: border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
 }
 .admin-stat-card:hover {
@@ -2989,27 +2990,36 @@ a {
 .admin-stats .admin-stat-card:nth-child(5) { border-left: 3px solid rgba(52, 211, 153, 0.7); }
 
 .admin-stat-card__icon {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   line-height: 1;
   flex-shrink: 0;
 }
 
 .admin-stat-card__label {
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   color: var(--text-muted);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .admin-stat-card__value {
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   font-weight: 800;
   color: var(--text-primary);
   margin-top: 1px;
   letter-spacing: -0.02em;
   line-height: 1.1;
+  white-space: nowrap;
+}
+
+@media (max-width: 1200px) {
+  .admin-stats {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 /* ── Tabs (Compact) ─────────────────────────────────────────── */
