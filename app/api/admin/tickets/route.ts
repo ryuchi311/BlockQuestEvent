@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { verifyAdminAuth, unauthorizedResponse } from "../../../../utils/admin-auth";
+import { sendEmailNotification } from "../../../../utils/email";
 
 export const runtime = "nodejs";
 
@@ -119,6 +120,40 @@ export async function PATCH(request: Request) {
     if (error) {
       console.error("Admin ticket update error:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (data?.user_email && (admin_notes !== undefined || status)) {
+      const ticketRef = data.ticket_ref || `#${data.id}`;
+      const ticketStatus = data.status || status || "Updated";
+      const subject = `[BlockQuest Fiesta Support] Update on Ticket ${ticketRef}: ${data.subject || "Your Request"}`;
+      
+      const notesHtml = data.admin_notes
+        ? `<div style="background:#f8fafc;border-left:4px solid #f59e0b;padding:12px 16px;margin:16px 0;border-radius:4px;font-size:14px;color:#1e293b;line-height:1.5;"><strong>Admin Message / Note:</strong><br/>${data.admin_notes.replace(/\n/g, "<br/>")}</div>`
+        : "";
+
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6;">
+          <h2 style="color: #d97706; margin-bottom: 8px;">BlockQuest Fiesta PH — Support Update</h2>
+          <p>Hello <strong>${data.user_name || "Adventurer"}</strong>,</p>
+          <p>An administrator has reviewed your support ticket.</p>
+          <div style="background: #f1f5f9; padding: 14px 18px; border-radius: 8px; margin: 16px 0;">
+            <p style="margin: 4px 0;"><strong>Ticket Reference:</strong> <span style="font-family:monospace;font-size:16px;color:#b45309;font-weight:bold;">${ticketRef}</span></p>
+            <p style="margin: 4px 0;"><strong>Subject:</strong> ${data.subject || "Support Inquiry"}</p>
+            <p style="margin: 4px 0;"><strong>Status:</strong> <span style="display:inline-block;padding:2px 8px;border-radius:4px;background:#e2e8f0;font-weight:bold;">${ticketStatus}</span></p>
+          </div>
+          ${notesHtml}
+          <p style="font-size: 13px; color: #64748b; margin-top: 24px;">
+            You can also check the live status of your ticket at any time by visiting <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://event.chiprojects.com"}" style="color:#d97706;">BlockQuest Fiesta PH</a> and using the <strong>Check Ticket Status</strong> tool.
+          </p>
+        </div>
+      `;
+
+      // Dispatch async without delaying the response
+      sendEmailNotification({
+        to: data.user_email,
+        subject,
+        html,
+      }).catch((emailErr) => console.warn("Failed sending ticket update email:", emailErr));
     }
 
     return NextResponse.json({ success: true, ticket: data });

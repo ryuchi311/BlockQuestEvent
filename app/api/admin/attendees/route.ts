@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { verifyAdminAuth, unauthorizedResponse } from "../../../../utils/admin-auth";
+import { sendEmailNotification } from "../../../../utils/email";
 
 export const runtime = "nodejs";
 
@@ -75,6 +76,29 @@ export async function PATCH(request: Request) {
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    if (data?.email) {
+      sendEmailNotification({
+        to: data.email,
+        subject: "[BlockQuest Fiesta PH] Your Temporary Security PIN",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 540px; margin: 0 auto; padding: 20px; color: #1e293b; line-height: 1.6;">
+            <h2 style="color: #d97706; margin-bottom: 8px;">Security PIN Reset</h2>
+            <p>Hello <strong>${data.full_name || "Adventurer"}</strong>,</p>
+            <p>An administrator or event staff member has issued a temporary Security PIN for your BlockQuest account:</p>
+            <div style="background: #fef3c7; border: 2px dashed #f59e0b; padding: 18px; border-radius: 12px; text-align: center; margin: 20px 0;">
+              <span style="font-size: 13px; color: #92400e; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Temporary PIN Code</span>
+              <div style="font-size: 32px; font-weight: 900; letter-spacing: 6px; color: #b45309; margin: 8px 0;">
+                ${finalPin}
+              </div>
+            </div>
+            <p style="font-size: 14px; color: #475569;">
+              Use this PIN to access your account at the event. For security, you can change your PIN anytime from your account settings after logging in.
+            </p>
+          </div>
+        `,
+      }).catch((emailErr) => console.warn("Failed sending temporary PIN email:", emailErr));
+    }
 
     return NextResponse.json({
       message: "Security PIN reset successfully.",

@@ -223,6 +223,7 @@ export default function ZealyMobileApp() {
   const [showQrZoomModal, setShowQrZoomModal] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackModalInitialMode, setFeedbackModalInitialMode] = useState<"create" | "status">("create");
 
   const showNotice = React.useCallback((
     message: string,
@@ -1564,9 +1565,50 @@ export default function ZealyMobileApp() {
                               style={{ padding: "10px 12px", fontSize: "0.85rem", letterSpacing: "2px", fontWeight: "bold" }}
                             />
                           </label>
-                          <p style={{ fontSize: "0.74rem", color: "rgba(245, 166, 35, 0.85)", marginTop: 6, marginBottom: 4, lineHeight: 1.4 }}>
-                            💡 <strong>Forgot PIN?</strong> Please ask an Event Staff / Admin at the helpdesk to issue a temporary PIN code for your account.
-                          </p>
+                          <div style={{ marginTop: 8, marginBottom: 6, padding: "8px 10px", borderRadius: 8, background: "rgba(245, 166, 35, 0.08)", border: "1px dashed rgba(245, 166, 35, 0.3)" }}>
+                            <p style={{ fontSize: "0.74rem", color: "rgba(245, 166, 35, 0.95)", margin: "0 0 6px", lineHeight: 1.4 }}>
+                              💡 <strong>Forgot PIN?</strong> Ask Event Staff at the helpdesk or send a support ticket below:
+                            </p>
+                            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: "0.72rem" }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFeedbackModalInitialMode("create");
+                                  setShowFeedbackModal(true);
+                                }}
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  padding: 0,
+                                  color: "#ffd166",
+                                  textDecoration: "underline",
+                                  cursor: "pointer",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                ✍️ Request PIN Help Ticket
+                              </button>
+                              <span style={{ color: "rgba(255,255,255,0.2)" }}>•</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFeedbackModalInitialMode("status");
+                                  setShowFeedbackModal(true);
+                                }}
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  padding: 0,
+                                  color: "#38bdf8",
+                                  textDecoration: "underline",
+                                  cursor: "pointer",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                🔍 Check Ticket Status & Admin Note
+                              </button>
+                            </div>
+                          </div>
                         </>
                       )}
                       {ticketError && (
@@ -3841,6 +3883,7 @@ export default function ZealyMobileApp() {
             defaultEmail={ticketEmail || authenticatedUser?.email || qrPass?.email || ""}
             defaultName={authenticatedUser?.fullName || qrPass?.fullName || ""}
             defaultTicketCode={qrPass?.passCode || authenticatedUser?.ticket_code || ""}
+            initialMode={feedbackModalInitialMode}
             onSuccess={(ref) => {
               showNotice(`Your support ticket #${ref} was submitted successfully! Our event admin team will review it.`, "success", "Ticket Submitted");
             }}
