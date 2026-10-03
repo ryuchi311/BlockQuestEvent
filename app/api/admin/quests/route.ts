@@ -133,8 +133,7 @@ export async function POST(request: Request) {
     if (data && (data.status === "Live" || !data.status)) {
       const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
       const targetChatId = process.env.TELEGRAM_ANNOUNCEMENT_CHAT_ID || "-1004396536214";
-      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://event.chiprojects.com").replace(/\/$/, "");
-      const questPlayUrl = data.action_url?.startsWith("http") ? data.action_url : `${appUrl}${data.action_url?.startsWith("/") ? data.action_url : ""}`;
+      const questPlayUrl = data.action_url?.startsWith("http") ? data.action_url : "https://event.block-quest.com/zealy";
 
       if (telegramToken && targetChatId) {
         try {
@@ -147,7 +146,7 @@ export async function POST(request: Request) {
             "",
             data.description ? `📝 ${data.description.length > 250 ? data.description.substring(0, 247) + "..." : data.description}` : "",
             "",
-            `👉 *Play & Claim Now:* ${questPlayUrl || appUrl}`,
+            `👉 *Play & Claim Now:* ${questPlayUrl}`,
           ].filter(Boolean).join("\n");
 
           await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {

@@ -589,7 +589,7 @@ export default function StressTestGuidePage() {
                 <div style={{ color: "var(--text-muted)", marginBottom: 6 }}># Run standard project stress test (20 workers, 100 requests)</div>
                 npm run stress-test<br /><br />
                 <div style={{ color: "var(--text-muted)", marginBottom: 6 }}># Custom target URL & higher concurrency</div>
-                node stress-test.mjs --url=https://event.chiprojects.com --concurrency=50 --requests=500 --suite=all
+                node stress-test.mjs --url=https://event.block-quest.com --concurrency=50 --requests=500 --suite=all
               </div>
             </div>
 

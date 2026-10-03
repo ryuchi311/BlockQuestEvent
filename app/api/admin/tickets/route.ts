@@ -143,7 +143,7 @@ export async function PATCH(request: Request) {
           </div>
           ${notesHtml}
           <p style="font-size: 13px; color: #64748b; margin-top: 24px;">
-            You can also check the live status of your ticket at any time by visiting <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://event.chiprojects.com"}" style="color:#d97706;">BlockQuest Fiesta PH</a> and using the <strong>Check Ticket Status</strong> tool.
+            You can also check the live status of your ticket at any time by visiting <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://event.block-quest.com"}" style="color:#d97706;">BlockQuest Fiesta PH</a> and using the <strong>Check Ticket Status</strong> tool.
           </p>
         </div>
       `;
