@@ -129,6 +129,42 @@ export async function POST(request: Request) {
       }
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+    // Broadcast new quest notification to Telegram channel/group if configured and Live
+    if (data && (data.status === "Live" || !data.status)) {
+      const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
+      const targetChatId = process.env.TELEGRAM_ANNOUNCEMENT_CHAT_ID || "-1004396536214";
+      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://event.chiprojects.com").replace(/\/$/, "");
+      const questPlayUrl = data.action_url?.startsWith("http") ? data.action_url : `${appUrl}${data.action_url?.startsWith("/") ? data.action_url : ""}`;
+
+      if (telegramToken && targetChatId) {
+        try {
+          const telegramMsg = [
+            "🎮 *NEW QUEST AVAILABLE TO PLAY!* ⚡",
+            "",
+            `🏆 *${data.title}*`,
+            `💎 *Reward:* +${data.xp || 0} XP`,
+            `📂 *Category:* ${(data.category || "General").toUpperCase()}`,
+            "",
+            data.description ? `📝 ${data.description.length > 250 ? data.description.substring(0, 247) + "..." : data.description}` : "",
+            "",
+            `👉 *Play & Claim Now:* ${questPlayUrl || appUrl}`,
+          ].filter(Boolean).join("\n");
+
+          await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: targetChatId,
+              text: telegramMsg,
+              parse_mode: "Markdown",
+            }),
+          }).catch((err) => console.warn("Failed to dispatch Telegram quest announcement:", err));
+        } catch (tgErr) {
+          console.warn("Telegram announcement error:", tgErr);
+        }
+      }
+    }
+
     return NextResponse.json({ quest: data }, { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
