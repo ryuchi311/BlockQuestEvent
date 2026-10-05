@@ -46,6 +46,40 @@ export async function GET(request: Request) {
   }
 }
 
+async function sendTelegramQuestAnnouncement(quest: any) {
+  const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
+  const targetChatId = process.env.TELEGRAM_ANNOUNCEMENT_CHAT_ID || "-1004396536214";
+  const questPlayUrl = quest.action_url?.startsWith("http") ? quest.action_url : "https://event.block-quest.com/zealy";
+
+  if (!telegramToken || !targetChatId) return;
+
+  try {
+    const telegramMsg = [
+      "🎮 *NEW QUEST AVAILABLE TO PLAY!* ⚡",
+      "",
+      `🏆 *${quest.title}*`,
+      `💎 *Reward:* +${quest.xp || 0} XP`,
+      `📂 *Category:* ${(quest.category || "General").toUpperCase()}`,
+      "",
+      quest.description ? `📝 ${quest.description.length > 250 ? quest.description.substring(0, 247) + "..." : quest.description}` : "",
+      "",
+      `👉 *Play & Claim Now:* ${questPlayUrl}`,
+    ].filter(Boolean).join("\n");
+
+    await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: targetChatId,
+        text: telegramMsg,
+        parse_mode: "Markdown",
+      }),
+    }).catch((err) => console.warn("Failed to dispatch Telegram quest announcement:", err));
+  } catch (tgErr) {
+    console.warn("Telegram announcement error:", tgErr);
+  }
+}
+
 // POST — create a new quest (Restricted to superadmin / admin)
 export async function POST(request: Request) {
   const auth = verifyAdminAuth(request, ["superadmin", "admin"]);
@@ -129,39 +163,10 @@ export async function POST(request: Request) {
       }
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+
     // Broadcast new quest notification to Telegram channel/group if configured and Live
     if (data && (data.status === "Live" || !data.status)) {
-      const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
-      const targetChatId = process.env.TELEGRAM_ANNOUNCEMENT_CHAT_ID || "-1004396536214";
-      const questPlayUrl = data.action_url?.startsWith("http") ? data.action_url : "https://event.block-quest.com/zealy";
-
-      if (telegramToken && targetChatId) {
-        try {
-          const telegramMsg = [
-            "🎮 *NEW QUEST AVAILABLE TO PLAY!* ⚡",
-            "",
-            `🏆 *${data.title}*`,
-            `💎 *Reward:* +${data.xp || 0} XP`,
-            `📂 *Category:* ${(data.category || "General").toUpperCase()}`,
-            "",
-            data.description ? `📝 ${data.description.length > 250 ? data.description.substring(0, 247) + "..." : data.description}` : "",
-            "",
-            `👉 *Play & Claim Now:* ${questPlayUrl}`,
-          ].filter(Boolean).join("\n");
-
-          await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: targetChatId,
-              text: telegramMsg,
-              parse_mode: "Markdown",
-            }),
-          }).catch((err) => console.warn("Failed to dispatch Telegram quest announcement:", err));
-        } catch (tgErr) {
-          console.warn("Telegram announcement error:", tgErr);
-        }
-      }
+      sendTelegramQuestAnnouncement(data);
     }
 
     return NextResponse.json({ quest: data }, { status: 201 });
@@ -188,6 +193,18 @@ export async function PATCH(request: Request) {
     }
 
     const supabase = getSupabase();
+
+    // Check if status changed from something else to Live
+    let previousStatus: string | null = null;
+    if (updates.status === "Live") {
+      const { data: existing } = await supabase
+        .from("fiesta_event_quests")
+        .select("status")
+        .eq("id", id)
+        .single();
+      previousStatus = existing?.status || null;
+    }
+
     const { data, error } = await supabase
       .from("fiesta_event_quests")
       .update(updates)
@@ -196,6 +213,11 @@ export async function PATCH(request: Request) {
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+    if (data && updates.status === "Live" && previousStatus !== "Live") {
+      sendTelegramQuestAnnouncement(data);
+    }
+
     return NextResponse.json({ quest: data });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
