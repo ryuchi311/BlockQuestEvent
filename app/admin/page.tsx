@@ -2326,153 +2326,82 @@ export default function AdminPage() {
   function renderSessionExpiredModal() {
     if (!showSessionExpiredModal) return null;
     return (
-      <div className="admin-modal-overlay" style={{ zIndex: 99999, background: "rgba(0, 0, 0, 0.85)", backdropFilter: "blur(12px)" }}>
+      <div
+        className="admin-modal-overlay"
+        style={{
+          zIndex: 99999,
+          background: "rgba(0, 0, 0, 0.85)",
+          backdropFilter: "blur(12px)",
+          alignItems: "center",
+          padding: 16
+        }}
+      >
         <div
-          className="admin-modal"
+          className="admin-modal admin-session-expired-modal"
           style={{
-            maxWidth: 480,
-            borderRadius: 24,
+            maxWidth: 420,
+            borderRadius: 20,
             border: "1px solid rgba(245, 166, 35, 0.4)",
-            boxShadow: "0 30px 80px rgba(0, 0, 0, 0.9), 0 0 40px rgba(245, 166, 35, 0.15)",
+            boxShadow: "0 25px 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(245, 166, 35, 0.15)",
             overflow: "hidden",
-            animation: "fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
+            maxHeight: "90vh",
+            display: "flex",
+            flexDirection: "column",
+            animation: "fadeInUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)"
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header Banner */}
+          {/* Header Banner - Compact */}
           <div style={{
             background: "linear-gradient(135deg, rgba(245, 166, 35, 0.15) 0%, rgba(217, 119, 6, 0.05) 100%)",
-            padding: "28px 28px 20px",
+            padding: "18px 20px 14px",
             borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
             textAlign: "center"
           }}>
             <div style={{
-              width: 64,
-              height: 64,
+              width: 44,
+              height: 44,
               borderRadius: "50%",
               background: "rgba(245, 166, 35, 0.12)",
               border: "2px solid rgba(245, 166, 35, 0.3)",
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "2rem",
-              marginBottom: 14,
-              boxShadow: "0 0 20px rgba(245, 166, 35, 0.2)"
+              fontSize: "1.35rem",
+              marginBottom: 8,
+              boxShadow: "0 0 16px rgba(245, 166, 35, 0.2)"
             }}>
               ⏳
             </div>
-            <h2 style={{ margin: "0 0 6px", fontSize: "1.3rem", fontWeight: 800, color: "#fff" }}>
+            <h2 style={{ margin: "0 0 4px", fontSize: "1.15rem", fontWeight: 800, color: "#fff" }}>
               Session / Token Expired
             </h2>
-            <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--gold-light)", lineHeight: 1.4 }}>
-              {sessionExpiredReason || "Your admin session token has expired."}
+            <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--gold-light)", lineHeight: 1.35 }}>
+              {sessionExpiredReason || "You have been logged out after 5 minutes of inactivity for security."}
             </p>
           </div>
 
-          {/* Instruction Steps */}
-          <div style={{ padding: "24px 28px" }}>
+          {/* Quick Notice & Instructions - Compact */}
+          <div style={{ padding: "16px 18px", overflowY: "auto" }}>
             <div style={{
-              fontSize: "0.8rem",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              color: "var(--text-muted)",
-              fontWeight: 800,
-              marginBottom: 12
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: "rgba(16, 185, 129, 0.08)",
+              border: "1px solid rgba(16, 185, 129, 0.25)",
+              borderRadius: 10,
+              padding: "8px 12px",
+              marginBottom: 14,
+              fontSize: "0.78rem",
+              color: "#6ee7b7"
             }}>
-              What you need to do:
+              <span>🔒</span>
+              <span>Your drafts & form data are safely preserved in browser cache.</span>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
-              <div style={{
-                display: "flex",
-                gap: 12,
-                background: "rgba(255, 255, 255, 0.03)",
-                border: "1px solid rgba(255, 255, 255, 0.06)",
-                borderRadius: 12,
-                padding: "12px 14px",
-                alignItems: "flex-start"
-              }}>
-                <div style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: "50%",
-                  background: "rgba(245, 166, 35, 0.2)",
-                  color: "var(--gold-light)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "0.75rem",
-                  fontWeight: 800,
-                  flexShrink: 0
-                }}>
-                  1
-                </div>
-                <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: 1.4 }}>
-                  <strong style={{ color: "#fff", display: "block" }}>Click "Log In Again" below</strong>
-                  This will close this prompt and return you to the admin login form.
-                </div>
-              </div>
-
-              <div style={{
-                display: "flex",
-                gap: 12,
-                background: "rgba(255, 255, 255, 0.03)",
-                border: "1px solid rgba(255, 255, 255, 0.06)",
-                borderRadius: 12,
-                padding: "12px 14px",
-                alignItems: "flex-start"
-              }}>
-                <div style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: "50%",
-                  background: "rgba(245, 166, 35, 0.2)",
-                  color: "var(--gold-light)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "0.75rem",
-                  fontWeight: 800,
-                  flexShrink: 0
-                }}>
-                  2
-                </div>
-                <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: 1.4 }}>
-                  <strong style={{ color: "#fff", display: "block" }}>Enter your credentials</strong>
-                  Provide your admin email and password to receive a fresh 12-hour session.
-                </div>
-              </div>
-
-              <div style={{
-                display: "flex",
-                gap: 12,
-                background: "rgba(255, 255, 255, 0.03)",
-                border: "1px solid rgba(255, 255, 255, 0.06)",
-                borderRadius: 12,
-                padding: "12px 14px",
-                alignItems: "flex-start"
-              }}>
-                <div style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: "50%",
-                  background: "rgba(16, 185, 129, 0.2)",
-                  color: "#10b981",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "0.75rem",
-                  fontWeight: 800,
-                  flexShrink: 0
-                }}>
-                  ✓
-                </div>
-                <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: 1.4 }}>
-                  <strong style={{ color: "#fff", display: "block" }}>Your drafts are preserved</strong>
-                  Any unfinished quest or campaign drafts in your local browser cache remain intact.
-                </div>
-              </div>
-            </div>
+            <p style={{ margin: "0 0 14px", fontSize: "0.8rem", color: "var(--text-muted)", textAlign: "center", lineHeight: 1.4 }}>
+              Click below to return to login and enter your credentials for a fresh 12-hour session.
+            </p>
 
             <button
               type="button"
@@ -2481,12 +2410,12 @@ export default function AdminPage() {
               }}
               style={{
                 width: "100%",
-                padding: "14px",
-                borderRadius: 12,
+                padding: "12px",
+                borderRadius: 10,
                 border: "none",
                 background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
                 color: "#120b02",
-                fontSize: "0.95rem",
+                fontSize: "0.9rem",
                 fontWeight: 800,
                 cursor: "pointer",
                 boxShadow: "0 4px 16px rgba(245, 166, 35, 0.35)",

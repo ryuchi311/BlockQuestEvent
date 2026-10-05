@@ -5001,8 +5001,23 @@ a {
   table.admin-mobile-cards [aria-roledescription="sortable"] { touch-action: pan-y; }
 }
 
-@media (max-width: 380px) {
-  table.admin-mobile-cards tr { grid-template-columns: 1fr; }
-  .admin-stat-card { flex-basis: calc(48% - 4px); }
-  .admin-header__eyebrow { display: none; }
+/* Specific handling for Session Expired popup on mobile */
+.admin-session-expired-modal {
+  margin: auto !important;
+  max-height: 85vh !important;
+  border-radius: 18px !important;
 }
+
+@media (max-width: 600px) {
+  .admin-modal-overlay:has(.admin-session-expired-modal) {
+    align-items: center !important;
+    padding: 16px !important;
+  }
+  .admin-session-expired-modal {
+    width: 92% !important;
+    max-width: 360px !important;
+    border-radius: 18px !important;
+    border-bottom: 1px solid rgba(245, 166, 35, 0.4) !important;
+  }
+}
+
