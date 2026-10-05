@@ -553,6 +553,33 @@ export default function AdminPage() {
 
   // ── Tabs & data ──
   const [tab, setTab] = useState<AdminTab>("attendees");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Label table cells with their column header (used by mobile card layout CSS)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const labelTables = () => {
+      document.querySelectorAll<HTMLTableElement>(".admin-page table").forEach((table) => {
+        const headers = Array.from(table.querySelectorAll("thead th")).map((th) => (th.textContent || "").replace(/\u{1F441}\uFE0F?/gu, "").trim());
+        if (!headers.length) return;
+        table.classList.add("admin-mobile-cards");
+        table.querySelectorAll("tbody tr").forEach((tr) => {
+          Array.from(tr.children).forEach((cell, i) => {
+            const label = headers[i] || "";
+            if (cell.getAttribute("data-label") !== label) cell.setAttribute("data-label", label);
+          });
+        });
+      });
+    };
+    labelTables();
+    let raf = 0;
+    const observer = new MutationObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(labelTables);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => { observer.disconnect(); cancelAnimationFrame(raf); };
+  }, []);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [quests, setQuests] = useState<Quest[]>([]);
 
@@ -2607,9 +2634,24 @@ export default function AdminPage() {
             <h1 className="admin-header__title">Admin Dashboard</h1>
           </div>
         </div>
-        <div className="admin-header__actions">
+        <button
+          type="button"
+          id="admin-mobile-menu-toggle"
+          className={`admin-menu-toggle${mobileMenuOpen ? " admin-menu-toggle--open" : ""}`}
+          aria-label="Toggle admin menu"
+          aria-expanded={mobileMenuOpen}
+          onClick={() => setMobileMenuOpen((v) => !v)}
+        >
+          <span /><span /><span />
+        </button>
+        <div
+          className={`admin-header__actions${mobileMenuOpen ? " admin-header__actions--open" : ""}`}
+          onClick={(e) => {
+            if ((e.target as HTMLElement).closest("button, a")) setMobileMenuOpen(false);
+          }}
+        >
           {adminUser && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", marginRight: 12 }}>
+            <div className="admin-header__user" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", marginRight: 12 }}>
               <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#fff" }}>{adminUser.fullName}</span>
               <span style={{ fontSize: "0.7rem", color: "var(--gold-light)", textTransform: "uppercase" }}>{adminUser.role}</span>
             </div>
@@ -2721,7 +2763,7 @@ export default function AdminPage() {
           </div>
 
           {/* Quick Metrics Ticker */}
-          <div className="admin-subheader__pill" style={{ borderColor: "rgba(245, 166, 35, 0.25)", color: "var(--gold-light)" }}>
+          <div className="admin-subheader__pill admin-subheader__metrics" style={{ borderColor: "rgba(245, 166, 35, 0.25)", color: "var(--gold-light)" }}>
             <span>⚡ {liveQuestCount} Live Quests</span>
             <span style={{ opacity: 0.4 }}>•</span>
             <span>{attendees.filter((a: any) => a.checked_in).length} Checked In</span>
