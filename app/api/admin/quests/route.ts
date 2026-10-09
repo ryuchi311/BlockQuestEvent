@@ -49,9 +49,15 @@ export async function GET(request: Request) {
 async function sendTelegramQuestAnnouncement(quest: any) {
   const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
   const targetChatId = process.env.TELEGRAM_ANNOUNCEMENT_CHAT_ID || "-1004396536214";
-  const questPlayUrl = quest.action_url?.startsWith("http") ? quest.action_url : "https://event.block-quest.com/zealy";
+  const questPlayUrl = "https://event.block-quest.com/zealy";
 
-  if (!telegramToken || !targetChatId) return;
+  if (!telegramToken || !targetChatId) {
+    console.warn("[Telegram Announcement] Skipped: TELEGRAM_BOT_TOKEN or TELEGRAM_ANNOUNCEMENT_CHAT_ID missing.", {
+      hasToken: !!telegramToken,
+      hasChatId: !!targetChatId,
+    });
+    return;
+  }
 
   try {
     const telegramMsg = [
@@ -66,7 +72,7 @@ async function sendTelegramQuestAnnouncement(quest: any) {
       `👉 *Play & Claim Now:* ${questPlayUrl}`,
     ].filter(Boolean).join("\n");
 
-    await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -74,9 +80,16 @@ async function sendTelegramQuestAnnouncement(quest: any) {
         text: telegramMsg,
         parse_mode: "Markdown",
       }),
-    }).catch((err) => console.warn("Failed to dispatch Telegram quest announcement:", err));
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn("[Telegram Announcement] API returned non-OK status:", res.status, errText);
+    } else {
+      console.log("[Telegram Announcement] Successfully broadcasted quest:", quest.id);
+    }
   } catch (tgErr) {
-    console.warn("Telegram announcement error:", tgErr);
+    console.warn("[Telegram Announcement] Exception sending announcement:", tgErr);
   }
 }
 
@@ -166,7 +179,7 @@ export async function POST(request: Request) {
 
     // Broadcast new quest notification to Telegram channel/group if configured and Live
     if (data && (data.status === "Live" || !data.status)) {
-      sendTelegramQuestAnnouncement(data);
+      await sendTelegramQuestAnnouncement(data);
     }
 
     return NextResponse.json({ quest: data }, { status: 201 });
@@ -215,7 +228,7 @@ export async function PATCH(request: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
     if (data && updates.status === "Live" && previousStatus !== "Live") {
-      sendTelegramQuestAnnouncement(data);
+      await sendTelegramQuestAnnouncement(data);
     }
 
     return NextResponse.json({ quest: data });
