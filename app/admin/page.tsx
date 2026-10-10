@@ -718,6 +718,7 @@ export default function AdminPage() {
   const [questLogSearch, setQuestLogSearch] = useState("");
   const [questLogStatusFilter, setQuestLogStatusFilter] = useState<string>("all");
   const [questLogCategoryFilter, setQuestLogCategoryFilter] = useState<string>("all");
+  const [questLogClaimTypeFilter, setQuestLogClaimTypeFilter] = useState<string>("all");
   const [visibleColumns, setVisibleColumns] = useState({
     quester: true,
     email: true,
@@ -726,9 +727,11 @@ export default function AdminPage() {
     category: true,
     xp: true,
     type: true,
+    claimType: true,
     status: true,
     reviewer: true,
     date: true,
+    reviewDate: true,
   });
 
   // ── Pagination states ──
@@ -750,7 +753,7 @@ export default function AdminPage() {
 
   const [questLogPage, setQuestLogPage] = useState(1);
   const [questLogPageSize, setQuestLogPageSize] = useState(10);
-  useEffect(() => setQuestLogPage(1), [questLogSearch, questLogStatusFilter, questLogCategoryFilter, questLogPageSize]);
+  useEffect(() => setQuestLogPage(1), [questLogSearch, questLogStatusFilter, questLogCategoryFilter, questLogClaimTypeFilter, questLogPageSize]);
 
   const [staffPage, setStaffPage] = useState(1);
   const [staffPageSize, setStaffPageSize] = useState(10);
@@ -5337,18 +5340,39 @@ export default function AdminPage() {
             xp: 250,
             status: "Approved",
             approved_by: "System",
+            reviewed_at: a.created_at,
             user_message: a.promo_code
               ? `Initial attendee registration (Promo Code Applied: ${a.promo_code})`
               : "Initial attendee registration",
             created_at: a.created_at,
             logType: "Registration",
             category: "onboarding",
+            claim_type: "Auto Claim",
+            raw_item: null,
           }));
 
           const allLogs = [
             ...registrationLogs,
-            ...verifications.map((v) => ({ ...v, logType: "Screenshot Proof" })),
-            ...messageNotes.map((m) => ({ ...m, logType: "Messagebox Note" })),
+            ...verifications.map((v) => {
+              const isAuto =
+                v.approved_by === "System" ||
+                (v.proof_url && v.proof_url.startsWith("Auto-Verified"));
+              return {
+                ...v,
+                logType: "Screenshot Proof",
+                claim_type: isAuto ? "Auto Claim" : "Manual Claim",
+                raw_item: v,
+              };
+            }),
+            ...messageNotes.map((m) => {
+              const isAuto = m.approved_by === "System";
+              return {
+                ...m,
+                logType: "Messagebox Note",
+                claim_type: isAuto ? "Auto Claim" : "Manual Claim",
+                raw_item: m,
+              };
+            }),
           ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
           const filteredLogs = allLogs.filter((item: any) => {
@@ -5360,12 +5384,14 @@ export default function AdminPage() {
               (item.quest_title || "").toLowerCase().includes(query) ||
               (item.ticket_code || "").toLowerCase().includes(query) ||
               (item.approved_by || "").toLowerCase().includes(query) ||
+              (item.claim_type || "").toLowerCase().includes(query) ||
               (item.user_message || "").toLowerCase().includes(query);
 
             if (!matchesQuery) return false;
             if (questLogStatusFilter !== "all" && item.status !== questLogStatusFilter) return false;
             const questCategory = item.category || quests.find(q => q.id === item.quest_id)?.category || "other";
             if (questLogCategoryFilter !== "all" && questCategory !== questLogCategoryFilter) return false;
+            if (questLogClaimTypeFilter !== "all" && item.claim_type !== questLogClaimTypeFilter) return false;
             return true;
           });
 
@@ -5379,24 +5405,30 @@ export default function AdminPage() {
               { header: "Email Address", width: 220 },
               { header: "Ticket Code", width: 120 },
               { header: "Quest Title", width: 220 },
+              { header: "Category", width: 120 },
               { header: "XP Awarded", width: 90 },
               { header: "Log Type", width: 140 },
+              { header: "Claim Type", width: 130 },
               { header: "Status", width: 90 },
-              { header: "Reviewed By / Promo", width: 140 },
+              { header: "Reviewed By / Promo", width: 150 },
+              { header: "Date Approved/Rejected", width: 180 },
+              { header: "Date Submitted", width: 180 },
               { header: "Notes / Message", width: 260 },
-              { header: "Timestamp", width: 160 },
             ];
             const rows = filteredLogs.map((item: any) => [
               item.user_name || "",
               item.user_email || "",
               item.ticket_code || "",
               item.quest_title || "",
+              item.category || quests.find(q => q.id === item.quest_id)?.category || "other",
               item.xp || 0,
               item.logType || "",
+              item.claim_type || "",
               item.status || "",
               item.approved_by || (item.status === "Approved" ? "Admin" : "N/A"),
-              item.user_message || "",
+              item.reviewed_at ? new Date(item.reviewed_at).toLocaleString() : (item.status === "Approved" ? new Date(item.created_at).toLocaleString() : "N/A"),
               new Date(item.created_at).toLocaleString(),
+              item.user_message || "",
             ]);
 
             setExportFormat("excel");
@@ -5431,6 +5463,15 @@ export default function AdminPage() {
                     <option value="Pending">Pending Review</option>
                     <option value="Approved">Approved</option>
                     <option value="Rejected">Rejected</option>
+                  </select>
+                  <select
+                    value={questLogClaimTypeFilter}
+                    onChange={(e) => setQuestLogClaimTypeFilter(e.target.value)}
+                    className="admin-select-filter"
+                  >
+                    <option value="all">All Claim Types</option>
+                    <option value="Manual Claim">✋ Manual Claim (Review Required)</option>
+                    <option value="Auto Claim">⚡ Auto Claim (Instant/Auto-Verified)</option>
                   </select>
                   <select
                     value={questLogCategoryFilter}
@@ -5517,7 +5558,7 @@ export default function AdminPage() {
                       checked={(visibleColumns as any)[col]}
                       onChange={(e) => setVisibleColumns({ ...visibleColumns, [col]: e.target.checked })}
                     />
-                    {col.toUpperCase()}
+                    {col === "claimType" ? "CLAIM TYPE" : col === "reviewDate" ? "DATE APPROVED / REJECTED" : col.toUpperCase()}
                   </label>
                 ))}
               </div>
@@ -5561,24 +5602,30 @@ export default function AdminPage() {
                       )}
                       {visibleColumns.ticket && <th>🎫 Ticket</th>}
                       {visibleColumns.quest && <th>⚡ Quest Title</th>}
+                      {visibleColumns.category && <th>📂 Category</th>}
                       {visibleColumns.xp && <th>⭐ XP</th>}
                       {visibleColumns.type && <th>🏷️ Type</th>}
+                      {visibleColumns.claimType && <th>⚙️ Claim Mode</th>}
                       {visibleColumns.status && <th>📌 Status</th>}
                       {visibleColumns.reviewer && <th>👮 Reviewed / Approved By</th>}
                       {visibleColumns.date && <th>📅 Date Submitted</th>}
+                      {visibleColumns.reviewDate && <th>✅ Date Approved / Rejected</th>}
+                      <th>⚡ Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredLogs.length === 0 ? (
                       <tr>
-                        <td colSpan={10} className="admin-table__empty">
+                        <td colSpan={14} className="admin-table__empty">
                           📊 No log entries found matching criteria.
                         </td>
                       </tr>
                     ) : (
-                      filteredLogs.slice((questLogPage - 1) * questLogPageSize, (questLogPage - 1) * questLogPageSize + questLogPageSize).map((item) => {
+                      filteredLogs.slice((questLogPage - 1) * questLogPageSize, (questLogPage - 1) * questLogPageSize + questLogPageSize).map((item: any) => {
                         const logKey = `${item.logType}-${item.id}`;
                         const isLogEmailRevealed = revealQuestLogEmails || revealedQuestLogKeys.has(logKey);
+                        const questCategory = item.category || quests.find(q => q.id === item.quest_id)?.category || "other";
+                        const decisionDate = item.reviewed_at || (item.status === "Approved" ? item.created_at : null);
                         return (
                           <tr key={logKey}>
                             {visibleColumns.quester && <td style={{ fontWeight: 700, color: "#fff" }}>{item.user_name}</td>}
@@ -5608,11 +5655,36 @@ export default function AdminPage() {
                             )}
                           {visibleColumns.ticket && <td style={{ color: "var(--gold-light)", fontSize: "0.82rem" }}>{item.ticket_code || "N/A"}</td>}
                           {visibleColumns.quest && <td style={{ fontWeight: 700, color: "#c084fc" }}>{item.quest_title}</td>}
+                          {visibleColumns.category && (
+                            <td>
+                              <span style={{ fontSize: "0.75rem", padding: "3px 8px", borderRadius: 8, background: "rgba(168, 85, 247, 0.12)", color: "#c084fc", textTransform: "capitalize", fontWeight: 600 }}>
+                                {questCategory}
+                              </span>
+                            </td>
+                          )}
                           {visibleColumns.xp && <td><span className="admin-xp-badge">+{item.xp} XP</span></td>}
                           {visibleColumns.type && (
                             <td>
                               <span style={{ fontSize: "0.75rem", padding: "3px 8px", borderRadius: 8, background: "rgba(255,255,255,0.08)", color: "#e2e8f0" }}>
                                 {item.logType}
+                              </span>
+                            </td>
+                          )}
+                          {visibleColumns.claimType && (
+                            <td>
+                              <span style={{
+                                fontSize: "0.74rem",
+                                padding: "3px 8px",
+                                borderRadius: 8,
+                                background: item.claim_type === "Auto Claim" ? "rgba(16, 185, 129, 0.15)" : "rgba(245, 166, 35, 0.15)",
+                                color: item.claim_type === "Auto Claim" ? "#34d399" : "#fbbf24",
+                                border: `1px solid ${item.claim_type === "Auto Claim" ? "rgba(16, 185, 129, 0.3)" : "rgba(245, 166, 35, 0.3)"}`,
+                                fontWeight: 700,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4
+                              }}>
+                                {item.claim_type === "Auto Claim" ? "⚡ Auto Claim" : "✋ Manual Claim"}
                               </span>
                             </td>
                           )}
@@ -5650,6 +5722,66 @@ export default function AdminPage() {
                               {new Date(item.created_at).toLocaleString()}
                             </td>
                           )}
+                          {visibleColumns.reviewDate && (
+                            <td style={{ fontSize: "0.82rem" }}>
+                              {decisionDate ? (
+                                <span style={{ color: item.status === "Approved" ? "#34d399" : item.status === "Rejected" ? "#f87171" : "var(--text-muted)", fontWeight: 600 }}>
+                                  {new Date(decisionDate).toLocaleString()}
+                                </span>
+                              ) : (
+                                <span style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>⏳ Awaiting Review</span>
+                              )}
+                            </td>
+                          )}
+                          <td>
+                            {item.raw_item && (item.logType === "Screenshot Proof" || item.logType === "Messagebox Note") ? (
+                              adminUser?.role === "viewer" ? (
+                                <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>Read-only</span>
+                              ) : (
+                                <button
+                                  className="admin-edit-btn"
+                                  onClick={() => {
+                                    if (item.logType === "Screenshot Proof") {
+                                      setActionModalVerification(item.raw_item);
+                                      setVerificationActionReason(item.raw_item.rejection_reason || "");
+                                    } else {
+                                      setActionModalMessage(item.raw_item);
+                                      setMessageActionReason(item.raw_item.rejection_reason || "");
+                                    }
+                                  }}
+                                  style={{
+                                    background: item.status === "Pending"
+                                      ? "linear-gradient(135deg, rgba(245, 166, 35, 0.25) 0%, rgba(217, 119, 6, 0.25) 100%)"
+                                      : item.status === "Approved"
+                                      ? "rgba(16, 185, 129, 0.18)"
+                                      : "rgba(239, 68, 68, 0.18)",
+                                    borderColor: item.status === "Pending"
+                                      ? "rgba(245, 166, 35, 0.6)"
+                                      : item.status === "Approved"
+                                      ? "rgba(16, 185, 129, 0.4)"
+                                      : "rgba(239, 68, 68, 0.4)",
+                                    color: item.status === "Pending"
+                                      ? "#fbbf24"
+                                      : item.status === "Approved"
+                                      ? "#34d399"
+                                      : "#f87171",
+                                    padding: "4px 10px",
+                                    fontSize: "0.75rem",
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 4
+                                  }}
+                                  title="Review or edit verification action"
+                                >
+                                  {item.status === "Pending" ? "⚡ Review" : "✏️ Edit"}
+                                </button>
+                              )
+                            ) : (
+                              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>—</span>
+                            )}
+                          </td>
                         </tr>
                       );
                     })
