@@ -3771,12 +3771,22 @@ export default function AdminPage() {
                 className="admin-search-input"
                 style={{ width: "auto", padding: "8px 12px", cursor: "pointer" }}
               >
-                <option value="all">All Categories</option>
-                <option value="onboarding">🚀 Onboarding</option>
-                <option value="social">📣 Social</option>
-                <option value="daily">📅 Daily</option>
-                <option value="quiz">❓ Quiz</option>
-                <option value="atfx">📈 ATFX</option>
+                <option value="all">All Categories ({quests.length})</option>
+                <option value="onboarding">
+                  🚀 Onboarding ({quests.filter((q) => q.category === "onboarding").length} | ⏳ {verifications.filter((v) => v.status === "Pending" && (quests.find((q) => q.id === v.quest_id)?.category || "other") === "onboarding").length} pending)
+                </option>
+                <option value="social">
+                  📣 Social ({quests.filter((q) => q.category === "social").length} | ⏳ {verifications.filter((v) => v.status === "Pending" && (quests.find((q) => q.id === v.quest_id)?.category || "other") === "social").length} pending)
+                </option>
+                <option value="daily">
+                  📅 Daily ({quests.filter((q) => q.category === "daily").length} | ⏳ {verifications.filter((v) => v.status === "Pending" && (quests.find((q) => q.id === v.quest_id)?.category || "other") === "daily").length} pending)
+                </option>
+                <option value="quiz">
+                  ❓ Quiz ({quests.filter((q) => q.category === "quiz").length} | ⏳ {verifications.filter((v) => v.status === "Pending" && (quests.find((q) => q.id === v.quest_id)?.category || "other") === "quiz").length} pending)
+                </option>
+                <option value="atfx">
+                  📈 ATFX ({quests.filter((q) => q.category === "atfx").length} | ⏳ {verifications.filter((v) => v.status === "Pending" && (quests.find((q) => q.id === v.quest_id)?.category || "other") === "atfx").length} pending)
+                </option>
               </select>
 
               {/* ④ Verification Mode Filter */}
@@ -4176,12 +4186,22 @@ export default function AdminPage() {
                 className="admin-search-input"
                 style={{ width: "auto", padding: "8px 12px", cursor: "pointer" }}
               >
-                <option value="all">All Categories</option>
-                <option value="onboarding">🚀 Onboarding</option>
-                <option value="social">📣 Social</option>
-                <option value="daily">📅 Daily</option>
-                <option value="quiz">❓ Quiz</option>
-                <option value="atfx">📈 ATFX</option>
+                <option value="all">All Categories ({verifications.length})</option>
+                <option value="onboarding">
+                  🚀 Onboarding ({verifications.filter((v) => (quests.find((q) => q.id === v.quest_id)?.category || "other") === "onboarding").length} | ⏳ {verifications.filter((v) => v.status === "Pending" && (quests.find((q) => q.id === v.quest_id)?.category || "other") === "onboarding").length} pending)
+                </option>
+                <option value="social">
+                  📣 Social ({verifications.filter((v) => (quests.find((q) => q.id === v.quest_id)?.category || "other") === "social").length} | ⏳ {verifications.filter((v) => v.status === "Pending" && (quests.find((q) => q.id === v.quest_id)?.category || "other") === "social").length} pending)
+                </option>
+                <option value="daily">
+                  📅 Daily ({verifications.filter((v) => (quests.find((q) => q.id === v.quest_id)?.category || "other") === "daily").length} | ⏳ {verifications.filter((v) => v.status === "Pending" && (quests.find((q) => q.id === v.quest_id)?.category || "other") === "daily").length} pending)
+                </option>
+                <option value="quiz">
+                  ❓ Quiz ({verifications.filter((v) => (quests.find((q) => q.id === v.quest_id)?.category || "other") === "quiz").length} | ⏳ {verifications.filter((v) => v.status === "Pending" && (quests.find((q) => q.id === v.quest_id)?.category || "other") === "quiz").length} pending)
+                </option>
+                <option value="atfx">
+                  📈 ATFX ({verifications.filter((v) => (quests.find((q) => q.id === v.quest_id)?.category || "other") === "atfx").length} | ⏳ {verifications.filter((v) => v.status === "Pending" && (quests.find((q) => q.id === v.quest_id)?.category || "other") === "atfx").length} pending)
+                </option>
               </select>
 
               {/* Verification Mode Filter */}
@@ -5459,31 +5479,41 @@ export default function AdminPage() {
                     onChange={(e) => setQuestLogStatusFilter(e.target.value)}
                     className="admin-select-filter"
                   >
-                    <option value="all">All Statuses</option>
-                    <option value="Pending">Pending Review</option>
-                    <option value="Approved">Approved</option>
-                    <option value="Rejected">Rejected</option>
+                    <option value="all">All Statuses ({allLogs.length})</option>
+                    <option value="Pending">⏳ Pending Review ({allLogs.filter((i) => i.status === "Pending").length})</option>
+                    <option value="Approved">✓ Approved ({allLogs.filter((i) => i.status === "Approved").length})</option>
+                    <option value="Rejected">✕ Rejected ({allLogs.filter((i) => i.status === "Rejected").length})</option>
                   </select>
                   <select
                     value={questLogClaimTypeFilter}
                     onChange={(e) => setQuestLogClaimTypeFilter(e.target.value)}
                     className="admin-select-filter"
                   >
-                    <option value="all">All Claim Types</option>
-                    <option value="Manual Claim">✋ Manual Claim (Review Required)</option>
-                    <option value="Auto Claim">⚡ Auto Claim (Instant/Auto-Verified)</option>
+                    <option value="all">All Claim Types ({allLogs.length})</option>
+                    <option value="Manual Claim">✋ Manual Claim ({allLogs.filter((i) => i.claim_type === "Manual Claim").length})</option>
+                    <option value="Auto Claim">⚡ Auto Claim ({allLogs.filter((i) => i.claim_type === "Auto Claim").length})</option>
                   </select>
                   <select
                     value={questLogCategoryFilter}
                     onChange={(e) => setQuestLogCategoryFilter(e.target.value)}
                     className="admin-select-filter"
                   >
-                    <option value="all">All Categories</option>
-                    <option value="onboarding">🚀 Onboarding</option>
-                    <option value="social">📣 Social</option>
-                    <option value="daily">📅 Daily</option>
-                    <option value="quiz">❓ Quiz</option>
-                    <option value="atfx">📈 ATFX</option>
+                    <option value="all">All Categories ({allLogs.length})</option>
+                    <option value="onboarding">
+                      🚀 Onboarding ({allLogs.filter((i: any) => (i.category || quests.find(q => q.id === i.quest_id)?.category || "other") === "onboarding").length} | ⏳ {allLogs.filter((i: any) => i.status === "Pending" && (i.category || quests.find(q => q.id === i.quest_id)?.category || "other") === "onboarding").length} pending)
+                    </option>
+                    <option value="social">
+                      📣 Social ({allLogs.filter((i: any) => (i.category || quests.find(q => q.id === i.quest_id)?.category || "other") === "social").length} | ⏳ {allLogs.filter((i: any) => i.status === "Pending" && (i.category || quests.find(q => q.id === i.quest_id)?.category || "other") === "social").length} pending)
+                    </option>
+                    <option value="daily">
+                      📅 Daily ({allLogs.filter((i: any) => (i.category || quests.find(q => q.id === i.quest_id)?.category || "other") === "daily").length} | ⏳ {allLogs.filter((i: any) => i.status === "Pending" && (i.category || quests.find(q => q.id === i.quest_id)?.category || "other") === "daily").length} pending)
+                    </option>
+                    <option value="quiz">
+                      ❓ Quiz ({allLogs.filter((i: any) => (i.category || quests.find(q => q.id === i.quest_id)?.category || "other") === "quiz").length} | ⏳ {allLogs.filter((i: any) => i.status === "Pending" && (i.category || quests.find(q => q.id === i.quest_id)?.category || "other") === "quiz").length} pending)
+                    </option>
+                    <option value="atfx">
+                      📈 ATFX ({allLogs.filter((i: any) => (i.category || quests.find(q => q.id === i.quest_id)?.category || "other") === "atfx").length} | ⏳ {allLogs.filter((i: any) => i.status === "Pending" && (i.category || quests.find(q => q.id === i.quest_id)?.category || "other") === "atfx").length} pending)
+                    </option>
                   </select>
                 </div>
                 <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
