@@ -741,7 +741,10 @@ export default function AdminPage() {
 
   const [verificationPage, setVerificationPage] = useState(1);
   const [verificationPageSize, setVerificationPageSize] = useState(10);
-  useEffect(() => setVerificationPage(1), [verificationSearch, verificationStatusFilter, verificationModeFilter, verificationCategoryFilter, verificationPageSize]);
+  useEffect(() => {
+    setVerificationPage(1);
+    setSelectedVerificationIds([]);
+  }, [verificationSearch, verificationStatusFilter, verificationModeFilter, verificationCategoryFilter, verificationPageSize]);
 
   const [messagePage, setMessagePage] = useState(1);
   const [messagePageSize, setMessagePageSize] = useState(10);
@@ -1306,6 +1309,77 @@ export default function AdminPage() {
   const [deletingQuestId, setDeletingQuestId] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const [selectedVerificationIds, setSelectedVerificationIds] = useState<number[]>([]);
+  const [isProcessingBatch, setIsProcessingBatch] = useState(false);
+
+  const toggleSelectAllVerifications = (pageItems: QuestVerification[]) => {
+    const pageIds = pageItems.map((v) => v.id);
+    const allSelected = pageIds.length > 0 && pageIds.every((id) => selectedVerificationIds.includes(id));
+    if (allSelected) {
+      setSelectedVerificationIds((prev) => prev.filter((id) => !pageIds.includes(id)));
+    } else {
+      setSelectedVerificationIds((prev) => Array.from(new Set([...prev, ...pageIds])));
+    }
+  };
+
+  const toggleSelectVerification = (id: number) => {
+    setSelectedVerificationIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  async function handleBatchVerifyQuests(newStatus: "Approved" | "Rejected", reason?: string) {
+    if (selectedVerificationIds.length === 0) return;
+    const reviewer = adminUser?.email || "Admin";
+    const confirmMsg =
+      newStatus === "Approved"
+        ? `Are you sure you want to approve and award XP for all ${selectedVerificationIds.length} selected quest submission(s)?`
+        : `Are you sure you want to reject ${selectedVerificationIds.length} selected quest submission(s)?`;
+    if (!confirm(confirmMsg)) return;
+
+    setIsProcessingBatch(true);
+    try {
+      const res = await adminFetch("/api/admin/verifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ids: selectedVerificationIds,
+          status: newStatus,
+          rejection_reason: reason || (newStatus === "Rejected" ? "Batch rejected by admin" : undefined),
+          approved_by: reviewer,
+        }),
+      });
+      const json = await safeJson(res);
+      if (!res.ok) throw new Error(json.error || "Batch update failed.");
+
+      const updatedIdsSet = new Set(selectedVerificationIds);
+      setVerifications((prev) =>
+        prev.map((item) =>
+          updatedIdsSet.has(item.id)
+            ? {
+                ...item,
+                status: newStatus,
+                rejection_reason: newStatus === "Rejected" ? reason || "Batch rejected by admin" : null,
+                approved_by: reviewer,
+                reviewed_at: new Date().toISOString(),
+              }
+            : item
+        )
+      );
+
+      showAdminNotice(
+        `Successfully ${newStatus.toLowerCase()} ${selectedVerificationIds.length} quest verification(s)!`,
+        "success",
+        "Batch Action Complete"
+      );
+      setSelectedVerificationIds([]);
+    } catch (err: any) {
+      alert("Batch Verification Error: " + err.message);
+    } finally {
+      setIsProcessingBatch(false);
+    }
+  }
 
   async function handleVerifyQuest(id: number, newStatus: "Approved" | "Rejected" | "Pending", reason?: string) {
     const reviewer = adminUser?.email || "Admin";
@@ -4250,10 +4324,138 @@ export default function AdminPage() {
               </button>
             </div>
 
+            {/* Batch Action Bar */}
+            {selectedVerificationIds.length > 0 && adminUser?.role !== "viewer" && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: 12,
+                  padding: "10px 16px",
+                  marginBottom: 16,
+                  borderRadius: 10,
+                  background: "linear-gradient(135deg, rgba(245, 166, 35, 0.15) 0%, rgba(30, 30, 46, 0.8) 100%)",
+                  border: "1px solid rgba(245, 166, 35, 0.4)",
+                  boxShadow: "0 4px 14px rgba(0, 0, 0, 0.25)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span
+                    style={{
+                      background: "var(--gold-primary, #f5a623)",
+                      color: "#000",
+                      fontWeight: 800,
+                      fontSize: "0.8rem",
+                      padding: "2px 8px",
+                      borderRadius: 12,
+                    }}
+                  >
+                    {selectedVerificationIds.length} Selected
+                  </span>
+                  <span style={{ fontSize: "0.85rem", color: "#e2e8f0" }}>
+                    Select bulk action for chosen submissions:
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <button
+                    disabled={isProcessingBatch}
+                    onClick={() => handleBatchVerifyQuests("Approved")}
+                    style={{
+                      background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                      color: "#fff",
+                      border: "none",
+                      padding: "6px 14px",
+                      borderRadius: 6,
+                      fontSize: "0.82rem",
+                      fontWeight: 700,
+                      cursor: isProcessingBatch ? "not-allowed" : "pointer",
+                      opacity: isProcessingBatch ? 0.6 : 1,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    {isProcessingBatch ? "⏳ Processing..." : `✓ Batch Approve (${selectedVerificationIds.length})`}
+                  </button>
+
+                  <button
+                    disabled={isProcessingBatch}
+                    onClick={() => {
+                      const reason = prompt("Enter rejection reason for selected submissions:", "Verification criteria not met")?.trim();
+                      if (reason !== null && reason !== undefined) {
+                        handleBatchVerifyQuests("Rejected", reason || "Batch rejected by admin");
+                      }
+                    }}
+                    style={{
+                      background: "rgba(239, 68, 68, 0.18)",
+                      borderColor: "rgba(239, 68, 68, 0.4)",
+                      color: "#f87171",
+                      border: "1px solid rgba(239, 68, 68, 0.4)",
+                      padding: "6px 14px",
+                      borderRadius: 6,
+                      fontSize: "0.82rem",
+                      fontWeight: 700,
+                      cursor: isProcessingBatch ? "not-allowed" : "pointer",
+                      opacity: isProcessingBatch ? 0.6 : 1,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    ✕ Batch Reject ({selectedVerificationIds.length})
+                  </button>
+
+                  <button
+                    disabled={isProcessingBatch}
+                    onClick={() => setSelectedVerificationIds([])}
+                    style={{
+                      background: "rgba(255, 255, 255, 0.08)",
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      color: "#cbd5e1",
+                      padding: "6px 12px",
+                      borderRadius: 6,
+                      fontSize: "0.8rem",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Deselect All
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="admin-table-wrapper">
               <table className="admin-table">
                 <thead>
                   <tr>
+                    <th style={{ width: 42, textAlign: "center" }}>
+                      <input
+                        type="checkbox"
+                        disabled={adminUser?.role === "viewer" || filteredVerifications.length === 0}
+                        checked={(() => {
+                          const currentPageItems = filteredVerifications.slice(
+                            (verificationPage - 1) * verificationPageSize,
+                            (verificationPage - 1) * verificationPageSize + verificationPageSize
+                          );
+                          return (
+                            currentPageItems.length > 0 &&
+                            currentPageItems.every((item) => selectedVerificationIds.includes(item.id))
+                          );
+                        })()}
+                        onChange={() => {
+                          const currentPageItems = filteredVerifications.slice(
+                            (verificationPage - 1) * verificationPageSize,
+                            (verificationPage - 1) * verificationPageSize + verificationPageSize
+                          );
+                          toggleSelectAllVerifications(currentPageItems);
+                        }}
+                        style={{ cursor: "pointer", width: 16, height: 16, accentColor: "var(--gold-primary, #f5a623)" }}
+                        title="Select/Deselect all on this page"
+                      />
+                    </th>
                     <th>#</th>
                     <th>Quester / Attendee</th>
                     <th>Quest Title</th>
@@ -4267,7 +4469,7 @@ export default function AdminPage() {
                 <tbody>
                   {filteredVerifications.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="admin-table__empty">
+                      <td colSpan={9} className="admin-table__empty">
                         {verificationSearch || verificationStatusFilter !== "all"
                           ? "No matching quest verifications found."
                           : "No quest proof submissions yet."}
@@ -4275,8 +4477,24 @@ export default function AdminPage() {
                     </tr>
                   ) : (
                     filteredVerifications.slice((verificationPage - 1) * verificationPageSize, (verificationPage - 1) * verificationPageSize + verificationPageSize).map((v, i) => (
-                      <tr key={v.id} className="admin-table__row">
-                        <td className="admin-table__num">{i + 1}</td>
+                      <tr
+                        key={v.id}
+                        className="admin-table__row"
+                        style={{
+                          background: selectedVerificationIds.includes(v.id) ? "rgba(245, 166, 35, 0.08)" : undefined,
+                        }}
+                      >
+                        <td style={{ textAlign: "center" }}>
+                          <input
+                            type="checkbox"
+                            disabled={adminUser?.role === "viewer"}
+                            checked={selectedVerificationIds.includes(v.id)}
+                            onChange={() => toggleSelectVerification(v.id)}
+                            style={{ cursor: "pointer", width: 16, height: 16, accentColor: "var(--gold-primary, #f5a623)" }}
+                            title={`Select ${v.user_name} (${v.quest_title})`}
+                          />
+                        </td>
+                        <td className="admin-table__num">{(verificationPage - 1) * verificationPageSize + i + 1}</td>
                         <td className="admin-table__name">
                           <strong>{v.user_name}</strong>
                           <br />

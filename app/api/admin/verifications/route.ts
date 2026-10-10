@@ -294,10 +294,17 @@ export async function PATCH(request: Request) {
   }
 
   try {
-    const { id, status, rejection_reason, approved_by, admin_email } = await request.json();
+    const body = await request.json();
+    const { id, ids, status, rejection_reason, approved_by, admin_email } = body;
 
-    if (!id || !status) {
-      return NextResponse.json({ error: "id and status are required." }, { status: 400 });
+    const targetIds: number[] = Array.isArray(ids)
+      ? ids.map((x) => Number(x)).filter(Boolean)
+      : id
+      ? [Number(id)]
+      : [];
+
+    if (targetIds.length === 0 || !status) {
+      return NextResponse.json({ error: "id (or ids array) and status are required." }, { status: 400 });
     }
 
     const reviewer = approved_by || admin_email || auth.user?.fullName || "Admin";
@@ -312,87 +319,95 @@ export async function PATCH(request: Request) {
 
     const supabase = getSupabase();
 
-    // 1. Fetch current verification to know the XP and User
-    const { data: currentVerif, error: fetchErr } = await supabase
+    // 1. Fetch current verifications to know XP and user emails
+    const { data: currentVerifs, error: fetchErr } = await supabase
       .from("quest_verifications")
-      .select("user_email, xp, status, quest_id")
-      .eq("id", id)
-      .single();
+      .select("id, user_email, xp, status, quest_id")
+      .in("id", targetIds);
 
-    if (fetchErr || !currentVerif) {
-      return NextResponse.json({ error: "Verification record not found." }, { status: 404 });
+    if (fetchErr || !currentVerifs || currentVerifs.length === 0) {
+      return NextResponse.json({ error: "Verification record(s) not found." }, { status: 404 });
     }
 
-    if (currentVerif.status === status) {
-      return NextResponse.json({ verification: currentVerif });
-    }
+    // 2. Perform updates for each verification
+    const updatedResults: any[] = [];
+    for (const currentVerif of currentVerifs) {
+      if (currentVerif.status === status) {
+        updatedResults.push(currentVerif);
+        continue;
+      }
 
-    // 2. Update the verification status
-    const { data, error } = await supabase
-      .from("quest_verifications")
-      .update(updatePayload)
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (error || !data) {
-      return NextResponse.json({ error: error?.message || "Update failed" }, { status: 500 });
-    }
-
-    // 3. If transitioning to Approved, award XP & record completion in database
-    if (status === "Approved" && currentVerif) {
-      const { data: user } = await supabase
-        .from("registrations")
-        .select("id, total_xp")
-        .eq("email", currentVerif.user_email)
+      const { data: updatedItem, error: updateErr } = await supabase
+        .from("quest_verifications")
+        .update(updatePayload)
+        .eq("id", currentVerif.id)
+        .select()
         .single();
 
-      if (user) {
-        // Only increment XP if it was not already Approved
-        if (currentVerif.status !== "Approved") {
+      if (updateErr || !updatedItem) {
+        console.warn(`Failed to update verification ${currentVerif.id}:`, updateErr?.message);
+        continue;
+      }
+      updatedResults.push(updatedItem);
+
+      // Award XP & add to quest_completions if Approved
+      if (status === "Approved") {
+        const { data: user } = await supabase
+          .from("registrations")
+          .select("id, total_xp")
+          .eq("email", currentVerif.user_email)
+          .single();
+
+        if (user) {
+          if (currentVerif.status !== "Approved") {
+            await supabase
+              .from("registrations")
+              .update({ total_xp: (user.total_xp || 0) + (currentVerif.xp || 0) })
+              .eq("id", user.id);
+          }
+
+          const { error: compErr } = await supabase
+            .from("quest_completions")
+            .insert({
+              quest_id: currentVerif.quest_id,
+              registration_id: user.id,
+              user_email: currentVerif.user_email,
+              xp_awarded: currentVerif.xp,
+            });
+
+          if (compErr && compErr.code !== "23505") {
+            console.warn("quest_completions insert notice:", compErr.message);
+          }
+        }
+      } else if ((status === "Rejected" || status === "Pending") && currentVerif.status === "Approved") {
+        // Revoke XP & remove from quest_completions
+        const { data: user } = await supabase
+          .from("registrations")
+          .select("id, total_xp")
+          .eq("email", currentVerif.user_email)
+          .single();
+
+        if (user) {
           await supabase
             .from("registrations")
-            .update({ total_xp: (user.total_xp || 0) + (currentVerif.xp || 0) })
+            .update({ total_xp: Math.max(0, (user.total_xp || 0) - (currentVerif.xp || 0)) })
             .eq("id", user.id);
+
+          await supabase
+            .from("quest_completions")
+            .delete()
+            .eq("quest_id", currentVerif.quest_id)
+            .eq("registration_id", user.id);
         }
-
-        // Ensure record is inserted into quest_completions DB table
-        const { error: compErr } = await supabase
-          .from("quest_completions")
-          .insert({
-            quest_id: currentVerif.quest_id,
-            registration_id: user.id,
-            user_email: currentVerif.user_email,
-            xp_awarded: currentVerif.xp
-          });
-
-        if (compErr && compErr.code !== "23505") {
-          console.warn("quest_completions insert notice:", compErr.message);
-        }
-      }
-    } else if ((status === "Rejected" || status === "Pending") && currentVerif && currentVerif.status === "Approved") {
-      // If revoked from Approved -> Rejected/Pending, deduct XP & remove completion
-      const { data: user } = await supabase
-        .from("registrations")
-        .select("id, total_xp")
-        .eq("email", currentVerif.user_email)
-        .single();
-
-      if (user) {
-        await supabase
-          .from("registrations")
-          .update({ total_xp: Math.max(0, (user.total_xp || 0) - (currentVerif.xp || 0)) })
-          .eq("id", user.id);
-
-        await supabase
-          .from("quest_completions")
-          .delete()
-          .eq("quest_id", currentVerif.quest_id)
-          .eq("registration_id", user.id);
       }
     }
 
-    return NextResponse.json({ verification: data });
+    return NextResponse.json({
+      success: true,
+      updated_count: updatedResults.length,
+      verification: updatedResults[0],
+      verifications: updatedResults,
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
