@@ -210,6 +210,15 @@ function RegistrationFormContent() {
       return;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!emailRegex.test(email)) {
+      setStatus({
+        type: "error",
+        message: "Please enter a valid email address with a domain (e.g. name@domain.com).",
+      });
+      return;
+    }
+
     setSubmitting(true);
     setStatus({ type: "idle", message: "" });
 
@@ -280,6 +289,15 @@ function RegistrationFormContent() {
       setStatus({
         type: "error",
         message: "Enter your email and phone to verify.",
+      });
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!emailRegex.test(email)) {
+      setStatus({
+        type: "error",
+        message: "Please enter a valid email address with a domain (e.g. name@domain.com).",
       });
       return;
     }

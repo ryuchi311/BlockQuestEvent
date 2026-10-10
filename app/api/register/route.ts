@@ -59,6 +59,15 @@ export async function POST(request: Request) {
     );
   }
 
+  // Validate email address format (must have a valid local part, @ symbol, and domain with extension)
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  if (!emailRegex.test(email)) {
+    return NextResponse.json(
+      { error: "Please enter a valid email address with a valid domain (e.g. name@domain.com)." },
+      { status: 400 },
+    );
+  }
+
   const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: {
       persistSession: false,

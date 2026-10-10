@@ -85,6 +85,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Email, password, and full name are required." }, { status: 400 });
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json({ error: "Please provide a valid email address with a domain (e.g. name@domain.com)." }, { status: 400 });
+    }
+
     const supabase = getSupabase();
     const hashed = hashPassword(password);
 
