@@ -57,11 +57,11 @@ export async function GET(request: Request) {
             xp_awarded: 250,
             registration_id: user.id,
           };
-          const { data: inserted } = await supabase
+          const { data: inserted, error: insErr } = await supabase
             .from("quest_completions")
-            .insert(newComp)
+            .upsert(newComp, { onConflict: "quest_id,registration_id", ignoreDuplicates: true })
             .select()
-            .single();
+            .maybeSingle();
 
           if (inserted) {
             list = [...list, inserted];
@@ -82,11 +82,11 @@ export async function GET(request: Request) {
             xp_awarded: 500,
             registration_id: user.id,
           };
-          const { data: insertedCheckin } = await supabase
+          const { data: insertedCheckin, error: checkinInsErr } = await supabase
             .from("quest_completions")
-            .insert(newCheckinComp)
+            .upsert(newCheckinComp, { onConflict: "quest_id,registration_id", ignoreDuplicates: true })
             .select()
-            .single();
+            .maybeSingle();
 
           if (insertedCheckin) {
             list = [...list, insertedCheckin];
@@ -123,11 +123,11 @@ export async function GET(request: Request) {
             xp_awarded: 50,
             registration_id: user.id,
           };
-          const { data: insertedAlias } = await supabase
+          const { data: insertedAlias, error: aliasInsErr } = await supabase
             .from("quest_completions")
-            .insert(newAliasComp)
+            .upsert(newAliasComp, { onConflict: "quest_id,registration_id", ignoreDuplicates: true })
             .select()
-            .single();
+            .maybeSingle();
 
           if (insertedAlias) {
             list = [...list, insertedAlias];

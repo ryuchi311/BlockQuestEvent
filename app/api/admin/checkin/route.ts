@@ -74,35 +74,39 @@ export async function POST(request: Request) {
     }
 
     if (attendee.checked_in) {
-      // Ensure check-in quest completion and XP are awarded in case they were checked in previously without the quest
       try {
-        const { data: existingComp } = await supabase
-          .from("quest_completions")
-          .select("id")
-          .eq("registration_id", attendee.id)
-          .eq("quest_id", "checkin")
-          .maybeSingle();
-
-        if (!existingComp) {
-          await supabase.from("quest_completions").insert({
+        const { error: compError } = await supabase.from("quest_completions").upsert(
+          {
             quest_id: "checkin",
             registration_id: attendee.id,
             xp_awarded: 500,
-          });
+          },
+          { onConflict: "quest_id,registration_id", ignoreDuplicates: true }
+        );
 
+        if (!compError || compError.code === "23505") {
           if (attendee.email) {
-            await supabase.from("quest_verifications").insert({
-              quest_id: "checkin",
-              quest_title: "Physical Gate Check-in",
-              user_name: attendee.full_name || undefined,
-              user_email: attendee.email.trim().toLowerCase(),
-              xp: 500,
-              proof_url: "Gate QR Scan Check-in",
-              user_message: "Auto-claimed upon entrance gate check-in",
-              status: "Approved",
-              approved_by: "Gate System",
-              reviewed_at: attendee.checked_in_at || new Date().toISOString(),
-            });
+            const { data: existingVerif } = await supabase
+              .from("quest_verifications")
+              .select("id")
+              .eq("user_email", attendee.email.trim().toLowerCase())
+              .eq("quest_id", "checkin")
+              .maybeSingle();
+
+            if (!existingVerif) {
+              await supabase.from("quest_verifications").insert({
+                quest_id: "checkin",
+                quest_title: "Physical Gate Check-in",
+                user_name: attendee.full_name || undefined,
+                user_email: attendee.email.trim().toLowerCase(),
+                xp: 500,
+                proof_url: "Gate QR Scan Check-in",
+                user_message: "Auto-claimed upon entrance gate check-in",
+                status: "Approved",
+                approved_by: "Gate System",
+                reviewed_at: attendee.checked_in_at || new Date().toISOString(),
+              });
+            }
           }
 
           // Recalculate total XP
@@ -142,33 +146,38 @@ export async function POST(request: Request) {
 
     // Auto-grant check-in quest reward (+500 XP) to ensure Zealy syncs immediately
     try {
-      const { data: existingComp } = await supabase
-        .from("quest_completions")
-        .select("id")
-        .eq("registration_id", attendee.id)
-        .eq("quest_id", "checkin")
-        .maybeSingle();
-
-      if (!existingComp) {
-        await supabase.from("quest_completions").insert({
+      const { error: compError } = await supabase.from("quest_completions").upsert(
+        {
           quest_id: "checkin",
           registration_id: attendee.id,
           xp_awarded: 500,
-        });
+        },
+        { onConflict: "quest_id,registration_id", ignoreDuplicates: true }
+      );
 
+      if (!compError || compError.code === "23505") {
         if (attendee.email) {
-          await supabase.from("quest_verifications").insert({
-            quest_id: "checkin",
-            quest_title: "Physical Gate Check-in",
-            user_name: attendee.full_name || undefined,
-            user_email: attendee.email.trim().toLowerCase(),
-            xp: 500,
-            proof_url: "Gate QR Scan Check-in",
-            user_message: "Auto-claimed upon entrance gate check-in",
-            status: "Approved",
-            approved_by: "Gate System",
-            reviewed_at: checkinTime,
-          });
+          const { data: existingVerif } = await supabase
+            .from("quest_verifications")
+            .select("id")
+            .eq("user_email", attendee.email.trim().toLowerCase())
+            .eq("quest_id", "checkin")
+            .maybeSingle();
+
+          if (!existingVerif) {
+            await supabase.from("quest_verifications").insert({
+              quest_id: "checkin",
+              quest_title: "Physical Gate Check-in",
+              user_name: attendee.full_name || undefined,
+              user_email: attendee.email.trim().toLowerCase(),
+              xp: 500,
+              proof_url: "Gate QR Scan Check-in",
+              user_message: "Auto-claimed upon entrance gate check-in",
+              status: "Approved",
+              approved_by: "Gate System",
+              reviewed_at: checkinTime,
+            });
+          }
         }
 
         // Recalculate total XP

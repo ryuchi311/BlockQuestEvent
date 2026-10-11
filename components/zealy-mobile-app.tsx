@@ -817,7 +817,7 @@ export default function ZealyMobileApp() {
     syncUserData();
   }, [fetchUserVerifications, fetchLeaderboard, fetchMilestones, syncUserData, activeTab]);
 
-  // Poll for new quests, verifications, milestones & user state sync every 3 seconds for fast live updates
+  // Poll for new quests, verifications, milestones & user state sync when tab is visible
   useEffect(() => {
     loadApiQuests();
     fetchUserVerifications();
@@ -825,12 +825,13 @@ export default function ZealyMobileApp() {
     fetchMilestones();
     syncUserData();
     const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return; // Pause polling when tab is in background
       loadApiQuests();
       fetchUserVerifications();
       fetchLeaderboard();
       fetchMilestones();
       syncUserData();
-    }, 3000);
+    }, 8000); // 8-second refresh interval to keep UI lightweight and prevent hammering database
     return () => clearInterval(interval);
   }, [loadApiQuests, fetchUserVerifications, fetchLeaderboard, fetchMilestones, syncUserData]);
 
