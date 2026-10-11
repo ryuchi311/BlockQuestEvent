@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     // 1. Fetch current user to get ID and physical check-in status
     const { data: user, error: userError } = await supabase
       .from("registrations")
-      .select("id, total_xp, checked_in, checked_in_at, promo_code, alias_name")
+      .select("id, total_xp, checked_in, checked_in_at, promo_code, alias_name, ticket_code")
       .eq("email", user_email.trim().toLowerCase())
       .single();
       
@@ -153,6 +153,7 @@ export async function POST(request: Request) {
         quest_title: logTitle,
         user_name: user.id ? undefined : "Quester",
         user_email: user_email.trim().toLowerCase(),
+        ticket_code: user.ticket_code || undefined,
         xp: awardXp,
         proof_url: "Auto-Verified (System Claim)",
         user_message: userMsg,

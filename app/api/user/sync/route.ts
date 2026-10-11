@@ -141,6 +141,7 @@ export async function GET(request: Request) {
             quest_title: "Profile: Add an Alias Name",
             user_name: user.full_name || undefined,
             user_email: email,
+            ticket_code: user.ticket_code || undefined,
             xp: 50,
             proof_url: "Auto-Verified (Alias Active)",
             user_message: `Created alias name @${user.alias_name}`,

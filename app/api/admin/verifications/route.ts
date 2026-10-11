@@ -110,7 +110,43 @@ export async function GET(request: Request) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    return NextResponse.json({ verifications: data || [] });
+
+    const verificationsList = data || [];
+
+    // Find all records missing a ticket_code and enrich them from public.registrations
+    const emailsMissingTicket = Array.from(
+      new Set(
+        verificationsList
+          .filter((v: any) => (!v.ticket_code || v.ticket_code === "N/A") && v.user_email)
+          .map((v: any) => v.user_email.trim().toLowerCase())
+      )
+    );
+
+    let ticketCodeMap = new Map<string, string>();
+    if (emailsMissingTicket.length > 0) {
+      const { data: regUsers } = await supabase
+        .from("registrations")
+        .select("email, ticket_code")
+        .in("email", emailsMissingTicket);
+
+      (regUsers || []).forEach((u: any) => {
+        if (u.email && u.ticket_code) {
+          ticketCodeMap.set(u.email.trim().toLowerCase(), u.ticket_code);
+        }
+      });
+    }
+
+    const enrichedVerifications = verificationsList.map((v: any) => {
+      if ((!v.ticket_code || v.ticket_code === "N/A") && v.user_email) {
+        const foundCode = ticketCodeMap.get(v.user_email.trim().toLowerCase());
+        if (foundCode) {
+          return { ...v, ticket_code: foundCode };
+        }
+      }
+      return v;
+    });
+
+    return NextResponse.json({ verifications: enrichedVerifications });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
