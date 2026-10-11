@@ -294,7 +294,19 @@ export default function ZealyMobileApp() {
     }
     return [];
   });
-  const [isGateCheckedIn, setIsGateCheckedIn] = useState<boolean>(false);
+  const [isGateCheckedIn, setIsGateCheckedIn] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const savedUser = localStorage.getItem("bq_user");
+      if (savedUser) {
+        try {
+          const parsed = JSON.parse(savedUser);
+          if (parsed.isCheckedIn || parsed.checked_in) return true;
+        } catch {}
+      }
+      return localStorage.getItem("bq_gate_checkin") === "true";
+    }
+    return false;
+  });
   const [userPromoCode, setUserPromoCode] = useState<string | null>(null);
 
   // Inactivity tracking state
@@ -636,6 +648,9 @@ export default function ZealyMobileApp() {
 
       if (typeof isCheckedIn === "boolean") {
         setIsGateCheckedIn(isCheckedIn);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("bq_gate_checkin", String(isCheckedIn));
+        }
       }
 
       if (typeof totalXp === "number") {
@@ -1057,6 +1072,13 @@ export default function ZealyMobileApp() {
       const hasRegister = completedIds.includes("register");
       const promoCode = loginResult.promoCode;
       setUserPromoCode(promoCode || null);
+
+      if (typeof loginResult.isCheckedIn === "boolean") {
+        setIsGateCheckedIn(loginResult.isCheckedIn);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("bq_gate_checkin", String(loginResult.isCheckedIn));
+        }
+      }
 
       // If switching accounts or logging into a new account, restore existing claimed and visited actions from scoped storage
       if (typeof window !== "undefined") {
@@ -3077,7 +3099,9 @@ export default function ZealyMobileApp() {
                                         Physical Gate Check-in Required
                                       </div>
                                       <div style={{ color: "rgba(255, 255, 255, 0.75)", fontSize: "0.82rem", marginTop: 6, lineHeight: 1.4 }}>
-                                        Scan your QR ticket pass at the event entrance gate on Saturday, Oct 10. Once scanned by gate staff, this 500 XP reward unlocks automatically for claim!
+                                        {!authenticatedUser
+                                          ? "Link or sign into your ticket account on the Profile tab first so your gate check-in status can be verified."
+                                          : "Scan your QR ticket pass at the event entrance gate. Once scanned by gate staff, this 500 XP reward unlocks automatically!"}
                                       </div>
                                     </div>
                                     <button
@@ -3098,7 +3122,7 @@ export default function ZealyMobileApp() {
                                         cursor: "pointer",
                                       }}
                                     >
-                                      🎫 View My QR Ticket Pass →
+                                      {!authenticatedUser ? "🔑 Link Ticket on Profile →" : "🎫 View My QR Ticket Pass →"}
                                     </button>
                                   </>
                                 )}

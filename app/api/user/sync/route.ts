@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     // 1. Fetch user from registrations
     const { data: user, error: userError } = await supabase
       .from("registrations")
-      .select("id, total_xp, checked_in, checked_in_at, promo_code")
+      .select("id, full_name, total_xp, checked_in, checked_in_at, promo_code")
       .eq("email", email)
       .single();
 
@@ -70,6 +70,46 @@ export async function GET(request: Request) {
           }
         } catch {
           list = [...list, { quest_id: "register", xp_awarded: 250, created_at: new Date().toISOString() }];
+        }
+      }
+
+      // Auto-grant the 500 XP checkin quest if attendee has physically checked in at entrance gate
+      const hasCheckin = list.some((c: any) => c.quest_id === "checkin");
+      if (isCheckedIn && !hasCheckin) {
+        try {
+          const newCheckinComp: Record<string, any> = {
+            quest_id: "checkin",
+            xp_awarded: 500,
+            registration_id: user.id,
+          };
+          const { data: insertedCheckin } = await supabase
+            .from("quest_completions")
+            .insert(newCheckinComp)
+            .select()
+            .single();
+
+          if (insertedCheckin) {
+            list = [...list, insertedCheckin];
+          } else {
+            list = [...list, { ...newCheckinComp, created_at: new Date().toISOString() }];
+          }
+
+          // Also record in quest_verifications as Approved for Quest Logs
+          await supabase.from("quest_verifications").insert({
+            quest_id: "checkin",
+            quest_title: "Physical Gate Check-in",
+            user_name: user.full_name || undefined,
+            user_email: email,
+            xp: 500,
+            proof_url: "Gate QR Scan Check-in",
+            user_message: "Auto-claimed upon entrance gate check-in",
+            status: "Approved",
+            approved_by: "Gate System",
+            reviewed_at: new Date().toISOString(),
+          });
+        } catch (checkinErr) {
+          console.warn("Could not auto-insert checkin quest completion:", checkinErr);
+          list = [...list, { quest_id: "checkin", xp_awarded: 500, created_at: new Date().toISOString() }];
         }
       }
 
