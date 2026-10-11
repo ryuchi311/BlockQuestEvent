@@ -64,7 +64,7 @@ const initialQuests: Quest[] = [
     title: "Complete physical check-in",
     description: "Scan your QR pass at the entrance gate on Saturday, Oct 10 to claim this XP reward.",
     xp: 500,
-    status: "Soon",
+    status: "Live",
     category: "onboarding"
   },
   {
@@ -145,7 +145,7 @@ function getDefaultQuestStatus(
   q: { id?: string; status?: string; publish_at?: string },
   isCheckedIn: boolean = false
 ): "Live" | "Soon" | "Locked" {
-  if (q.id === "checkin") return isCheckedIn ? "Live" : "Soon";
+  if (q.id === "checkin") return "Live";
   if (q.publish_at) {
     const publishTime = new Date(q.publish_at).getTime();
     if (publishTime > Date.now()) return "Soon";
@@ -550,7 +550,7 @@ export default function ZealyMobileApp() {
             const existing = prevQuests.find((p) => p.id === newQ.id);
             if (newQ.id === "checkin") {
               if (existing?.status === "Done") return { ...newQ, status: "Done", completedAt: (existing as any).completedAt };
-              return { ...newQ, status: isGateCheckedIn ? "Live" : "Soon" };
+              return { ...newQ, status: "Live" };
             }
             if (
               existing &&
@@ -695,7 +695,7 @@ export default function ZealyMobileApp() {
             return { ...q, status: "Done", completedAt: compMap.get(q.id) || (q as any).completedAt };
           }
           if (q.id === "checkin") {
-            return { ...q, status: isCheckedIn ? "Live" : "Soon", completedAt: undefined };
+            return { ...q, status: "Live", completedAt: undefined };
           }
           const vData = verifMap.get(q.id);
           if (vData?.status === "Pending") {

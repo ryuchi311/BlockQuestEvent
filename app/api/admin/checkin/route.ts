@@ -74,6 +74,53 @@ export async function POST(request: Request) {
     }
 
     if (attendee.checked_in) {
+      // Ensure check-in quest completion and XP are awarded in case they were checked in previously without the quest
+      try {
+        const { data: existingComp } = await supabase
+          .from("quest_completions")
+          .select("id")
+          .eq("registration_id", attendee.id)
+          .eq("quest_id", "checkin")
+          .maybeSingle();
+
+        if (!existingComp) {
+          await supabase.from("quest_completions").insert({
+            quest_id: "checkin",
+            registration_id: attendee.id,
+            xp_awarded: 500,
+          });
+
+          if (attendee.email) {
+            await supabase.from("quest_verifications").insert({
+              quest_id: "checkin",
+              quest_title: "Physical Gate Check-in",
+              user_name: attendee.full_name || undefined,
+              user_email: attendee.email.trim().toLowerCase(),
+              xp: 500,
+              proof_url: "Gate QR Scan Check-in",
+              user_message: "Auto-claimed upon entrance gate check-in",
+              status: "Approved",
+              approved_by: "Gate System",
+              reviewed_at: attendee.checked_in_at || new Date().toISOString(),
+            });
+          }
+
+          // Recalculate total XP
+          const { data: allComps } = await supabase
+            .from("quest_completions")
+            .select("xp_awarded")
+            .eq("registration_id", attendee.id);
+
+          const newTotalXp = (allComps || []).reduce((sum: number, c: any) => sum + (c.xp_awarded || 0), 0);
+          await supabase
+            .from("registrations")
+            .update({ total_xp: newTotalXp })
+            .eq("id", attendee.id);
+        }
+      } catch (checkinQuestErr) {
+        console.warn("Could not award checkin quest on already_checked_in:", checkinQuestErr);
+      }
+
       return NextResponse.json({
         valid: true,
         already_checked_in: true,
