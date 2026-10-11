@@ -27,6 +27,7 @@ type Credentials = {
 function RegistrationFormContent() {
   const searchParams = useSearchParams();
   const promoCode = searchParams.get("promoCode") || "";
+  const referralCode = searchParams.get("ref") || searchParams.get("referral") || "";
 
   const registrationFormRef = useRef<HTMLFormElement>(null);
   const [status, setStatus] = useState<Status>({ type: "idle", message: "" });
@@ -247,6 +248,7 @@ function RegistrationFormContent() {
           terms,
           dataGathering,
           promoCode,
+          referralCode,
         }),
       });
 
@@ -380,6 +382,23 @@ function RegistrationFormContent() {
           fontWeight: 700
         }}>
           🎁 Promo Code Applied: {promoCode}
+        </div>
+      )}
+      {referralCode && (
+        <div style={{
+          background: "rgba(59, 130, 246, 0.15)",
+          border: "1px solid rgba(59, 130, 246, 0.35)",
+          color: "#60a5fa",
+          padding: "10px 14px",
+          borderRadius: "12px",
+          marginBottom: "16px",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          fontSize: "0.9rem",
+          fontWeight: 700
+        }}>
+          🤝 Referred by: <span style={{ color: "#fff", textDecoration: "underline" }}>{referralCode}</span>
         </div>
       )}
       {!pendingLogin && !showVerificationOnly && !authenticatedUser && !qrPass ? (

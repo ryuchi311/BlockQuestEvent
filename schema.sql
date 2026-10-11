@@ -30,6 +30,8 @@ ALTER TABLE public.registrations ADD COLUMN IF NOT EXISTS total_xp INTEGER NOT N
 ALTER TABLE public.registrations ADD COLUMN IF NOT EXISTS ticket_code TEXT UNIQUE;
 ALTER TABLE public.registrations ADD COLUMN IF NOT EXISTS checked_in BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE public.registrations ADD COLUMN IF NOT EXISTS checked_in_at TIMESTAMPTZ;
+ALTER TABLE public.registrations ADD COLUMN IF NOT EXISTS referred_by_code TEXT;
+ALTER TABLE public.registrations ADD COLUMN IF NOT EXISTS referral_count INTEGER NOT NULL DEFAULT 0;
 
 -- Unique case-insensitive index on alias_name (allowing nulls for attendees who haven't chosen one)
 CREATE UNIQUE INDEX IF NOT EXISTS registrations_alias_name_lower_unique_idx
@@ -285,3 +287,24 @@ ON CONFLICT (id) DO UPDATE SET
   xp = EXCLUDED.xp,
   status = EXCLUDED.status,
   category = EXCLUDED.category;
+
+-- Seed "Referral Quest: Invite Friends" into fiesta_event_quests
+INSERT INTO public.fiesta_event_quests (id, title, description, xp, status, category, action_label, action_url, sort_order)
+VALUES (
+  'referral-quest',
+  'Referral Quest: Invite Friends',
+  'Invite friends to register for BlockQuest Fiesta PH using your unique referral link or ticket code. Earn +100 XP instantly for each friend who registers!',
+  100,
+  'Live',
+  'social',
+  'Copy Referral Link',
+  '/zealy',
+  4
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  description = EXCLUDED.description,
+  xp = EXCLUDED.xp,
+  status = EXCLUDED.status,
+  category = EXCLUDED.category;
+

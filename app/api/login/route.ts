@@ -59,7 +59,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabase
     .from("registrations")
-    .select("id, full_name, alias_name, email, phone, password_hash, total_xp, pincode, checked_in, checked_in_at, promo_code")
+    .select("id, full_name, alias_name, email, phone, password_hash, total_xp, pincode, checked_in, checked_in_at, promo_code, ticket_code, referral_count")
     .eq("email", email)
     .maybeSingle();
 
@@ -151,6 +151,8 @@ export async function POST(request: Request) {
     aliasName: data.alias_name || null,
     email: data.email,
     promoCode: data.promo_code || null,
+    ticketCode: data.ticket_code || null,
+    referralCount: data.referral_count || 0,
     totalXp: exactTotalXp,
     completedQuests: completions.map((c: any) => c.quest_id),
     hasPin,

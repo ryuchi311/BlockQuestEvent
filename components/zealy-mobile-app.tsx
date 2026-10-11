@@ -84,6 +84,16 @@ const initialQuests: Quest[] = [
     category: "onboarding"
   },
   {
+    id: "referral-quest",
+    title: "Referral Quest: Invite Friends",
+    description: "Invite your friends to register for BlockQuest Fiesta PH using your unique referral link. Earn +100 XP instantly for every friend who registers!",
+    xp: 100,
+    status: "Live",
+    category: "social",
+    actionLabel: "Share Referral Link",
+    actionUrl: "/zealy"
+  },
+  {
     id: "follow-x",
     title: "Follow @BlockQuest on X",
     description: "Follow our official X handle and submit a screenshot proof to verify completion.",
@@ -335,6 +345,7 @@ export default function ZealyMobileApp() {
     return false;
   });
   const [userPromoCode, setUserPromoCode] = useState<string | null>(null);
+  const [userReferralCount, setUserReferralCount] = useState<number>(0);
 
   // Inactivity tracking state
   const [inactivityWarning, setInactivityWarning] = useState(false);
@@ -348,6 +359,7 @@ export default function ZealyMobileApp() {
     setQrPass(null);
     setIsGateCheckedIn(false);
     setUserPromoCode(null);
+    setUserReferralCount(0);
     setTicketEmail("");
     setTicketMobileNum("");
     setTicketCountryCode("+63");
@@ -668,7 +680,15 @@ export default function ZealyMobileApp() {
       const json = await safeJson(res);
       if (!res.ok) return;
 
-      const { totalXp, completedQuests, completedQuestDetails, verifications, isCheckedIn, promoCode, aliasName } = json;
+      const { totalXp, completedQuests, completedQuestDetails, verifications, isCheckedIn, promoCode, aliasName, referralCount, ticketCode } = json;
+
+      if (typeof referralCount === "number") {
+        setUserReferralCount(referralCount);
+      }
+
+      if (ticketCode) {
+        setAuthenticatedUser((prev: any) => (prev ? { ...prev, ticket_code: ticketCode } : prev));
+      }
 
       if (typeof aliasName === "string" && aliasName.trim()) {
         setUserAlias(aliasName.trim());
@@ -1091,11 +1111,16 @@ export default function ZealyMobileApp() {
         return;
       }
       const aliasFromLogin = loginResult.aliasName || null;
+      if (typeof loginResult.referralCount === "number") {
+        setUserReferralCount(loginResult.referralCount);
+      }
       setAuthenticatedUser({
         fullName: loginResult.fullName,
         aliasName: aliasFromLogin,
         email: loginResult.email,
         promoCode: loginResult.promoCode,
+        ticket_code: loginResult.ticketCode || qrResult.passCode,
+        referralCount: loginResult.referralCount || 0,
       });
       setUserAlias(aliasFromLogin);
       if (typeof window !== "undefined") {
@@ -2547,6 +2572,100 @@ export default function ZealyMobileApp() {
                 </div>
 
                 {qrPass && (
+                  <div
+                    className="info-card"
+                    style={{
+                      background: "linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(37, 99, 235, 0.05) 100%)",
+                      border: "1px solid rgba(59, 130, 246, 0.3)",
+                      borderRadius: 16,
+                      padding: "16px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 10,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 10,
+                            background: "rgba(59, 130, 246, 0.2)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "1.2rem",
+                          }}
+                        >
+                          🎁
+                        </div>
+                        <div>
+                          <h4 style={{ margin: 0, fontSize: "0.92rem", fontWeight: 800, color: "#fff" }}>
+                            Referral Program
+                          </h4>
+                          <p style={{ margin: "2px 0 0", fontSize: "0.74rem", color: "var(--text-secondary)" }}>
+                            Earn +100 XP for every friend who registers
+                          </p>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#fbbf24" }}>
+                        {userReferralCount} Friends (+{userReferralCount * 100} XP)
+                      </span>
+                    </div>
+
+                    {(() => {
+                      const refIdentifier = userAlias || qrPass?.passCode || authenticatedUser?.ticket_code || authenticatedUser?.email?.split("@")[0] || "FRIEND";
+                      const origin = typeof window !== "undefined" ? window.location.origin : "https://block-quest.com";
+                      const referralUrl = `${origin}/register?ref=${encodeURIComponent(refIdentifier)}`;
+
+                      return (
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input
+                            type="text"
+                            readOnly
+                            value={referralUrl}
+                            style={{
+                              flex: 1,
+                              background: "rgba(0, 0, 0, 0.4)",
+                              border: "1px solid rgba(255, 255, 255, 0.15)",
+                              borderRadius: 10,
+                              padding: "9px 12px",
+                              color: "#f8fafc",
+                              fontSize: "0.78rem",
+                              fontFamily: "monospace",
+                              outline: "none",
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (navigator.clipboard) {
+                                navigator.clipboard.writeText(referralUrl);
+                                showNotice("Referral link copied to clipboard! Share it with your friends.", "success", "Link Copied! 📋", "📋");
+                              }
+                            }}
+                            style={{
+                              background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                              border: "none",
+                              color: "#fff",
+                              padding: "9px 14px",
+                              borderRadius: 10,
+                              fontSize: "0.78rem",
+                              fontWeight: 800,
+                              cursor: "pointer",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            📋 Copy
+                          </button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {qrPass && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
                     <button
                       onClick={() => {
@@ -3331,6 +3450,200 @@ export default function ZealyMobileApp() {
                                       }}
                                     >
                                       🛡️ Create My Alias Name Now →
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            ) : selectedQuest.id === "referral-quest" ? (
+                              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+                                {authenticatedUser || qrPass ? (
+                                  <>
+                                    <div style={{
+                                      background: "linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.1) 100%)",
+                                      border: "1px solid rgba(59, 130, 246, 0.35)",
+                                      padding: "16px",
+                                      borderRadius: 14,
+                                      textAlign: "center"
+                                    }}>
+                                      <div style={{ fontSize: "1.8rem", marginBottom: 4 }}>🎁 🤝</div>
+                                      <div style={{ color: "#60a5fa", fontWeight: 800, fontSize: "1.05rem" }}>
+                                        Your Personal Referral Link
+                                      </div>
+                                      <p style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: "0.82rem", margin: "6px 0 12px", lineHeight: 1.4 }}>
+                                        Share your referral link with friends. Whenever someone signs up using your link, you instantly receive <strong>+100 XP</strong>!
+                                      </p>
+
+                                      {/* Referral Link Copy Box */}
+                                      {(() => {
+                                        const refIdentifier = userAlias || qrPass?.passCode || authenticatedUser?.ticket_code || authenticatedUser?.email?.split("@")[0] || "FRIEND";
+                                        const origin = typeof window !== "undefined" ? window.location.origin : "https://block-quest.com";
+                                        const referralUrl = `${origin}/register?ref=${encodeURIComponent(refIdentifier)}`;
+
+                                        return (
+                                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                            <div style={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              background: "rgba(0, 0, 0, 0.45)",
+                                              border: "1px solid rgba(255, 255, 255, 0.15)",
+                                              borderRadius: 10,
+                                              padding: "8px 12px",
+                                              gap: 8,
+                                              overflow: "hidden"
+                                            }}>
+                                              <input
+                                                type="text"
+                                                readOnly
+                                                value={referralUrl}
+                                                style={{
+                                                  flex: 1,
+                                                  background: "transparent",
+                                                  border: "none",
+                                                  color: "#f8fafc",
+                                                  fontSize: "0.78rem",
+                                                  fontFamily: "monospace",
+                                                  outline: "none"
+                                                }}
+                                              />
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  if (navigator.clipboard) {
+                                                    navigator.clipboard.writeText(referralUrl);
+                                                    showNotice("Referral link copied to clipboard! Share it with your friends.", "success", "Link Copied! 📋", "📋");
+                                                  }
+                                                }}
+                                                style={{
+                                                  background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                                                  border: "none",
+                                                  color: "#fff",
+                                                  padding: "6px 12px",
+                                                  borderRadius: 8,
+                                                  fontSize: "0.76rem",
+                                                  fontWeight: 800,
+                                                  cursor: "pointer",
+                                                  whiteSpace: "nowrap"
+                                                }}
+                                              >
+                                                📋 Copy
+                                              </button>
+                                            </div>
+
+                                            {/* Referral Stats Badge */}
+                                            <div style={{
+                                              display: "flex",
+                                              justifyContent: "space-around",
+                                              background: "rgba(255, 255, 255, 0.04)",
+                                              borderRadius: 10,
+                                              padding: "10px",
+                                              border: "1px solid rgba(255, 255, 255, 0.08)"
+                                            }}>
+                                              <div>
+                                                <div style={{ fontSize: "0.7rem", color: "var(--text-secondary)" }}>Friends Joined</div>
+                                                <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#fff" }}>
+                                                  {userReferralCount}
+                                                </div>
+                                              </div>
+                                              <div style={{ width: 1, background: "rgba(255, 255, 255, 0.1)" }} />
+                                              <div>
+                                                <div style={{ fontSize: "0.7rem", color: "var(--text-secondary)" }}>Referral XP Earned</div>
+                                                <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#fbbf24" }}>
+                                                  +{userReferralCount * 100} XP
+                                                </div>
+                                              </div>
+                                            </div>
+
+                                            {/* Share Shortcut Buttons */}
+                                            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                                              <a
+                                                href={`https://t.me/share/url?url=${encodeURIComponent(referralUrl)}&text=${encodeURIComponent("Join me at BlockQuest Fiesta PH! Register here to unlock exclusive quests & win prizes:")}`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                style={{
+                                                  flex: 1,
+                                                  padding: "9px 8px",
+                                                  borderRadius: 10,
+                                                  background: "rgba(34, 158, 217, 0.2)",
+                                                  border: "1px solid rgba(34, 158, 217, 0.4)",
+                                                  color: "#38bdf8",
+                                                  fontSize: "0.76rem",
+                                                  fontWeight: 700,
+                                                  textAlign: "center",
+                                                  textDecoration: "none",
+                                                  display: "flex",
+                                                  alignItems: "center",
+                                                  justifyContent: "center",
+                                                  gap: 6
+                                                }}
+                                              >
+                                                ✈️ Share Telegram
+                                              </a>
+                                              <a
+                                                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent("Join me at BlockQuest Fiesta PH! Register now:")}&url=${encodeURIComponent(referralUrl)}`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                style={{
+                                                  flex: 1,
+                                                  padding: "9px 8px",
+                                                  borderRadius: 10,
+                                                  background: "rgba(255, 255, 255, 0.08)",
+                                                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                                                  color: "#fff",
+                                                  fontSize: "0.76rem",
+                                                  fontWeight: 700,
+                                                  textAlign: "center",
+                                                  textDecoration: "none",
+                                                  display: "flex",
+                                                  alignItems: "center",
+                                                  justifyContent: "center",
+                                                  gap: 6
+                                                }}
+                                              >
+                                                𝕏 Share on X
+                                              </a>
+                                            </div>
+                                          </div>
+                                        );
+                                      })()}
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div style={{
+                                      background: "rgba(245, 158, 11, 0.12)",
+                                      border: "1px solid rgba(245, 158, 11, 0.35)",
+                                      padding: "16px",
+                                      borderRadius: 14,
+                                      textAlign: "center"
+                                    }}>
+                                      <div style={{ fontSize: "1.8rem", marginBottom: 4 }}>🔗 🔒</div>
+                                      <div style={{ color: "#fbbf24", fontWeight: 800, fontSize: "1rem" }}>
+                                        Ticket Account Required
+                                      </div>
+                                      <div style={{ color: "rgba(255, 255, 255, 0.75)", fontSize: "0.82rem", marginTop: 6, lineHeight: 1.4 }}>
+                                        Link or sign into your registered attendee ticket pass on the Profile tab to generate your personal referral invite link.
+                                      </div>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedQuest(null);
+                                        setActiveTab("profile");
+                                      }}
+                                      className="modal-claim-btn"
+                                      style={{
+                                        width: "100%",
+                                        padding: "14px",
+                                        borderRadius: 12,
+                                        fontWeight: 800,
+                                        fontSize: "0.92rem",
+                                        background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                                        color: "#100b02",
+                                        border: "none",
+                                        cursor: "pointer",
+                                      }}
+                                    >
+                                      🔑 Link Ticket on Profile Tab →
                                     </button>
                                   </>
                                 )}

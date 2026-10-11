@@ -15,6 +15,7 @@ type RegistrationPayload = {
   terms?: boolean;
   dataGathering?: boolean;
   promoCode?: string;
+  referralCode?: string;
 };
 
 export async function POST(request: Request) {
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
   const organization = payload.organization?.trim() || null;
   const password = payload.password ?? "";
   const promoCode = payload.promoCode?.trim() || null;
+  const referralCode = (payload.referralCode || "").trim();
 
   if (!fullName || !email || !phone || !password || payload.terms !== true || payload.dataGathering !== true) {
     return NextResponse.json(
@@ -162,7 +164,35 @@ export async function POST(request: Request) {
     }
   }
 
-  // 4. Insert registration record with initial XP bonus
+  // 4. Check referral code if provided
+  let referrerRecord: any = null;
+  let finalReferredByCode: string | null = null;
+  if (referralCode) {
+    // Check by ticket_code first, then by alias_name
+    const { data: refByTicket } = await supabase
+      .from("registrations")
+      .select("id, full_name, alias_name, ticket_code, email, total_xp, referral_count")
+      .eq("ticket_code", referralCode.toUpperCase())
+      .maybeSingle();
+
+    if (refByTicket) {
+      referrerRecord = refByTicket;
+      finalReferredByCode = refByTicket.ticket_code;
+    } else {
+      const { data: refByAlias } = await supabase
+        .from("registrations")
+        .select("id, full_name, alias_name, ticket_code, email, total_xp, referral_count")
+        .ilike("alias_name", referralCode)
+        .maybeSingle();
+
+      if (refByAlias) {
+        referrerRecord = refByAlias;
+        finalReferredByCode = refByAlias.alias_name || refByAlias.ticket_code;
+      }
+    }
+  }
+
+  // 5. Insert registration record with initial XP bonus
   const { data: newReg, error } = await supabase
     .from("registrations")
     .insert({
@@ -177,6 +207,7 @@ export async function POST(request: Request) {
       agreed_at: new Date().toISOString(),
       total_xp: initialXp,
       promo_code: finalPromoCode,
+      referred_by_code: finalReferredByCode,
     })
     .select("id")
     .single();
@@ -192,18 +223,54 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
-  // 4. Record registration completion in quest_completions
+  // 6. Record registration completion in quest_completions
   try {
     const completionPayload: Record<string, any> = {
       quest_id: "register",
       xp_awarded: initialXp,
     };
     if (newReg?.id) completionPayload.registration_id = newReg.id;
-    if (newReg?.id) completionPayload.registration_id = newReg.id;
 
     await supabase.from("quest_completions").insert(completionPayload);
   } catch (compErr) {
     console.warn("Could not record quest completion for registration:", compErr);
+  }
+
+  // 7. If valid referrer found, award referrer +100 XP and increment referral_count
+  if (referrerRecord && referrerRecord.id !== newReg?.id) {
+    try {
+      const currentRefCount = Number(referrerRecord.referral_count) || 0;
+      const currentXp = Number(referrerRecord.total_xp) || 0;
+      const newRefCount = currentRefCount + 1;
+      const bonusXp = 100;
+      const newTotalXp = currentXp + bonusXp;
+
+      // Update referrer record
+      await supabase
+        .from("registrations")
+        .update({
+          referral_count: newRefCount,
+          total_xp: newTotalXp,
+        })
+        .eq("id", referrerRecord.id);
+
+      // Log in quest_verifications for the referrer so it appears in their Quest Logs
+      const inviteeDisplayName = finalAliasName ? `@${finalAliasName}` : fullName;
+      await supabase.from("quest_verifications").insert({
+        quest_id: "referral-quest",
+        quest_title: "Referral Quest: Friend Joined",
+        user_name: referrerRecord.alias_name ? `@${referrerRecord.alias_name}` : referrerRecord.full_name,
+        user_email: referrerRecord.email,
+        xp: bonusXp,
+        proof_url: "Auto-Verified (Friend Registered)",
+        user_message: `Friend registered: ${inviteeDisplayName}`,
+        status: "Approved",
+        approved_by: "System",
+        reviewed_at: new Date().toISOString(),
+      });
+    } catch (refErr) {
+      console.warn("Could not update referrer XP or logs:", refErr);
+    }
   }
 
   return NextResponse.json(
