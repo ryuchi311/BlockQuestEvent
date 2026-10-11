@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     // 1. Fetch user from registrations
     const { data: user, error: userError } = await supabase
       .from("registrations")
-      .select("id, full_name, total_xp, checked_in, checked_in_at, promo_code")
+      .select("id, full_name, alias_name, total_xp, checked_in, checked_in_at, promo_code")
       .eq("email", email)
       .single();
 
@@ -172,6 +172,7 @@ export async function GET(request: Request) {
       verifications: verifications,
       isCheckedIn: isCheckedIn,
       promoCode: user?.promo_code || null,
+      aliasName: user?.alias_name || null,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

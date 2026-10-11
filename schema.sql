@@ -18,16 +18,23 @@ CREATE TABLE IF NOT EXISTS public.registrations (
   checked_in_at TIMESTAMPTZ,
   total_xp INTEGER NOT NULL DEFAULT 0,
   pincode TEXT,
-  promo_code TEXT
+  promo_code TEXT,
+  alias_name TEXT
 );
 
 -- Safe migration statements if registrations table was created in an earlier version:
 ALTER TABLE public.registrations ADD COLUMN IF NOT EXISTS pincode TEXT;
 ALTER TABLE public.registrations ADD COLUMN IF NOT EXISTS promo_code TEXT;
+ALTER TABLE public.registrations ADD COLUMN IF NOT EXISTS alias_name TEXT;
 ALTER TABLE public.registrations ADD COLUMN IF NOT EXISTS total_xp INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE public.registrations ADD COLUMN IF NOT EXISTS ticket_code TEXT UNIQUE;
 ALTER TABLE public.registrations ADD COLUMN IF NOT EXISTS checked_in BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE public.registrations ADD COLUMN IF NOT EXISTS checked_in_at TIMESTAMPTZ;
+
+-- Unique case-insensitive index on alias_name (allowing nulls for attendees who haven't chosen one)
+CREATE UNIQUE INDEX IF NOT EXISTS registrations_alias_name_lower_unique_idx
+  ON public.registrations (LOWER(TRIM(alias_name)))
+  WHERE alias_name IS NOT NULL AND TRIM(alias_name) <> '';
 
 CREATE INDEX IF NOT EXISTS registrations_created_at_idx
   ON public.registrations (created_at DESC);

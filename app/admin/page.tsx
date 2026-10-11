@@ -14,6 +14,7 @@ const QrScanner = dynamic(() => import("../../components/qr-scanner"), { ssr: fa
 interface Attendee {
   id: number;
   full_name: string;
+  alias_name?: string | null;
   email: string;
   phone: string;
   organization: string | null;
@@ -1445,6 +1446,7 @@ export default function AdminPage() {
     const matchesQuery =
       !q ||
       a.full_name.toLowerCase().includes(q) ||
+      (a.alias_name ?? "").toLowerCase().includes(q) ||
       a.email.toLowerCase().includes(q) ||
       (a.ticket_code ?? "").toLowerCase().includes(q) ||
       (a.organization ?? "").toLowerCase().includes(q);
@@ -1704,6 +1706,7 @@ export default function AdminPage() {
     const columns = [
       { header: "ID", width: 60 },
       { header: "Full Name", width: 160 },
+      { header: "Alias Name", width: 140 },
       { header: "Email Address", width: 220 },
       { header: "Phone Number", width: 140 },
       { header: "Organization / Company", width: 180 },
@@ -1715,6 +1718,7 @@ export default function AdminPage() {
     const rows = filteredAttendees.map((a) => [
       a.id,
       a.full_name || "",
+      a.alias_name || "",
       a.email || "",
       a.phone || "",
       a.organization || "",
@@ -3206,6 +3210,7 @@ export default function AdminPage() {
                   <tr>
                     <th>#</th>
                     <th>Name</th>
+                    <th>Alias</th>
                     <th>
                       <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                         <span>Email</span>
@@ -3262,7 +3267,7 @@ export default function AdminPage() {
                 <tbody>
                   {filteredAttendees.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="admin-table__empty">
+                      <td colSpan={10} className="admin-table__empty">
                         {search || statusFilter !== "all"
                           ? "No matching attendees found."
                           : "No registrations yet."}
@@ -3276,6 +3281,24 @@ export default function AdminPage() {
                         <tr key={a.id} className="admin-table__row">
                           <td className="admin-table__num">{attendeeStartIndex + i + 1}</td>
                           <td className="admin-table__name">{a.full_name}</td>
+                          <td>
+                            {a.alias_name ? (
+                              <span style={{
+                                display: "inline-block",
+                                padding: "2px 8px",
+                                borderRadius: "12px",
+                                background: "rgba(245, 166, 35, 0.15)",
+                                border: "1px solid rgba(245, 166, 35, 0.4)",
+                                color: "var(--gold-light)",
+                                fontSize: "0.78rem",
+                                fontWeight: 700
+                              }}>
+                                @{a.alias_name}
+                              </span>
+                            ) : (
+                              <span className="admin-table__muted">—</span>
+                            )}
+                          </td>
                           <td className="admin-table__email">
                             <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                               <span>{isEmailRevealed ? a.email : maskEmail(a.email)}</span>

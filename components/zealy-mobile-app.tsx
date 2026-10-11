@@ -284,6 +284,25 @@ export default function ZealyMobileApp() {
   const [confirmPinInput, setConfirmPinInput] = useState("");
   const [pinModalError, setPinModalError] = useState("");
   const [pinSaving, setPinSaving] = useState(false);
+
+  // Alias name states
+  const [userAlias, setUserAlias] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      const savedUser = localStorage.getItem("bq_user");
+      if (savedUser) {
+        try {
+          const parsed = JSON.parse(savedUser);
+          if (parsed?.aliasName) return parsed.aliasName;
+        } catch {}
+      }
+      return localStorage.getItem("bq_alias") || null;
+    }
+    return null;
+  });
+  const [showAliasModal, setShowAliasModal] = useState(false);
+  const [aliasInput, setAliasInput] = useState("");
+  const [aliasModalError, setAliasModalError] = useState("");
+  const [aliasSaving, setAliasSaving] = useState(false);
   const [claimedQuestIds, setClaimedQuestIds] = useState<string[]>(() => {
     if (typeof window !== "undefined") {
       const savedUser = localStorage.getItem("bq_user");
@@ -329,6 +348,7 @@ export default function ZealyMobileApp() {
     setShowPinInput(false);
     setUserXp(0);
     setUserRank(12);
+    setUserAlias(null);
     setQuests(initialQuests);
     setActiveTab("quests");
 
@@ -336,12 +356,14 @@ export default function ZealyMobileApp() {
       const email = authenticatedUser?.email;
       localStorage.removeItem("bq_user");
       localStorage.removeItem("bq_qr");
+      localStorage.removeItem("bq_alias");
       localStorage.removeItem("bq_xp");
       localStorage.removeItem("bq_rank");
       localStorage.removeItem("bq_quests");
       localStorage.removeItem("bq_visited");
       localStorage.removeItem("bq_claimed");
       if (email) {
+        localStorage.removeItem(`bq_alias_${email}`);
         localStorage.removeItem(`bq_xp_${email}`);
         localStorage.removeItem(`bq_rank_${email}`);
         localStorage.removeItem(`bq_quests_${email}`);
@@ -638,7 +660,15 @@ export default function ZealyMobileApp() {
       const json = await safeJson(res);
       if (!res.ok) return;
 
-      const { totalXp, completedQuests, completedQuestDetails, verifications, isCheckedIn, promoCode } = json;
+      const { totalXp, completedQuests, completedQuestDetails, verifications, isCheckedIn, promoCode, aliasName } = json;
+
+      if (typeof aliasName === "string" && aliasName.trim()) {
+        setUserAlias(aliasName.trim());
+        if (typeof window !== "undefined") {
+          localStorage.setItem("bq_alias", aliasName.trim());
+          localStorage.setItem(`bq_alias_${email}`, aliasName.trim());
+        }
+      }
 
       if (typeof promoCode === "string" && promoCode.trim()) {
         setUserPromoCode(promoCode.trim());
@@ -1052,11 +1082,23 @@ export default function ZealyMobileApp() {
         setTicketLoading(false);
         return;
       }
+      const aliasFromLogin = loginResult.aliasName || null;
       setAuthenticatedUser({
         fullName: loginResult.fullName,
+        aliasName: aliasFromLogin,
         email: loginResult.email,
         promoCode: loginResult.promoCode,
       });
+      setUserAlias(aliasFromLogin);
+      if (typeof window !== "undefined") {
+        if (aliasFromLogin) {
+          localStorage.setItem("bq_alias", aliasFromLogin);
+          localStorage.setItem(`bq_alias_${loginResult.email}`, aliasFromLogin);
+        } else {
+          localStorage.removeItem("bq_alias");
+          localStorage.removeItem(`bq_alias_${loginResult.email}`);
+        }
+      }
       setQrPass({
         fullName: qrResult.fullName ?? loginResult.fullName,
         email: qrResult.email ?? loginResult.email,
@@ -1211,6 +1253,65 @@ export default function ZealyMobileApp() {
       setPinModalError(err.message);
     } finally {
       setPinSaving(false);
+    }
+  };
+
+  const handleSaveAlias = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAliasModalError("");
+    const cleanAlias = aliasInput.trim();
+    if (!cleanAlias) {
+      setAliasModalError("Please enter an alias name.");
+      return;
+    }
+    if (!/^[a-zA-Z0-9_-]{3,20}$/.test(cleanAlias)) {
+      setAliasModalError("Alias must be 3-20 characters using letters, numbers, underscores, or hyphens.");
+      return;
+    }
+
+    const email = authenticatedUser?.email || ticketEmail.trim() || qrPass?.email;
+    if (!email) {
+      setAliasModalError("No active logged-in session found.");
+      return;
+    }
+
+    setAliasSaving(true);
+    try {
+      const res = await fetch("/api/user/alias", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, alias: cleanAlias }),
+      });
+      const data = await safeJson(res);
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to save alias.");
+      }
+
+      const savedAlias = data.alias || cleanAlias;
+      setUserAlias(savedAlias);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("bq_alias", savedAlias);
+        localStorage.setItem(`bq_alias_${email}`, savedAlias);
+        const savedUserStr = localStorage.getItem("bq_user");
+        if (savedUserStr) {
+          try {
+            const u = JSON.parse(savedUserStr);
+            u.aliasName = savedAlias;
+            localStorage.setItem("bq_user", JSON.stringify(u));
+          } catch {}
+        }
+      }
+
+      setAuthenticatedUser((prev: any) => (prev ? { ...prev, aliasName: savedAlias } : prev));
+      setShowAliasModal(false);
+      setAliasInput("");
+      // Refresh leaderboard so the new alias is reflected immediately
+      fetchLeaderboard();
+      showNotice(`Your leaderboard alias is now set to @${savedAlias}! Your real name is hidden.`, "success", "Alias Saved", "🛡️");
+    } catch (err: any) {
+      setAliasModalError(err.message || "Failed to update alias.");
+    } finally {
+      setAliasSaving(false);
     }
   };
 
@@ -1823,11 +1924,70 @@ export default function ZealyMobileApp() {
             )}
             {activeTab === "leaderboard" && (
               <div className="zealy-tab-content">
-                <div className="section-head">
+                <div className="section-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 10 }}>
                   <div>
                     <p className="section-head__eyebrow">Real-time stats</p>
                     <h2>Global Leaderboard</h2>
                   </div>
+                  {(authenticatedUser || qrPass) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAliasModalError("");
+                        setAliasInput(userAlias || "");
+                        setShowAliasModal(true);
+                      }}
+                      style={{
+                        padding: "6px 12px",
+                        borderRadius: 10,
+                        background: userAlias ? "rgba(245, 166, 35, 0.15)" : "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                        border: "1px solid rgba(245, 166, 35, 0.4)",
+                        color: userAlias ? "var(--gold-light)" : "#000",
+                        fontSize: "0.76rem",
+                        fontWeight: 800,
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        boxShadow: userAlias ? "none" : "0 2px 10px rgba(245, 166, 35, 0.3)",
+                      }}
+                    >
+                      <span>🛡️</span>
+                      <span>{userAlias ? `@${userAlias}` : "Set Alias Name"}</span>
+                      <span style={{ opacity: 0.75, fontSize: "0.68rem" }}>✏️</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Privacy Badge Banner */}
+                <div
+                  style={{
+                    background: "rgba(15, 23, 42, 0.65)",
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                    borderRadius: 12,
+                    padding: "8px 12px",
+                    marginBottom: 12,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 10,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                    <span style={{ fontSize: "1.1rem" }}>🔒</span>
+                    <p style={{ margin: 0, fontSize: "0.74rem", color: "var(--text-secondary)", lineHeight: 1.3 }}>
+                      {userAlias ? (
+                        <>You are appearing publicly as <strong style={{ color: "var(--gold-light)" }}>@{userAlias}</strong>. Full names remain private.</>
+                      ) : (
+                        <>Real names are masked on rankings. Set your custom alias name to stand out!</>
+                      )}
+                    </p>
+                  </div>
+                  {!(authenticatedUser || qrPass) && (
+                    <span style={{ fontSize: "0.68rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+                      Link ticket to set alias
+                    </span>
+                  )}
                 </div>
 
                 {/* Top 3 Podium Showcase */}
@@ -2380,6 +2540,45 @@ export default function ZealyMobileApp() {
 
                 {qrPass && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+                    <button
+                      onClick={() => {
+                        setAliasModalError("");
+                        setAliasInput(userAlias || "");
+                        setShowAliasModal(true);
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "12px",
+                        borderRadius: 12,
+                        border: "1px solid rgba(245, 166, 35, 0.4)",
+                        background: userAlias ? "rgba(245, 166, 35, 0.08)" : "linear-gradient(135deg, rgba(245, 166, 35, 0.2) 0%, rgba(217, 119, 6, 0.15) 100%)",
+                        color: "#fbbf24",
+                        fontSize: "0.88rem",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        paddingLeft: 16,
+                        paddingRight: 16,
+                      }}
+                    >
+                      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span>🛡️</span> Leaderboard Alias Name
+                      </span>
+                      <span style={{
+                        fontSize: "0.78rem",
+                        fontWeight: 800,
+                        padding: "3px 8px",
+                        borderRadius: 8,
+                        background: userAlias ? "rgba(245, 166, 35, 0.2)" : "rgba(255, 255, 255, 0.1)",
+                        color: userAlias ? "var(--gold-light)" : "var(--text-muted)"
+                      }}>
+                        {userAlias ? `@${userAlias}` : "Not Set (Masked) ✏️"}
+                      </span>
+                    </button>
+
                     <button
                       onClick={() => {
                         setPinModalError("");
@@ -3634,6 +3833,131 @@ export default function ZealyMobileApp() {
                     style={{ marginTop: 8, padding: "12px", fontSize: "0.9rem" }}
                   >
                     {pinSaving ? "Updating PIN..." : "🔑 Update Security PIN"}
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Leaderboard Alias Name Customization Modal */}
+          {showAliasModal && (authenticatedUser || qrPass) && (
+            <div className="modal-overlay" style={{ background: "rgba(0,0,0,0.85)", zIndex: 99999 }}>
+              <div
+                className="modal-content"
+                style={{
+                  maxWidth: 360,
+                  width: "100%",
+                  padding: 24,
+                  textAlign: "center",
+                  background: "#121723",
+                  border: "1px solid rgba(245, 166, 35, 0.45)",
+                  borderRadius: 18,
+                  boxShadow: "0 10px 35px rgba(0,0,0,0.6), 0 0 25px rgba(245,166,35,0.15)",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                  <h2 style={{ color: "#fbbf24", margin: 0, fontSize: "1.15rem", fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}>
+                    <span>🛡️</span> Leaderboard Alias
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowAliasModal(false);
+                      setAliasModalError("");
+                    }}
+                    style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "1.2rem", cursor: "pointer" }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div
+                  style={{
+                    background: "rgba(245, 166, 35, 0.08)",
+                    border: "1px solid rgba(245, 166, 35, 0.25)",
+                    borderRadius: 12,
+                    padding: "10px 14px",
+                    marginBottom: 16,
+                    textAlign: "left",
+                  }}
+                >
+                  <p style={{ margin: 0, fontSize: "0.78rem", color: "rgba(255, 255, 255, 0.85)", lineHeight: 1.45 }}>
+                    🔒 <strong>Privacy Protection:</strong> Your full name is hidden from public rankings. Choose an alias to represent yourself on the global leaderboard.
+                  </p>
+                </div>
+
+                <form onSubmit={handleSaveAlias} style={{ textAlign: "left", display: "flex", flexDirection: "column", gap: 12 }}>
+                  <label style={{ fontSize: "0.82rem", color: "#e2e8f0", display: "flex", flexDirection: "column", gap: 6 }}>
+                    Unique Alias Name *
+                    <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                      <span style={{ position: "absolute", left: 12, color: "var(--gold-light)", fontWeight: 800, fontSize: "0.95rem" }}>
+                        @
+                      </span>
+                      <input
+                        type="text"
+                        maxLength={20}
+                        required
+                        placeholder="e.g. Satoshi_99"
+                        value={aliasInput}
+                        onChange={(e) => {
+                          setAliasInput(e.target.value);
+                          if (aliasModalError) setAliasModalError("");
+                        }}
+                        style={{
+                          width: "100%",
+                          padding: "11px 12px 11px 28px",
+                          borderRadius: 10,
+                          background: "#080b12",
+                          border: aliasModalError ? "1px solid #f87171" : "1px solid rgba(245,166,35,0.4)",
+                          color: "#fff",
+                          fontSize: "0.92rem",
+                          fontWeight: 700,
+                          outline: "none",
+                        }}
+                      />
+                    </div>
+                    <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 2 }}>
+                      3-20 characters (letters, numbers, _ or -). Must be unique.
+                    </span>
+                  </label>
+
+                  {aliasModalError && (
+                    <div
+                      style={{
+                        background: "rgba(239, 68, 68, 0.12)",
+                        border: "1px solid rgba(239, 68, 68, 0.35)",
+                        borderRadius: 8,
+                        padding: "8px 12px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <span>⚠️</span>
+                      <p style={{ color: "#fca5a5", fontSize: "0.78rem", margin: 0, lineHeight: 1.35 }}>
+                        {aliasModalError}
+                      </p>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={aliasSaving}
+                    className="arena-cta-btn"
+                    style={{
+                      marginTop: 6,
+                      padding: "13px",
+                      fontSize: "0.92rem",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                    }}
+                  >
+                    {aliasSaving ? (
+                      <>⏳ Checking & Saving...</>
+                    ) : (
+                      <>✓ Save Public Alias</>
+                    )}
                   </button>
                 </form>
               </div>

@@ -59,7 +59,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabase
     .from("registrations")
-    .select("id, full_name, email, phone, password_hash, total_xp, pincode, checked_in, checked_in_at, promo_code")
+    .select("id, full_name, alias_name, email, phone, password_hash, total_xp, pincode, checked_in, checked_in_at, promo_code")
     .eq("email", email)
     .maybeSingle();
 
@@ -148,6 +148,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     message: "Login successful.",
     fullName: data.full_name,
+    aliasName: data.alias_name || null,
     email: data.email,
     promoCode: data.promo_code || null,
     totalXp: exactTotalXp,

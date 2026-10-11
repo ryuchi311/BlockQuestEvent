@@ -7,6 +7,7 @@ export const runtime = "nodejs";
 
 type RegistrationPayload = {
   fullName?: string;
+  aliasName?: string;
   email?: string;
   phone?: string;
   organization?: string;
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
   }
 
   const fullName = payload.fullName?.trim();
+  const aliasName = payload.aliasName?.trim() || null;
   const email = payload.email?.trim().toLowerCase();
   const rawPhone = payload.phone?.trim() ?? "";
   const phone = rawPhone.replace(/[^\d+]/g, ""); // Keep only digits and +
@@ -108,6 +110,31 @@ export async function POST(request: Request) {
     );
   }
 
+  // 3. Check existing alias name if provided
+  let finalAliasName: string | null = null;
+  if (aliasName) {
+    const ALIAS_REGEX = /^[a-zA-Z0-9_-]{3,20}$/;
+    if (!ALIAS_REGEX.test(aliasName)) {
+      return NextResponse.json(
+        { error: "Alias must be 3-20 characters long and can only contain letters, numbers, underscores (_), and hyphens (-)." },
+        { status: 400 }
+      );
+    }
+    const { data: existingAlias } = await supabase
+      .from("registrations")
+      .select("id")
+      .ilike("alias_name", aliasName)
+      .maybeSingle();
+
+    if (existingAlias) {
+      return NextResponse.json(
+        { error: `The alias "${aliasName}" is already taken. Please choose another alias.` },
+        { status: 409 }
+      );
+    }
+    finalAliasName = aliasName;
+  }
+
   let initialXp = 250;
   let successMessage = "Registration saved successfully. +250 XP awarded!";
   let finalPromoCode = null;
@@ -135,11 +162,12 @@ export async function POST(request: Request) {
     }
   }
 
-  // 3. Insert registration record with initial XP bonus
+  // 4. Insert registration record with initial XP bonus
   const { data: newReg, error } = await supabase
     .from("registrations")
     .insert({
       full_name: fullName,
+      alias_name: finalAliasName,
       email,
       phone,
       organization,
@@ -156,7 +184,9 @@ export async function POST(request: Request) {
   if (error) {
     const message =
       error.code === "23505"
-        ? "That email or phone number is already registered."
+        ? (error.message?.includes("alias")
+            ? "That alias name is already taken. Please choose a different alias."
+            : "That email, phone number, or alias is already registered.")
         : error.message || "Unable to store registration.";
 
     return NextResponse.json({ error: message }, { status: 400 });

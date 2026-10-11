@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     const supabase = getSupabase();
     let query = supabase
       .from("registrations")
-      .select("id, full_name, email, phone, organization, ticket_code, checked_in, checked_in_at, agreed_at, created_at, pincode")
+      .select("id, full_name, alias_name, email, phone, organization, ticket_code, checked_in, checked_in_at, agreed_at, created_at, pincode")
       .order("created_at", { ascending: false })
       .limit(fetchLimit);
 

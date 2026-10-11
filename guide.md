@@ -128,6 +128,7 @@ Execute the SQL script in `schema.sql` inside your Supabase SQL Editor:
 CREATE TABLE IF NOT EXISTS public.registrations (
     id SERIAL PRIMARY KEY,
     full_name TEXT NOT NULL,
+    alias_name TEXT UNIQUE,
     email TEXT UNIQUE NOT NULL,
     phone TEXT NOT NULL,
     organization TEXT,

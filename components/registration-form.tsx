@@ -195,6 +195,7 @@ function RegistrationFormContent() {
     const form = event.currentTarget;
     const data = new FormData(form);
     const fullName = String(data.get("fullName") ?? "").trim();
+    const aliasName = String(data.get("aliasName") ?? "").trim();
     const email = String(data.get("email") ?? "").trim();
     const organization = String(data.get("organization") ?? "").trim();
     const phone = countryCode + mobileNum;
@@ -206,6 +207,14 @@ function RegistrationFormContent() {
       setStatus({
         type: "error",
         message: "Please complete all required fields correctly.",
+      });
+      return;
+    }
+
+    if (aliasName && !/^[a-zA-Z0-9_-]{3,20}$/.test(aliasName)) {
+      setStatus({
+        type: "error",
+        message: "Alias name must be 3-20 characters long and can only contain letters, numbers, underscores, and hyphens.",
       });
       return;
     }
@@ -230,6 +239,7 @@ function RegistrationFormContent() {
         },
         body: JSON.stringify({
           fullName,
+          aliasName: aliasName || undefined,
           email,
           phone,
           organization,
@@ -377,6 +387,19 @@ function RegistrationFormContent() {
           <label>
             Name
             <input name="fullName" type="text" autoComplete="name" placeholder="Mara" required />
+          </label>
+
+          <label>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>Leaderboard Alias (optional)</span>
+              <span style={{ fontSize: "0.72rem", color: "var(--gold-light)", fontWeight: 700 }}>🔒 Hides Full Name</span>
+            </div>
+            <input
+              name="aliasName"
+              type="text"
+              maxLength={20}
+              placeholder="e.g. Satoshi_99 (letters, numbers, _ or -)"
+            />
           </label>
 
           <label>

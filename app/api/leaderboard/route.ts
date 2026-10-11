@@ -28,7 +28,7 @@ export async function GET() {
     // Fetch top 50 users ordered by total_xp descending
     const { data, error } = await supabase
       .from("registrations")
-      .select("full_name, total_xp, email")
+      .select("full_name, alias_name, total_xp, email")
       .order("total_xp", { ascending: false })
       .limit(50);
 
@@ -38,14 +38,25 @@ export async function GET() {
     }
 
     if (data && data.length > 0) {
-      const formatted = data.map((user, index) => ({
-        rank: index + 1,
-        name: user.full_name || "Anonymous",
-        points: user.total_xp || 0,
-        email: user.email, // Include email to easily find the current user's rank
-        change: index === 0 ? "up" : "same", // Simplified change indicator
-        accent: index === 0 ? "var(--gold-light)" : undefined,
-      }));
+      const formatted = data.map((user, index) => {
+        // Privacy protection: Never expose full names on the public leaderboard.
+        // Priority: 1. User's chosen unique alias_name, 2. Masked Quester tag, 3. Anonymous Quester
+        const displayName =
+          user.alias_name?.trim() ||
+          (user.full_name?.trim()
+            ? `Quester ${user.full_name.trim().slice(0, 1).toUpperCase()}***`
+            : `Quester #${index + 1}`);
+
+        return {
+          rank: index + 1,
+          name: displayName,
+          alias: user.alias_name?.trim() || null,
+          points: user.total_xp || 0,
+          email: user.email, // Include email to easily match the current logged-in user
+          change: index === 0 ? "up" : "same",
+          accent: index === 0 ? "var(--gold-light)" : undefined,
+        };
+      });
       return NextResponse.json({ leaderboard: formatted });
     } else {
       return NextResponse.json({ leaderboard: memoryLeaderboard });
