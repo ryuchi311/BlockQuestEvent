@@ -94,9 +94,66 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: updateError.message || "Failed to update alias name." }, { status: 500 });
     }
 
+    // 4. Automatically grant the "Add an Alias Name" quest (+50 XP) if not claimed yet
+    let xpAwarded = 0;
+    try {
+      const { data: existingComp } = await supabase
+        .from("quest_completions")
+        .select("id")
+        .eq("quest_id", "add-alias")
+        .eq("registration_id", user.id)
+        .maybeSingle();
+
+      if (!existingComp) {
+        await supabase.from("quest_completions").insert({
+          quest_id: "add-alias",
+          registration_id: user.id,
+          xp_awarded: 50,
+        });
+
+        await supabase.from("quest_verifications").insert({
+          quest_id: "add-alias",
+          quest_title: "Profile: Add an Alias Name",
+          user_name: user.full_name || undefined,
+          user_email: email,
+          xp: 50,
+          proof_url: "Auto-Verified (Alias Active)",
+          user_message: `Created alias name @${rawAlias}`,
+          status: "Approved",
+          approved_by: "System",
+          reviewed_at: new Date().toISOString(),
+        });
+
+        // Recalculate total XP
+        const { data: allComps } = await supabase
+          .from("quest_completions")
+          .select("xp_awarded")
+          .eq("registration_id", user.id);
+
+        const { data: allVerifs } = await supabase
+          .from("quest_verifications")
+          .select("xp, quest_id")
+          .eq("user_email", email)
+          .eq("status", "Approved");
+
+        const compIds = new Set((allComps || []).map((c: any) => c.quest_id));
+        const cXp = (allComps || []).reduce((sum: number, c: any) => sum + (c.xp_awarded || 0), 0);
+        const vXp = (allVerifs || [])
+          .filter((v: any) => !compIds.has(v.quest_id))
+          .reduce((sum: number, v: any) => sum + (v.xp || 0), 0);
+
+        const totalXp = cXp + vXp;
+        await supabase.from("registrations").update({ total_xp: totalXp }).eq("id", user.id);
+        xpAwarded = 50;
+      }
+    } catch (claimErr) {
+      console.warn("Could not auto-grant add-alias quest:", claimErr);
+    }
+
     return NextResponse.json({
-      message: "Alias name updated successfully!",
+      message: xpAwarded > 0 ? "Alias name updated successfully! +50 XP awarded!" : "Alias name updated successfully!",
       alias: updated.alias_name,
+      xpAwarded,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Internal server error." }, { status: 500 });

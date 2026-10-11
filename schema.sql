@@ -265,3 +265,23 @@ CREATE INDEX IF NOT EXISTS idx_support_tickets_priority ON public.support_ticket
 CREATE INDEX IF NOT EXISTS idx_support_tickets_created_at ON public.support_tickets(created_at DESC);
 
 GRANT ALL ON TABLE public.support_tickets TO postgres, service_role, anon, authenticated;
+
+-- Seed "Add an Alias Name" quest into fiesta_event_quests if not present
+INSERT INTO public.fiesta_event_quests (id, title, description, xp, status, category, action_label, action_url, sort_order)
+VALUES (
+  'add-alias',
+  'Add an Alias Name',
+  'Personalize your identity by creating an alias name for your profile. Once you add an alias, you become eligible to claim 50 XP.',
+  50,
+  'Live',
+  'onboarding',
+  'Add Alias',
+  '/zealy',
+  3
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  description = EXCLUDED.description,
+  xp = EXCLUDED.xp,
+  status = EXCLUDED.status,
+  category = EXCLUDED.category;

@@ -113,6 +113,47 @@ export async function GET(request: Request) {
         }
       }
 
+      // Auto-grant the 50 XP add-alias quest if attendee has configured an alias name
+      const hasAlias = Boolean(user.alias_name && user.alias_name.trim());
+      const hasAliasComp = list.some((c: any) => c.quest_id === "add-alias");
+      if (hasAlias && !hasAliasComp) {
+        try {
+          const newAliasComp: Record<string, any> = {
+            quest_id: "add-alias",
+            xp_awarded: 50,
+            registration_id: user.id,
+          };
+          const { data: insertedAlias } = await supabase
+            .from("quest_completions")
+            .insert(newAliasComp)
+            .select()
+            .single();
+
+          if (insertedAlias) {
+            list = [...list, insertedAlias];
+          } else {
+            list = [...list, { ...newAliasComp, created_at: new Date().toISOString() }];
+          }
+
+          // Also record in quest_verifications as Approved for Quest Logs
+          await supabase.from("quest_verifications").insert({
+            quest_id: "add-alias",
+            quest_title: "Profile: Add an Alias Name",
+            user_name: user.full_name || undefined,
+            user_email: email,
+            xp: 50,
+            proof_url: "Auto-Verified (Alias Active)",
+            user_message: `Created alias name @${user.alias_name}`,
+            status: "Approved",
+            approved_by: "System",
+            reviewed_at: new Date().toISOString(),
+          });
+        } catch (aliasErr) {
+          console.warn("Could not auto-insert alias quest completion:", aliasErr);
+          list = [...list, { quest_id: "add-alias", xp_awarded: 50, created_at: new Date().toISOString() }];
+        }
+      }
+
       completions = list.map((c: any) => c.quest_id);
       completedDetails = list.map((c: any) => ({
         quest_id: c.quest_id,

@@ -76,6 +76,14 @@ const initialQuests: Quest[] = [
     category: "onboarding"
   },
   {
+    id: "add-alias",
+    title: "Add an Alias Name",
+    description: "Personalize your identity by creating an alias name for your profile. Once you add an alias, you become eligible to claim 50 XP.",
+    xp: 50,
+    status: "Live",
+    category: "onboarding"
+  },
+  {
     id: "follow-x",
     title: "Follow @BlockQuest on X",
     description: "Follow our official X handle and submit a screenshot proof to verify completion.",
@@ -3241,6 +3249,88 @@ export default function ZealyMobileApp() {
                                       }}
                                     >
                                       🔒 Promo Code Required to Claim XP
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            ) : selectedQuest.id === "add-alias" ? (
+                              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+                                {userAlias ? (
+                                  <>
+                                    <div style={{
+                                      background: "rgba(16, 185, 129, 0.15)",
+                                      border: "1px solid rgba(16, 185, 129, 0.4)",
+                                      padding: "16px",
+                                      borderRadius: 14,
+                                      textAlign: "center"
+                                    }}>
+                                      <div style={{ fontSize: "1.8rem", marginBottom: 4 }}>🛡️ ✅</div>
+                                      <div style={{ color: "#34d399", fontWeight: 800, fontSize: "1rem" }}>
+                                        Alias Configured: @{userAlias}
+                                      </div>
+                                      <div style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: "0.82rem", marginTop: 6, lineHeight: 1.4 }}>
+                                        You have customized your profile with a public alias. Click below to claim your +50 XP reward!
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={handleClaimXp}
+                                      disabled={claiming}
+                                      className="modal-claim-btn"
+                                      style={{
+                                        width: "100%",
+                                        padding: "15px",
+                                        borderRadius: 12,
+                                        fontWeight: 800,
+                                        fontSize: "1rem",
+                                        background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                                        color: "#fff",
+                                        border: "none",
+                                        cursor: "pointer",
+                                        boxShadow: "0 0 25px rgba(16, 185, 129, 0.4)",
+                                      }}
+                                    >
+                                      {claiming ? "Claiming +50 XP..." : "🎉 Claim +50 Alias XP →"}
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div style={{
+                                      background: "rgba(245, 166, 35, 0.12)",
+                                      border: "1px solid rgba(245, 166, 35, 0.35)",
+                                      padding: "16px",
+                                      borderRadius: 14,
+                                      textAlign: "center"
+                                    }}>
+                                      <div style={{ fontSize: "1.8rem", marginBottom: 4 }}>🛡️ ✏️</div>
+                                      <div style={{ color: "#fbbf24", fontWeight: 800, fontSize: "1rem" }}>
+                                        Alias Name Required
+                                      </div>
+                                      <div style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: "0.82rem", marginTop: 6, lineHeight: 1.4 }}>
+                                        Personalize your identity by setting an alias for your profile. Your alias will replace your full name on the global rankings!
+                                      </div>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedQuest(null);
+                                        setAliasModalError("");
+                                        setAliasInput("");
+                                        setShowAliasModal(true);
+                                      }}
+                                      className="modal-claim-btn"
+                                      style={{
+                                        width: "100%",
+                                        padding: "15px",
+                                        borderRadius: 12,
+                                        fontWeight: 800,
+                                        fontSize: "0.95rem",
+                                        background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                                        color: "#100b02",
+                                        border: "none",
+                                        cursor: "pointer",
+                                      }}
+                                    >
+                                      🛡️ Create My Alias Name Now →
                                     </button>
                                   </>
                                 )}

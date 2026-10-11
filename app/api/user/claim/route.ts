@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     // 1. Fetch current user to get ID and physical check-in status
     const { data: user, error: userError } = await supabase
       .from("registrations")
-      .select("id, total_xp, checked_in, checked_in_at, promo_code")
+      .select("id, total_xp, checked_in, checked_in_at, promo_code, alias_name")
       .eq("email", user_email.trim().toLowerCase())
       .single();
       
@@ -45,6 +45,16 @@ export async function POST(request: Request) {
       }
     }
 
+    // If claiming add-alias quest, verify user has configured an alias name
+    if (quest_id === "add-alias") {
+      if (!user.alias_name || !user.alias_name.trim()) {
+        return NextResponse.json(
+          { error: "Please set your alias name first before claiming this reward! You can set an alias from the Profile tab or Leaderboard banner." },
+          { status: 400 }
+        );
+      }
+    }
+
     const isPromoQuest = quest_id.toLowerCase().includes("promo");
     if (isPromoQuest) {
       if (!user.promo_code || !user.promo_code.trim()) {
@@ -55,7 +65,7 @@ export async function POST(request: Request) {
       }
     }
 
-    let awardXp = Number(xp) || 100;
+    let awardXp = quest_id === "add-alias" ? 50 : (Number(xp) || 100);
 
     // Check if dynamic quest requires admin review, passcode, or quiz validation
     if (quest_id !== "checkin" && quest_id !== "register") {
@@ -121,8 +131,21 @@ export async function POST(request: Request) {
     }
 
     // 3. Log to quest_verifications table as 'Approved' so it displays in Quest Logs & Admin panel
-    let logTitle = quest_id === "promo-bonus" ? "Media Partner: Promo Code Bonus" : (quest_id === "checkin" ? "Physical Gate Check-in" : "Event Quest Claim");
-    let userMsg = user.promo_code ? `Claimed Promo Code Bonus (Code: ${user.promo_code})` : `Claimed quest reward: ${quest_id}`;
+    let logTitle =
+      quest_id === "promo-bonus"
+        ? "Media Partner: Promo Code Bonus"
+        : quest_id === "checkin"
+        ? "Physical Gate Check-in"
+        : quest_id === "add-alias"
+        ? "Profile: Add an Alias Name"
+        : "Event Quest Claim";
+
+    let userMsg =
+      quest_id === "add-alias" && user.alias_name
+        ? `Added alias name @${user.alias_name}`
+        : user.promo_code
+        ? `Claimed Promo Code Bonus (Code: ${user.promo_code})`
+        : `Claimed quest reward: ${quest_id}`;
 
     try {
       await supabase.from("quest_verifications").insert({
