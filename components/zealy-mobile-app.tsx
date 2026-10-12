@@ -2687,12 +2687,12 @@ export default function ZealyMobileApp() {
                             Referral Program
                           </h4>
                           <p style={{ margin: "2px 0 0", fontSize: "0.74rem", color: "var(--text-secondary)" }}>
-                            Earn +100 XP for every friend who registers
+                            Earn +100 XP per friend (Max 5 referrals)
                           </p>
                         </div>
                       </div>
-                      <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#fbbf24" }}>
-                        {userReferralCount} Friends (+{userReferralCount * 100} XP)
+                      <span style={{ fontSize: "0.82rem", fontWeight: 800, color: "#fbbf24", whiteSpace: "nowrap" }}>
+                        {Math.min(userReferralCount, 5)}/5 Friends (+{Math.min(userReferralCount, 5) * 100} XP)
                       </span>
                     </div>
 
@@ -2895,7 +2895,9 @@ export default function ZealyMobileApp() {
                       ✕
                     </button>
                   </div>
-                  <div className="modal-xp-reward">Reward: {liveQuest.xp} XP</div>
+                  <div className="modal-xp-reward">
+                    {liveQuest.id === "referral-quest" ? "+100 XP per Friend (Max 5)" : `Reward: ${liveQuest.xp} XP`}
+                  </div>
                   <p className="modal-body" style={{ whiteSpace: "pre-wrap" }}>{liveQuest.description}</p>
                   {(() => {
                     if (isCompleted) {
@@ -2939,11 +2941,12 @@ export default function ZealyMobileApp() {
                       {(() => {
                         const isDiscordQuest = selectedQuest.id === "discord-member" || !!(selectedQuest as any).discord_guild_id || (selectedQuest.title || "").toLowerCase().includes("discord");
                         const isTelegramQuest = selectedQuest.id === "join-tg" || !!(selectedQuest as any).telegram_chat_id || (selectedQuest.title || "").toLowerCase().includes("telegram");
-                        const hasAction = !!selectedQuest.actionUrl;
+                        const isSpecialCustomQuest = selectedQuest.id === "referral-quest" || selectedQuest.id === "add-alias" || selectedQuest.id === "promo-bonus";
+                        const hasAction = !!selectedQuest.actionUrl && !isSpecialCustomQuest;
                         const isActionCompleted = !hasAction || !!visitedActions[selectedQuest.id];
                         return (
                           <>
-                            {selectedQuest.actionUrl && !isDiscordQuest && !isTelegramQuest && (
+                            {selectedQuest.actionUrl && !isDiscordQuest && !isTelegramQuest && !isSpecialCustomQuest && (
                               <Link
                                 href={selectedQuest.actionUrl}
                                 target={selectedQuest.actionUrl.startsWith("http") ? "_blank" : undefined}

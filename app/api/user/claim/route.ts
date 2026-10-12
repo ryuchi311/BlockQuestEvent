@@ -55,6 +55,14 @@ export async function POST(request: Request) {
       }
     }
 
+    // Referral quest is credited automatically upon friend registration
+    if (quest_id === "referral-quest") {
+      return NextResponse.json(
+        { error: "Referral XP is automatically awarded directly to your account whenever a friend registers using your link (up to 5 friends max)." },
+        { status: 400 }
+      );
+    }
+
     const isPromoQuest = quest_id.toLowerCase().includes("promo");
     if (isPromoQuest) {
       if (!user.promo_code || !user.promo_code.trim()) {
