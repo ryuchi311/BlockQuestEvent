@@ -22,6 +22,9 @@ interface Attendee {
   checked_in?: boolean;
   checked_in_at?: string | null;
   created_at: string;
+  total_xp?: number;
+  referral_count?: number;
+  referred_by_code?: string | null;
 }
 
 interface Quest {
@@ -637,6 +640,21 @@ export default function AdminPage() {
   const [promoSearch, setPromoSearch] = useState("");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
+  // ── Referrals Monitoring State ──
+  const [promoSubTab, setPromoSubTab] = useState<"campaigns" | "user_referrals">("campaigns");
+  const [referralsData, setReferralsData] = useState<{
+    metrics: { totalReferrals: number; totalReferrers: number; maxCappedReferrers: number; totalReferralXpAwarded: number };
+    referrers: any[];
+    invitees: any[];
+    referralLogs: any[];
+  }>({
+    metrics: { totalReferrals: 0, totalReferrers: 0, maxCappedReferrers: 0, totalReferralXpAwarded: 0 },
+    referrers: [],
+    invitees: [],
+    referralLogs: [],
+  });
+  const [referralSearch, setReferralSearch] = useState("");
+
   const [selectedProofImage, setSelectedProofImage] = useState<string | null>(null);
   const [zoomScale, setZoomScale] = useState(1);
   const [zoomPos, setZoomPos] = useState({ x: 0, y: 0 });
@@ -1207,6 +1225,22 @@ export default function AdminPage() {
     }
   }, [adminUser, adminFetch]);
 
+  const fetchReferrals = useCallback(async (isBackground?: any) => {
+    if (adminUser?.role !== "superadmin" && adminUser?.role !== "admin") return;
+    try {
+      const res = await adminFetch("/api/admin/referrals");
+      const json = await safeJson(res);
+      if (res.ok && json.metrics) {
+        setReferralsData({
+          metrics: json.metrics,
+          referrers: json.referrers || [],
+          invitees: json.invitees || [],
+          referralLogs: json.referralLogs || [],
+        });
+      }
+    } catch {}
+  }, [adminUser, adminFetch]);
+
   const fetchPromoCodes = useCallback(async (isBackground?: any) => {
     if (adminUser?.role !== "superadmin" && adminUser?.role !== "admin") return;
     const isBg = isBackground === true;
@@ -1219,12 +1253,14 @@ export default function AdminPage() {
       const json = await safeJson(res);
       if (!res.ok) throw new Error(json.error || "Failed to load promo codes.");
       setPromoCodes(json.promoCodes ?? []);
+      // Also fetch referrals data
+      fetchReferrals(isBg);
     } catch (err: any) {
       if (!isBg) setError(err.message);
     } finally {
       if (!isBg) setLoading(false);
     }
-  }, [adminUser, adminFetch]);
+  }, [adminUser, adminFetch, fetchReferrals]);
 
   const fetchMilestones = useCallback(async (isBackground?: any) => {
     const isBg = isBackground === true;
@@ -3251,6 +3287,7 @@ export default function AdminPage() {
                     </th>
                     <th>Organization</th>
                     <th>Ticket Code</th>
+                    <th>Referrals</th>
                     <th>Check-in Status</th>
                     <th>Registered</th>
                     <th>Action</th>
@@ -3259,7 +3296,7 @@ export default function AdminPage() {
                 <tbody>
                   {filteredAttendees.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="admin-table__empty">
+                      <td colSpan={11} className="admin-table__empty">
                         {search || statusFilter !== "all"
                           ? "No matching attendees found."
                           : "No registrations yet."}
@@ -3350,6 +3387,41 @@ export default function AdminPage() {
                             </button>
                           ) : (
                             <span className="admin-table__muted">—</span>
+                          )}
+                        </td>
+                        <td>
+                          {a.referral_count && a.referral_count > 0 ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  fontSize: "0.75rem",
+                                  fontWeight: 800,
+                                  color: a.referral_count >= 5 ? "#38bdf8" : "var(--gold-light)",
+                                  background: a.referral_count >= 5 ? "rgba(56, 189, 248, 0.15)" : "rgba(245, 166, 35, 0.12)",
+                                  border: a.referral_count >= 5 ? "1px solid rgba(56, 189, 248, 0.35)" : "1px solid rgba(245, 166, 35, 0.3)",
+                                  padding: "2px 7px",
+                                  borderRadius: 12,
+                                  width: "fit-content"
+                                }}
+                              >
+                                👥 {a.referral_count} / 5 Friends
+                              </span>
+                              {a.referred_by_code && (
+                                <span style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>
+                                  via {a.referred_by_code}
+                                </span>
+                              )}
+                            </div>
+                          ) : a.referred_by_code ? (
+                            <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                              <span>🔗 via</span>
+                              <strong style={{ color: "#e2e8f0" }}>{a.referred_by_code}</strong>
+                            </span>
+                          ) : (
+                            <span className="admin-table__muted">0</span>
                           )}
                         </td>
                         <td>
@@ -9679,313 +9751,681 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Quick Metrics Bar */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            gap: 12,
-            marginBottom: 20
-          }}>
-            <div style={{
-              background: "rgba(255, 255, 255, 0.03)",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
-              borderRadius: 14,
-              padding: "14px 18px",
-              display: "flex",
-              alignItems: "center",
-              gap: 12
-            }}>
-              <span style={{ fontSize: "1.8rem" }}>🏷️</span>
-              <div>
-                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Total Codes</div>
-                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fff" }}>{promoCodes.length}</div>
-              </div>
-            </div>
+          {/* Sub-tabs switcher */}
+          <div style={{ display: "flex", gap: 10, marginBottom: 20, borderBottom: "1px solid rgba(255, 255, 255, 0.08)", paddingBottom: 12 }}>
+            <button
+              type="button"
+              onClick={() => setPromoSubTab("campaigns")}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 10,
+                border: "none",
+                background: promoSubTab === "campaigns" ? "linear-gradient(135deg, #f5a623 0%, #d97706 100%)" : "rgba(255, 255, 255, 0.05)",
+                color: promoSubTab === "campaigns" ? "#120b02" : "var(--text-secondary)",
+                fontWeight: 800,
+                fontSize: "0.85rem",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                transition: "all 0.2s ease"
+              }}
+            >
+              <span>🏷️ Promo Code Campaigns</span>
+              <span style={{
+                background: promoSubTab === "campaigns" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)",
+                padding: "2px 6px",
+                borderRadius: 6,
+                fontSize: "0.74rem"
+              }}>
+                {promoCodes.length}
+              </span>
+            </button>
 
-            <div style={{
-              background: "rgba(255, 255, 255, 0.03)",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
-              borderRadius: 14,
-              padding: "14px 18px",
-              display: "flex",
-              alignItems: "center",
-              gap: 12
-            }}>
-              <span style={{ fontSize: "1.8rem" }}>⚡</span>
-              <div>
-                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Active Campaigns</div>
-                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#10b981" }}>
-                  {promoCodes.filter(p => p.is_active).length}
-                </div>
-              </div>
-            </div>
-
-            <div style={{
-              background: "rgba(255, 255, 255, 0.03)",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
-              borderRadius: 14,
-              padding: "14px 18px",
-              display: "flex",
-              alignItems: "center",
-              gap: 12
-            }}>
-              <span style={{ fontSize: "1.8rem" }}>👥</span>
-              <div>
-                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Total Redemptions</div>
-                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--gold-light)" }}>
-                  {promoCodes.reduce((acc, p) => acc + (p.usage_count || 0), 0)}
-                </div>
-              </div>
-            </div>
-
-            <div style={{
-              background: "rgba(255, 255, 255, 0.03)",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
-              borderRadius: 14,
-              padding: "14px 18px",
-              display: "flex",
-              alignItems: "center",
-              gap: 12
-            }}>
-              <span style={{ fontSize: "1.8rem" }}>✨</span>
-              <div>
-                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Bonus XP Awarded</div>
-                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#38bdf8" }}>
-                  {promoCodes.reduce((acc, p) => acc + ((p.usage_count || 0) * (p.xp_bonus || 0)), 0).toLocaleString()} XP
-                </div>
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setPromoSubTab("user_referrals");
+                fetchReferrals();
+              }}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 10,
+                border: "none",
+                background: promoSubTab === "user_referrals" ? "linear-gradient(135deg, #38bdf8 0%, #0284c7 100%)" : "rgba(255, 255, 255, 0.05)",
+                color: promoSubTab === "user_referrals" ? "#041826" : "var(--text-secondary)",
+                fontWeight: 800,
+                fontSize: "0.85rem",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                transition: "all 0.2s ease"
+              }}
+            >
+              <span>👥 User Referral Network</span>
+              <span style={{
+                background: promoSubTab === "user_referrals" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)",
+                padding: "2px 6px",
+                borderRadius: 6,
+                fontSize: "0.74rem"
+              }}>
+                {referralsData.metrics.totalReferrals || 0}
+              </span>
+            </button>
           </div>
 
-          {/* Table */}
-          {promoCodes.length === 0 ? (
-            <div style={{
-              textAlign: "center",
-              padding: "60px 20px",
-              background: "rgba(255, 255, 255, 0.02)",
-              borderRadius: 16,
-              border: "1px dashed rgba(255, 255, 255, 0.1)"
-            }}>
-              <span style={{ fontSize: "3rem", display: "block", marginBottom: 12 }}>🎁</span>
-              <h3 style={{ margin: "0 0 6px", color: "#fff", fontSize: "1.1rem" }}>No promo codes created yet</h3>
-              <p style={{ margin: "0 0 16px", color: "var(--text-muted)", fontSize: "0.9rem" }}>
-                Create your first promo code to start distributing referral registration links.
-              </p>
-              <button
-                onClick={() => {
-                  setPromoCodeForm({ id: "", code: "", xp_bonus: 150, max_uses: "", is_active: true });
-                  setPromoCodeError("");
-                  setShowPromoCodeModal(true);
-                }}
-                className="admin-refresh-btn"
-                style={{
-                  background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
-                  color: "#120b02",
-                  fontWeight: 800,
-                  padding: "9px 18px",
-                  borderRadius: 10
-                }}
-              >
-                + Create Promo Code
-              </button>
-            </div>
-          ) : (
-            <div className="admin-table-container" style={{ background: "rgba(10, 10, 20, 0.6)", borderRadius: 16, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Promo Code & Link</th>
-                    <th>Bonus XP</th>
-                    <th>Redemptions</th>
-                    <th>Usage Limit</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: "right" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {promoCodes
-                    .filter(pc => !promoSearch || pc.code.toLowerCase().includes(promoSearch.toLowerCase()))
-                    .map((pc) => {
-                      const shareUrl = typeof window !== "undefined"
-                        ? `${window.location.origin}/register?promoCode=${pc.code}`
-                        : `https://event.block-quest.com/register?promoCode=${pc.code}`;
-                      const isCopied = copiedCode === pc.code;
+          {/* ───────────── SUB-TAB 1: CAMPAIGNS ───────────── */}
+          {promoSubTab === "campaigns" && (
+            <>
+              {/* Quick Metrics Bar */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: 12,
+                marginBottom: 20
+              }}>
+                <div style={{
+                  background: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: 14,
+                  padding: "14px 18px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12
+                }}>
+                  <span style={{ fontSize: "1.8rem" }}>🏷️</span>
+                  <div>
+                    <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Total Codes</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fff" }}>{promoCodes.length}</div>
+                  </div>
+                </div>
 
-                      return (
-                        <tr key={pc.id}>
-                          <td>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{
+                  background: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: 14,
+                  padding: "14px 18px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12
+                }}>
+                  <span style={{ fontSize: "1.8rem" }}>⚡</span>
+                  <div>
+                    <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Active Campaigns</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#10b981" }}>
+                      {promoCodes.filter(p => p.is_active).length}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: 14,
+                  padding: "14px 18px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12
+                }}>
+                  <span style={{ fontSize: "1.8rem" }}>👥</span>
+                  <div>
+                    <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Total Redemptions</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--gold-light)" }}>
+                      {promoCodes.reduce((acc, p) => acc + (p.usage_count || 0), 0)}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: 14,
+                  padding: "14px 18px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12
+                }}>
+                  <span style={{ fontSize: "1.8rem" }}>✨</span>
+                  <div>
+                    <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Bonus XP Awarded</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#38bdf8" }}>
+                      {promoCodes.reduce((acc, p) => acc + ((p.usage_count || 0) * (p.xp_bonus || 0)), 0).toLocaleString()} XP
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Table */}
+              {promoCodes.length === 0 ? (
+                <div style={{
+                  textAlign: "center",
+                  padding: "60px 20px",
+                  background: "rgba(255, 255, 255, 0.02)",
+                  borderRadius: 16,
+                  border: "1px dashed rgba(255, 255, 255, 0.1)"
+                }}>
+                  <span style={{ fontSize: "3rem", display: "block", marginBottom: 12 }}>🎁</span>
+                  <h3 style={{ margin: "0 0 6px", color: "#fff", fontSize: "1.1rem" }}>No promo codes created yet</h3>
+                  <p style={{ margin: "0 0 16px", color: "var(--text-muted)", fontSize: "0.9rem" }}>
+                    Create your first promo code to start distributing referral registration links.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setPromoCodeForm({ id: "", code: "", xp_bonus: 150, max_uses: "", is_active: true });
+                      setPromoCodeError("");
+                      setShowPromoCodeModal(true);
+                    }}
+                    className="admin-refresh-btn"
+                    style={{
+                      background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                      color: "#120b02",
+                      fontWeight: 800,
+                      padding: "9px 18px",
+                      borderRadius: 10
+                    }}
+                  >
+                    + Create Promo Code
+                  </button>
+                </div>
+              ) : (
+                <div className="admin-table-container" style={{ background: "rgba(10, 10, 20, 0.6)", borderRadius: 16, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Promo Code & Link</th>
+                        <th>Bonus XP</th>
+                        <th>Redemptions</th>
+                        <th>Usage Limit</th>
+                        <th>Status</th>
+                        <th style={{ textAlign: "right" }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {promoCodes
+                        .filter(pc => !promoSearch || pc.code.toLowerCase().includes(promoSearch.toLowerCase()))
+                        .map((pc) => {
+                          const shareUrl = typeof window !== "undefined"
+                            ? `${window.location.origin}/register?promoCode=${pc.code}`
+                            : `https://event.block-quest.com/register?promoCode=${pc.code}`;
+                          const isCopied = copiedCode === pc.code;
+
+                          return (
+                            <tr key={pc.id}>
+                              <td>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <span style={{
+                                      fontWeight: 800,
+                                      fontFamily: "monospace",
+                                      fontSize: "1rem",
+                                      color: "var(--gold-light)",
+                                      background: "rgba(245, 166, 35, 0.1)",
+                                      padding: "3px 8px",
+                                      borderRadius: 6,
+                                      border: "1px solid rgba(245, 166, 35, 0.25)",
+                                      letterSpacing: "0.05em"
+                                    }}>
+                                      {pc.code}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(shareUrl);
+                                        setCopiedCode(pc.code);
+                                        setTimeout(() => setCopiedCode(null), 2000);
+                                      }}
+                                      style={{
+                                        background: isCopied ? "rgba(16, 185, 129, 0.2)" : "rgba(255, 255, 255, 0.06)",
+                                        border: isCopied ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(255, 255, 255, 0.12)",
+                                        color: isCopied ? "#10b981" : "var(--text-secondary)",
+                                        borderRadius: 6,
+                                        padding: "3px 8px",
+                                        fontSize: "0.75rem",
+                                        fontWeight: 700,
+                                        cursor: "pointer",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 4,
+                                        transition: "all 0.2s ease"
+                                      }}
+                                      title="Copy invite URL"
+                                    >
+                                      {isCopied ? "Copied! ✔" : "Copy Link 📋"}
+                                    </button>
+                                  </div>
+                                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {shareUrl}
+                                  </span>
+                                </div>
+                              </td>
+
+                              <td>
                                 <span style={{
                                   fontWeight: 800,
-                                  fontFamily: "monospace",
-                                  fontSize: "1rem",
-                                  color: "var(--gold-light)",
+                                  color: "#f5a623",
                                   background: "rgba(245, 166, 35, 0.1)",
-                                  padding: "3px 8px",
-                                  borderRadius: 6,
-                                  border: "1px solid rgba(245, 166, 35, 0.25)",
-                                  letterSpacing: "0.05em"
+                                  padding: "4px 10px",
+                                  borderRadius: 20,
+                                  fontSize: "0.85rem",
+                                  border: "1px solid rgba(245, 166, 35, 0.2)"
                                 }}>
-                                  {pc.code}
+                                  +{pc.xp_bonus} XP
                                 </span>
+                              </td>
+
+                              <td>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                  <span style={{ fontWeight: 800, fontSize: "1rem", color: "#fff" }}>
+                                    {pc.usage_count || 0}
+                                  </span>
+                                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                                    registered
+                                  </span>
+                                </div>
+                              </td>
+
+                              <td>
+                                {pc.max_uses ? (
+                                  <span style={{
+                                    fontSize: "0.85rem",
+                                    fontWeight: 700,
+                                    color: (pc.usage_count || 0) >= pc.max_uses ? "#ef4444" : "var(--text-secondary)"
+                                  }}>
+                                    {pc.usage_count || 0} / {pc.max_uses} max
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontStyle: "italic" }}>
+                                    Unlimited
+                                  </span>
+                                )}
+                              </td>
+
+                              <td>
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(shareUrl);
-                                    setCopiedCode(pc.code);
-                                    setTimeout(() => setCopiedCode(null), 2000);
+                                  onClick={async () => {
+                                    try {
+                                      const res = await adminFetch("/api/admin/promo-codes", {
+                                        method: "PATCH",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ id: pc.id, is_active: !pc.is_active }),
+                                      });
+                                      if (res.ok) fetchPromoCodes();
+                                    } catch {}
                                   }}
                                   style={{
-                                    background: isCopied ? "rgba(16, 185, 129, 0.2)" : "rgba(255, 255, 255, 0.06)",
-                                    border: isCopied ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(255, 255, 255, 0.12)",
-                                    color: isCopied ? "#10b981" : "var(--text-secondary)",
-                                    borderRadius: 6,
-                                    padding: "3px 8px",
-                                    fontSize: "0.75rem",
-                                    fontWeight: 700,
-                                    cursor: "pointer",
-                                    display: "flex",
+                                    display: "inline-flex",
                                     alignItems: "center",
-                                    gap: 4,
-                                    transition: "all 0.2s ease"
+                                    gap: 6,
+                                    padding: "4px 12px",
+                                    borderRadius: 20,
+                                    fontSize: "0.8rem",
+                                    fontWeight: 700,
+                                    background: pc.is_active ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
+                                    color: pc.is_active ? "#10b981" : "#ef4444",
+                                    border: pc.is_active ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(239, 68, 68, 0.3)",
+                                    cursor: "pointer"
                                   }}
-                                  title="Copy invite URL"
+                                  title="Click to toggle status"
                                 >
-                                  {isCopied ? "Copied! ✔" : "Copy Link 📋"}
+                                  <span style={{
+                                    width: 7,
+                                    height: 7,
+                                    borderRadius: "50%",
+                                    backgroundColor: pc.is_active ? "#10b981" : "#ef4444"
+                                  }} />
+                                  {pc.is_active ? "Active" : "Inactive"}
                                 </button>
-                              </div>
-                              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {shareUrl}
-                              </span>
-                            </div>
-                          </td>
+                              </td>
 
-                          <td>
-                            <span style={{
-                              fontWeight: 800,
-                              color: "#f5a623",
-                              background: "rgba(245, 166, 35, 0.1)",
-                              padding: "4px 10px",
-                              borderRadius: 20,
-                              fontSize: "0.85rem",
-                              border: "1px solid rgba(245, 166, 35, 0.2)"
-                            }}>
-                              +{pc.xp_bonus} XP
-                            </span>
-                          </td>
+                              <td style={{ textAlign: "right" }}>
+                                <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                                  <button
+                                    className="admin-edit-btn"
+                                    onClick={() => {
+                                      setPromoCodeForm({
+                                        id: pc.id,
+                                        code: pc.code,
+                                        xp_bonus: pc.xp_bonus,
+                                        max_uses: pc.max_uses ?? "",
+                                        is_active: pc.is_active,
+                                      });
+                                      setPromoCodeError("");
+                                      setShowPromoCodeModal(true);
+                                    }}
+                                    style={{ padding: "6px 12px", fontSize: "0.8rem" }}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    className="admin-delete-btn"
+                                    onClick={async () => {
+                                      if (!confirm(`Are you sure you want to delete promo code "${pc.code}"?`)) return;
+                                      try {
+                                        const res = await adminFetch("/api/admin/promo-codes", {
+                                          method: "DELETE",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ id: pc.id }),
+                                        });
+                                        if (!res.ok) throw new Error("Failed to delete promo code");
+                                        fetchPromoCodes();
+                                      } catch (e: any) {
+                                        alert(e.message);
+                                      }
+                                    }}
+                                    style={{ padding: "6px 12px", fontSize: "0.8rem" }}
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
 
-                          <td>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <span style={{ fontWeight: 800, fontSize: "1rem", color: "#fff" }}>
-                                {pc.usage_count || 0}
-                              </span>
-                              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                                registered
-                              </span>
-                            </div>
-                          </td>
+          {/* ───────────── SUB-TAB 2: USER REFERRAL NETWORK ───────────── */}
+          {promoSubTab === "user_referrals" && (
+            <div className="admin-fade-in">
+              {/* Referrals Summary Metrics */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+                gap: 12,
+                marginBottom: 20
+              }}>
+                <div style={{
+                  background: "rgba(56, 189, 248, 0.08)",
+                  border: "1px solid rgba(56, 189, 248, 0.25)",
+                  borderRadius: 14,
+                  padding: "14px 18px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12
+                }}>
+                  <span style={{ fontSize: "1.8rem" }}>👥</span>
+                  <div>
+                    <div style={{ fontSize: "0.74rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Total Peer Invites</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#38bdf8" }}>{referralsData.metrics.totalReferrals}</div>
+                  </div>
+                </div>
 
-                          <td>
-                            {pc.max_uses ? (
-                              <span style={{
-                                fontSize: "0.85rem",
-                                fontWeight: 700,
-                                color: (pc.usage_count || 0) >= pc.max_uses ? "#ef4444" : "var(--text-secondary)"
-                              }}>
-                                {pc.usage_count || 0} / {pc.max_uses} max
-                              </span>
-                            ) : (
-                              <span style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontStyle: "italic" }}>
-                                Unlimited
-                              </span>
-                            )}
-                          </td>
+                <div style={{
+                  background: "rgba(245, 166, 35, 0.08)",
+                  border: "1px solid rgba(245, 166, 35, 0.25)",
+                  borderRadius: 14,
+                  padding: "14px 18px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12
+                }}>
+                  <span style={{ fontSize: "1.8rem" }}>🎖️</span>
+                  <div>
+                    <div style={{ fontSize: "0.74rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Active Referrers</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--gold-light)" }}>{referralsData.metrics.totalReferrers}</div>
+                  </div>
+                </div>
 
-                          <td>
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                try {
-                                  const res = await adminFetch("/api/admin/promo-codes", {
-                                    method: "PATCH",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ id: pc.id, is_active: !pc.is_active }),
-                                  });
-                                  if (res.ok) fetchPromoCodes();
-                                } catch {}
-                              }}
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 6,
-                                padding: "4px 12px",
-                                borderRadius: 20,
-                                fontSize: "0.8rem",
-                                fontWeight: 700,
-                                background: pc.is_active ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                                color: pc.is_active ? "#10b981" : "#ef4444",
-                                border: pc.is_active ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(239, 68, 68, 0.3)",
-                                cursor: "pointer"
-                              }}
-                              title="Click to toggle status"
-                            >
-                              <span style={{
-                                width: 7,
-                                height: 7,
-                                borderRadius: "50%",
-                                backgroundColor: pc.is_active ? "#10b981" : "#ef4444"
-                              }} />
-                              {pc.is_active ? "Active" : "Inactive"}
-                            </button>
-                          </td>
+                <div style={{
+                  background: "rgba(16, 185, 129, 0.08)",
+                  border: "1px solid rgba(16, 185, 129, 0.25)",
+                  borderRadius: 14,
+                  padding: "14px 18px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12
+                }}>
+                  <span style={{ fontSize: "1.8rem" }}>👑</span>
+                  <div>
+                    <div style={{ fontSize: "0.74rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Max Capped (5/5)</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#34d399" }}>{referralsData.metrics.maxCappedReferrers} questers</div>
+                  </div>
+                </div>
 
-                          <td style={{ textAlign: "right" }}>
-                            <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                              <button
-                                className="admin-edit-btn"
-                                onClick={() => {
-                                  setPromoCodeForm({
-                                    id: pc.id,
-                                    code: pc.code,
-                                    xp_bonus: pc.xp_bonus,
-                                    max_uses: pc.max_uses ?? "",
-                                    is_active: pc.is_active,
-                                  });
-                                  setPromoCodeError("");
-                                  setShowPromoCodeModal(true);
-                                }}
-                                style={{ padding: "6px 12px", fontSize: "0.8rem" }}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                className="admin-delete-btn"
-                                onClick={async () => {
-                                  if (!confirm(`Are you sure you want to delete promo code "${pc.code}"?`)) return;
-                                  try {
-                                    const res = await adminFetch("/api/admin/promo-codes", {
-                                      method: "DELETE",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({ id: pc.id }),
-                                    });
-                                    if (!res.ok) throw new Error("Failed to delete promo code");
-                                    fetchPromoCodes();
-                                  } catch (e: any) {
-                                    alert(e.message);
-                                  }
-                                }}
-                                style={{ padding: "6px 12px", fontSize: "0.8rem" }}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </td>
+                <div style={{
+                  background: "rgba(192, 132, 252, 0.08)",
+                  border: "1px solid rgba(192, 132, 252, 0.25)",
+                  borderRadius: 14,
+                  padding: "14px 18px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12
+                }}>
+                  <span style={{ fontSize: "1.8rem" }}>⚡</span>
+                  <div>
+                    <div style={{ fontSize: "0.74rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Referral XP Distributed</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#c084fc" }}>+{referralsData.metrics.totalReferralXpAwarded.toLocaleString()} XP</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Referrer Search & Anti-Abuse Info */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
+                <input
+                  type="text"
+                  className="admin-search-input"
+                  placeholder="Filter referrers by name, email, or code..."
+                  value={referralSearch}
+                  onChange={(e) => setReferralSearch(e.target.value)}
+                  style={{ width: 280, padding: "8px 12px", borderRadius: 10 }}
+                />
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                  <span style={{ background: "rgba(16, 185, 129, 0.15)", color: "#34d399", padding: "3px 8px", borderRadius: 6, fontWeight: 700 }}>
+                    🛡️ Anti-Spam Active: Max 5 Ref / +500 XP Cap • Max 2 Reg/IP
+                  </span>
+                  <button
+                    className="admin-refresh-btn"
+                    onClick={fetchReferrals}
+                    title="Reload Referrals"
+                    style={{ padding: "6px 12px", fontSize: "0.78rem" }}
+                  >
+                    ↻ Refresh
+                  </button>
+                </div>
+              </div>
+
+              {/* Top Referrers Leaderboard Table */}
+              <div style={{ marginBottom: 28 }}>
+                <h3 style={{ margin: "0 0 10px 0", fontSize: "1.05rem", fontWeight: 800, color: "#fff", display: "flex", alignItems: "center", gap: 8 }}>
+                  <span>🏆 Top User Referrers</span>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 400 }}>
+                    ({referralsData.referrers.length} registered questers who invited friends)
+                  </span>
+                </h3>
+
+                {referralsData.referrers.length === 0 ? (
+                  <div style={{ padding: "30px 20px", textAlign: "center", background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)" }}>
+                    <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.88rem" }}>
+                      No user referrals recorded yet. Once attendees share their referral links, top referrers will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="admin-table-container" style={{ background: "rgba(10, 10, 20, 0.6)", borderRadius: 14, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
+                    <table className="admin-table">
+                      <thead>
+                        <tr>
+                          <th>Rank</th>
+                          <th>Referrer Name</th>
+                          <th>Email & Phone</th>
+                          <th>Referral Code</th>
+                          <th>Friends Invited</th>
+                          <th>Referral Bonus</th>
+                          <th>Total Quester XP</th>
                         </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
+                      </thead>
+                      <tbody>
+                        {referralsData.referrers
+                          .filter((r) => {
+                            if (!referralSearch) return true;
+                            const q = referralSearch.toLowerCase();
+                            return (
+                              r.full_name?.toLowerCase().includes(q) ||
+                              r.alias_name?.toLowerCase().includes(q) ||
+                              r.email?.toLowerCase().includes(q) ||
+                              r.ticket_code?.toLowerCase().includes(q)
+                            );
+                          })
+                          .map((r, idx) => {
+                            const isCapped = (r.referral_count || 0) >= 5;
+                            return (
+                              <tr key={r.id}>
+                                <td>
+                                  <span style={{
+                                    fontWeight: 800,
+                                    fontSize: "0.85rem",
+                                    color: idx === 0 ? "#ffd700" : idx === 1 ? "#cbd5e1" : idx === 2 ? "#cd7f32" : "var(--text-secondary)"
+                                  }}>
+                                    #{idx + 1} {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : ""}
+                                  </span>
+                                </td>
+                                <td>
+                                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                    <strong style={{ color: "#fff", fontSize: "0.88rem" }}>{r.full_name}</strong>
+                                    {r.alias_name && (
+                                      <span style={{ color: "var(--gold-light)", fontSize: "0.75rem", fontWeight: 700 }}>
+                                        @{r.alias_name}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>
+                                  <div>{r.email}</div>
+                                  <div style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>{r.phone}</div>
+                                </td>
+                                <td>
+                                  <span style={{
+                                    fontFamily: "monospace",
+                                    fontSize: "0.82rem",
+                                    background: "rgba(255, 255, 255, 0.06)",
+                                    padding: "3px 8px",
+                                    borderRadius: 6,
+                                    border: "1px solid rgba(255, 255, 255, 0.12)",
+                                    color: "#fff"
+                                  }}>
+                                    {r.ticket_code || "—"}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    padding: "3px 10px",
+                                    borderRadius: 14,
+                                    fontSize: "0.8rem",
+                                    fontWeight: 800,
+                                    background: isCapped ? "rgba(56, 189, 248, 0.15)" : "rgba(245, 166, 35, 0.12)",
+                                    color: isCapped ? "#38bdf8" : "var(--gold-light)",
+                                    border: isCapped ? "1px solid rgba(56, 189, 248, 0.35)" : "1px solid rgba(245, 166, 35, 0.3)"
+                                  }}>
+                                    👥 {r.referral_count} / 5 {isCapped ? "(MAX)" : ""}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span style={{ fontWeight: 800, color: "#10b981", fontSize: "0.85rem" }}>
+                                    +{Math.min(r.referral_count || 0, 5) * 100} XP
+                                  </span>
+                                </td>
+                                <td>
+                                  <span style={{ fontWeight: 700, color: "#fff", fontSize: "0.85rem" }}>
+                                    {r.total_xp?.toLocaleString() || 0} XP
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Invited Friends Audit Log */}
+              <div>
+                <h3 style={{ margin: "0 0 10px 0", fontSize: "1.05rem", fontWeight: 800, color: "#fff", display: "flex", alignItems: "center", gap: 8 }}>
+                  <span>📋 Recent Referral Sign-ups</span>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 400 }}>
+                    ({referralsData.invitees.length} attendees registered via friend link)
+                  </span>
+                </h3>
+
+                {referralsData.invitees.length === 0 ? (
+                  <div style={{ padding: "26px 20px", textAlign: "center", background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)" }}>
+                    <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                      No invitee sign-up events found.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="admin-table-container" style={{ background: "rgba(10, 10, 20, 0.6)", borderRadius: 14, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
+                    <table className="admin-table">
+                      <thead>
+                        <tr>
+                          <th>Invitee Name</th>
+                          <th>Invitee Email</th>
+                          <th>Ticket Code</th>
+                          <th>Referred By Code</th>
+                          <th>Registration Date</th>
+                          <th>Gate Check-in</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {referralsData.invitees.slice(0, 50).map((inv) => (
+                          <tr key={inv.id}>
+                            <td>
+                              <strong style={{ color: "#fff", fontSize: "0.85rem" }}>{inv.full_name}</strong>
+                              {inv.alias_name && (
+                                <span style={{ display: "block", color: "var(--gold-light)", fontSize: "0.74rem" }}>
+                                  @{inv.alias_name}
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>{inv.email}</td>
+                            <td>
+                              <span style={{ fontFamily: "monospace", fontSize: "0.8rem", color: "#e2e8f0" }}>
+                                {inv.ticket_code || "—"}
+                              </span>
+                            </td>
+                            <td>
+                              <span style={{
+                                padding: "2px 8px",
+                                borderRadius: 6,
+                                background: "rgba(56, 189, 248, 0.12)",
+                                border: "1px solid rgba(56, 189, 248, 0.3)",
+                                color: "#38bdf8",
+                                fontSize: "0.78rem",
+                                fontWeight: 700,
+                                fontFamily: "monospace"
+                              }}>
+                                🔗 {inv.referred_by_code}
+                              </span>
+                            </td>
+                            <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                              {inv.created_at ? new Date(inv.created_at).toLocaleString() : "—"}
+                            </td>
+                            <td>
+                              {inv.checked_in ? (
+                                <span style={{ fontSize: "0.74rem", color: "#10b981", fontWeight: 700 }}>
+                                  ✓ Checked In
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>
+                                  ⏳ Pending Gate
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

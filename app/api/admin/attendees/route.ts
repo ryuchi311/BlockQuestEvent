@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     const supabase = getSupabase();
     let query = supabase
       .from("registrations")
-      .select("id, full_name, alias_name, email, phone, organization, ticket_code, checked_in, checked_in_at, agreed_at, created_at, pincode")
+      .select("id, full_name, alias_name, email, phone, organization, ticket_code, checked_in, checked_in_at, agreed_at, created_at, pincode, total_xp, referral_count, referred_by_code")
       .order("created_at", { ascending: false })
       .limit(fetchLimit);
 
@@ -39,7 +39,19 @@ export async function GET(request: Request) {
       query = query.is("checked_in", false).is("checked_in_at", null);
     }
 
-    const { data, error } = await query;
+    let { data, error }: { data: any; error: any } = await query;
+
+    // Resilient fallback if referral_count or referred_by_code column is not yet migrated in remote Supabase
+    if (error && (error.message?.includes("referral_count") || error.message?.includes("referred_by_code"))) {
+      const fallbackQuery = supabase
+        .from("registrations")
+        .select("id, full_name, alias_name, email, phone, organization, ticket_code, checked_in, checked_in_at, agreed_at, created_at, pincode, total_xp")
+        .order("created_at", { ascending: false })
+        .limit(fetchLimit);
+      const fallbackRes = await fallbackQuery;
+      data = fallbackRes.data;
+      error = fallbackRes.error;
+    }
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ attendees: data });

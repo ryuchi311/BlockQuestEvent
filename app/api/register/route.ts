@@ -228,16 +228,41 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
-    // Fallback if registration_ip column does not exist yet in Supabase
-    if (error.message?.includes("registration_ip")) {
-      delete insertPayload.registration_ip;
+    // Fallback if registration_ip or referred_by_code column does not exist yet in Supabase schema
+    let handledFallback = false;
+    if (error.message?.includes("registration_ip") || error.message?.includes("referred_by_code")) {
+      if (error.message?.includes("registration_ip")) delete insertPayload.registration_ip;
+      if (error.message?.includes("referred_by_code")) delete insertPayload.referred_by_code;
+
       const { data: retryReg, error: retryError } = await supabase
         .from("registrations")
         .insert(insertPayload)
         .select("id")
         .single();
 
-      if (retryError) {
+      if (!retryError) {
+        handledFallback = true;
+        (newReg as any) = retryReg;
+      } else if (retryError.message?.includes("referred_by_code")) {
+        delete insertPayload.referred_by_code;
+        const { data: retryReg2, error: retryError2 } = await supabase
+          .from("registrations")
+          .insert(insertPayload)
+          .select("id")
+          .single();
+        if (!retryError2) {
+          handledFallback = true;
+          (newReg as any) = retryReg2;
+        } else {
+          const message =
+            retryError2.code === "23505"
+              ? (retryError2.message?.includes("alias")
+                  ? "That alias name is already taken. Please choose a different alias."
+                  : "That email, phone number, or alias is already registered.")
+              : retryError2.message || "Unable to store registration.";
+          return NextResponse.json({ error: message }, { status: 400 });
+        }
+      } else {
         const message =
           retryError.code === "23505"
             ? (retryError.message?.includes("alias")
@@ -246,8 +271,9 @@ export async function POST(request: Request) {
             : retryError.message || "Unable to store registration.";
         return NextResponse.json({ error: message }, { status: 400 });
       }
-      (newReg as any) = retryReg;
-    } else {
+    }
+
+    if (!handledFallback) {
       const message =
         error.code === "23505"
           ? (error.message?.includes("alias")
