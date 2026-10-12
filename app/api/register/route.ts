@@ -221,11 +221,15 @@ export async function POST(request: Request) {
     registration_ip: ip,
   };
 
-  const { data: newReg, error } = await supabase
+  let newReg: any = null;
+  const insertRes = await supabase
     .from("registrations")
     .insert(insertPayload)
     .select("id")
     .single();
+
+  newReg = insertRes.data;
+  const error = insertRes.error;
 
   if (error) {
     // Fallback if registration_ip or referred_by_code column does not exist yet in Supabase schema
@@ -242,7 +246,7 @@ export async function POST(request: Request) {
 
       if (!retryError) {
         handledFallback = true;
-        (newReg as any) = retryReg;
+        newReg = retryReg;
       } else if (retryError.message?.includes("referred_by_code")) {
         delete insertPayload.referred_by_code;
         const { data: retryReg2, error: retryError2 } = await supabase
@@ -252,7 +256,7 @@ export async function POST(request: Request) {
           .single();
         if (!retryError2) {
           handledFallback = true;
-          (newReg as any) = retryReg2;
+          newReg = retryReg2;
         } else {
           const message =
             retryError2.code === "23505"
