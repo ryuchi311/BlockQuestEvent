@@ -41,6 +41,25 @@ CREATE UNIQUE INDEX IF NOT EXISTS registrations_alias_name_lower_unique_idx
 CREATE INDEX IF NOT EXISTS registrations_created_at_idx
   ON public.registrations (created_at DESC);
 
+-- Performance Indexes (Critical for low CPU on t3a.micro Supabase instances)
+CREATE INDEX IF NOT EXISTS idx_registrations_total_xp_desc 
+  ON public.registrations (total_xp DESC);
+
+CREATE INDEX IF NOT EXISTS idx_registrations_email_lower 
+  ON public.registrations (LOWER(email));
+
+CREATE INDEX IF NOT EXISTS idx_quest_completions_reg_id 
+  ON public.quest_completions (registration_id);
+
+CREATE INDEX IF NOT EXISTS idx_quest_verifications_user_email 
+  ON public.quest_verifications (LOWER(user_email));
+
+CREATE INDEX IF NOT EXISTS idx_quest_verifications_status 
+  ON public.quest_verifications (status);
+
+CREATE INDEX IF NOT EXISTS idx_fiesta_quests_status_sort 
+  ON public.fiesta_event_quests (status, sort_order);
+
 -- Trigger function to automatically generate random unique ticket_code (e.g. BQF-X79K2M) before insert
 CREATE OR REPLACE FUNCTION set_ticket_code()
 RETURNS TRIGGER AS $$

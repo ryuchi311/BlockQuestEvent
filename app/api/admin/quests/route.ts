@@ -13,11 +13,24 @@ function getSupabase() {
   });
 }
 
+// Short in-memory server cache (15 seconds) for public quest fetch
+let cachedPublicQuests: any = null;
+let lastPublicQuestsFetch = 0;
+const PUBLIC_QUESTS_CACHE_MS = 15000;
+
 // GET — fetch all quests ordered by sort_order (redacts secrets if not admin)
 export async function GET(request: Request) {
   try {
     const auth = verifyAdminAuth(request);
     const isAdmin = auth.authorized;
+
+    const now = Date.now();
+    if (!isAdmin && cachedPublicQuests && now - lastPublicQuestsFetch < PUBLIC_QUESTS_CACHE_MS) {
+      return NextResponse.json(
+        { quests: cachedPublicQuests },
+        { headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" } }
+      );
+    }
 
     const supabase = getSupabase();
     const { data, error } = await supabase
@@ -40,7 +53,13 @@ export async function GET(request: Request) {
       correct_option_index: undefined,
     }));
 
-    return NextResponse.json({ quests: sanitizedQuests });
+    cachedPublicQuests = sanitizedQuests;
+    lastPublicQuestsFetch = Date.now();
+
+    return NextResponse.json(
+      { quests: sanitizedQuests },
+      { headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" } }
+    );
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

@@ -21,7 +21,20 @@ let memoryLeaderboard = [
   { rank: 5, name: "MetaExplorer", points: 7200, change: "same" },
 ];
 
+// Short in-memory server cache (10 seconds) to prevent database hammering on shared leaderboard data
+let cachedLeaderboard: any = null;
+let lastLeaderboardFetch = 0;
+const LEADERBOARD_CACHE_MS = 10000;
+
 export async function GET() {
+  const now = Date.now();
+  if (cachedLeaderboard && now - lastLeaderboardFetch < LEADERBOARD_CACHE_MS) {
+    return NextResponse.json(
+      { leaderboard: cachedLeaderboard },
+      { headers: { "Cache-Control": "public, s-maxage=10, stale-while-revalidate=20" } }
+    );
+  }
+
   try {
     const supabase = getSupabase();
     
@@ -58,7 +71,12 @@ export async function GET() {
           accent: index === 0 ? "var(--gold-light)" : undefined,
         };
       });
-      return NextResponse.json({ leaderboard: formatted });
+      cachedLeaderboard = formatted;
+      lastLeaderboardFetch = Date.now();
+      return NextResponse.json(
+        { leaderboard: formatted },
+        { headers: { "Cache-Control": "public, s-maxage=10, stale-while-revalidate=20" } }
+      );
     } else {
       return NextResponse.json({ leaderboard: memoryLeaderboard });
     }

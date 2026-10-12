@@ -832,7 +832,7 @@ export default function ZealyMobileApp() {
       fetchLeaderboard();
       fetchMilestones();
       syncUserData();
-    }, 8000); // 8-second refresh interval to keep UI lightweight and prevent hammering database
+    }, 20000); // 20-second refresh interval keeps real-time freshness while preventing high Supabase CPU
     return () => clearInterval(interval);
   }, [loadApiQuests, fetchUserVerifications, fetchLeaderboard, fetchMilestones, syncUserData]);
 
