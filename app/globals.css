@@ -2263,6 +2263,63 @@ a {
   border: 1px solid rgba(245, 158, 11, 0.35);
 }
 
+.status-badge--rejected {
+  background: rgba(239, 68, 68, 0.22);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.25);
+}
+
+/* Pulsing Retry Badge Animation */
+@keyframes retryPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55), 0 2px 8px rgba(239, 68, 68, 0.35);
+    border-color: rgba(239, 68, 68, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0), 0 4px 14px rgba(239, 68, 68, 0.65);
+    border-color: rgba(248, 113, 113, 1);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0), 0 2px 8px rgba(239, 68, 68, 0.35);
+    border-color: rgba(239, 68, 68, 0.7);
+  }
+}
+
+.quest-retry-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.3) 0%, rgba(185, 28, 28, 0.4) 100%);
+  color: #fecaca;
+  border: 1.5px solid rgba(239, 68, 68, 0.7);
+  letter-spacing: 0.02em;
+  animation: retryPulse 2s infinite ease-in-out;
+  cursor: pointer;
+}
+
+.quest-card--rejected {
+  border: 1.5px solid rgba(239, 68, 68, 0.55) !important;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(30, 15, 20, 0.95) 100%) !important;
+  box-shadow: 0 4px 18px rgba(239, 68, 68, 0.18), 0 0 0 1px rgba(239, 68, 68, 0.25) !important;
+}
+
+.quest-card--rejected::before {
+  background: #ef4444 !important;
+  opacity: 1 !important;
+  width: 4px !important;
+}
+
+.quest-card--rejected:hover {
+  border-color: rgba(248, 113, 113, 0.9) !important;
+  box-shadow: 0 6px 24px rgba(239, 68, 68, 0.35), 0 0 16px rgba(239, 68, 68, 0.3) !important;
+  transform: translateY(-2px) scale(1.005) !important;
+}
+
 /* Leaderboard custom styles */
 .leaderboard-podium {
   display: grid;

@@ -1788,6 +1788,40 @@ export default function ZealyMobileApp() {
                   </div>
                 ) : (
                   <div className="quest-list">
+                    {/* Notice Banner when user has rejected quests needing retry */}
+                    {quests.some((q) => q.status === "Rejected") && (
+                      <div
+                        style={{
+                          background: "linear-gradient(135deg, rgba(239, 68, 68, 0.22) 0%, rgba(185, 28, 28, 0.12) 100%)",
+                          border: "1.5px solid rgba(239, 68, 68, 0.65)",
+                          borderRadius: 14,
+                          padding: "12px 14px",
+                          marginBottom: 12,
+                          boxShadow: "0 4px 16px rgba(239, 68, 68, 0.25)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 10,
+                          animation: "retryPulse 2.5s infinite ease-in-out",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ fontSize: "1.3rem" }}>🚨</span>
+                          <div>
+                            <div style={{ color: "#fecaca", fontWeight: 900, fontSize: "0.86rem", letterSpacing: "0.02em" }}>
+                              {quests.filter((q) => q.status === "Rejected").length} Quest{quests.filter((q) => q.status === "Rejected").length > 1 ? "s" : ""} Need Attention & Retry!
+                            </div>
+                            <div style={{ color: "rgba(255, 255, 255, 0.75)", fontSize: "0.74rem", marginTop: 2 }}>
+                              Check reviewer feedback below to update and resubmit.
+                            </div>
+                          </div>
+                        </div>
+                        <span style={{ fontSize: "0.74rem", fontWeight: 800, color: "#f87171", background: "rgba(0,0,0,0.3)", padding: "4px 8px", borderRadius: 8, whiteSpace: "nowrap" }}>
+                          Fix Now ↓
+                        </span>
+                      </div>
+                    )}
+
                     {/* Active / In Progress Quests */}
                     <div className="quest-category__title" style={{ marginTop: "2px", marginBottom: "2px", fontSize: "0.72rem" }}>
                       <span>⚡ Active Quests ({quests.filter((q) => q.status !== "Done").length})</span>
@@ -1796,6 +1830,18 @@ export default function ZealyMobileApp() {
                     {quests
                       .filter((q) => q.status !== "Done")
                       .sort((a, b) => {
+                        // Priority: Rejected (needs retry immediately) & Approved (ready to claim) at top
+                        const priorityScore = (status: string) => {
+                          if (status === "Rejected") return 0;
+                          if (status === "Approved") return 1;
+                          if (status === "Live") return 2;
+                          if (status === "Pending Verification") return 3;
+                          return 4;
+                        };
+                        const pA = priorityScore(a.status);
+                        const pB = priorityScore(b.status);
+                        if (pA !== pB) return pA - pB;
+
                         const orderA = (a as any).sort_order ?? 999;
                         const orderB = (b as any).sort_order ?? 999;
                         if (orderA !== orderB) return orderA - orderB; // ASC sort order
@@ -1803,80 +1849,118 @@ export default function ZealyMobileApp() {
                         const timeB = (b as any).created_at ? new Date((b as any).created_at).getTime() : 0;
                         return timeA - timeB; // ASC date order
                       })
-                      .map((q) => (
-                      <div
-                        key={q.id}
-                        className={`quest-card quest-card--${q.status.toLowerCase().replace(/\s+/g, "-")}`}
-                        onClick={() => handleQuestClick(q)}
-                        style={
-                          q.status === "Approved"
-                            ? { border: "1px solid rgba(16, 185, 129, 0.5)", background: "linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(20, 20, 30, 0.9) 100%)" }
-                            : q.status === "Rejected"
-                              ? { border: "1px solid rgba(239, 68, 68, 0.5)", background: "linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(20, 20, 30, 0.9) 100%)" }
-                              : q.status === "Pending Verification"
-                                ? { border: "1px solid rgba(245, 158, 11, 0.4)", background: "linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(20, 20, 30, 0.9) 100%)" }
-                                : undefined
-                        }
-                      >
-                        <div className="quest-card__body">
-                          <div className="quest-card__meta">
-                            <span className={`category-badge category-badge--${q.category}`}>
-                              {q.category}
-                            </span>
-                            <span className="xp-badge">+{q.xp} XP</span>
-                            {q.passcode && (
-                              <span style={{ fontSize: "0.64rem", padding: "2px 6px", borderRadius: "6px", background: "rgba(245, 158, 11, 0.2)", color: "#fbbf24", border: "1px solid rgba(245, 158, 11, 0.3)" }}>
-                                🔑 Passcode
-                              </span>
-                            )}
-                            {q.expires_at && (
-                              <span style={{ fontSize: "0.64rem", padding: "2px 6px", borderRadius: "6px", background: "rgba(239, 68, 68, 0.2)", color: "#f87171", border: "1px solid rgba(239, 68, 68, 0.3)" }}>
-                                {new Date(q.expires_at).getTime() < Date.now() ? "⏳ Expired" : `⏱️ Ends ${new Date(q.expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
-                              </span>
-                            )}
-                            {q.depends_on_quest_id && !quests.some((p) => p.id === q.depends_on_quest_id && p.status === "Done") && (
-                              <span style={{ fontSize: "0.64rem", padding: "2px 6px", borderRadius: "6px", background: "rgba(100, 116, 139, 0.25)", color: "#94a3b8", border: "1px solid rgba(100, 116, 139, 0.4)" }}>
-                                🔒 Prereq
-                              </span>
-                            )}
-                            {q.requiresProof && q.status !== "Approved" && q.status !== "Pending Verification" && (
-                              <span style={{ fontSize: "0.64rem", padding: "2px 6px", borderRadius: "6px", background: "rgba(139, 92, 246, 0.2)", color: "#a78bfa", border: "1px solid rgba(139, 92, 246, 0.3)" }}>
-                                📷 Proof
-                              </span>
-                            )}
-                            {q.requiresMessage && q.status !== "Approved" && q.status !== "Pending Verification" && (
-                              <span style={{ fontSize: "0.64rem", padding: "2px 6px", borderRadius: "6px", background: "rgba(245, 158, 11, 0.2)", color: "#fbbf24", border: "1px solid rgba(245, 158, 11, 0.3)" }}>
-                                💬 Note
-                              </span>
-                            )}
+                      .map((q) => {
+                        const verifForQuest = q.status === "Rejected" ? userVerifications.find((v) => v.quest_id === q.id) : null;
+                        return (
+                          <div
+                            key={q.id}
+                            className={`quest-card quest-card--${q.status.toLowerCase().replace(/\s+/g, "-")}`}
+                            onClick={() => handleQuestClick(q)}
+                            style={
+                              q.status === "Approved"
+                                ? { border: "1px solid rgba(16, 185, 129, 0.5)", background: "linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(20, 20, 30, 0.9) 100%)" }
+                                : q.status === "Rejected"
+                                  ? undefined // Styled cleanly via .quest-card--rejected in globals.css
+                                  : q.status === "Pending Verification"
+                                    ? { border: "1px solid rgba(245, 158, 11, 0.4)", background: "linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(20, 20, 30, 0.9) 100%)" }
+                                    : undefined
+                            }
+                          >
+                            <div className="quest-card__body">
+                              <div className="quest-card__meta">
+                                {q.status === "Rejected" && (
+                                  <span className="quest-retry-badge">
+                                    <span>⚠️ RETRY REQUIRED</span>
+                                  </span>
+                                )}
+                                <span className={`category-badge category-badge--${q.category}`}>
+                                  {q.category}
+                                </span>
+                                <span className="xp-badge">+{q.xp} XP</span>
+                                {q.passcode && (
+                                  <span style={{ fontSize: "0.64rem", padding: "2px 6px", borderRadius: "6px", background: "rgba(245, 158, 11, 0.2)", color: "#fbbf24", border: "1px solid rgba(245, 158, 11, 0.3)" }}>
+                                    🔑 Passcode
+                                  </span>
+                                )}
+                                {q.expires_at && (
+                                  <span style={{ fontSize: "0.64rem", padding: "2px 6px", borderRadius: "6px", background: "rgba(239, 68, 68, 0.2)", color: "#f87171", border: "1px solid rgba(239, 68, 68, 0.3)" }}>
+                                    {new Date(q.expires_at).getTime() < Date.now() ? "⏳ Expired" : `⏱️ Ends ${new Date(q.expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                                  </span>
+                                )}
+                                {q.depends_on_quest_id && !quests.some((p) => p.id === q.depends_on_quest_id && p.status === "Done") && (
+                                  <span style={{ fontSize: "0.64rem", padding: "2px 6px", borderRadius: "6px", background: "rgba(100, 116, 139, 0.25)", color: "#94a3b8", border: "1px solid rgba(100, 116, 139, 0.4)" }}>
+                                    🔒 Prereq
+                                  </span>
+                                )}
+                                {q.requiresProof && q.status !== "Approved" && q.status !== "Pending Verification" && (
+                                  <span style={{ fontSize: "0.64rem", padding: "2px 6px", borderRadius: "6px", background: "rgba(139, 92, 246, 0.2)", color: "#a78bfa", border: "1px solid rgba(139, 92, 246, 0.3)" }}>
+                                    📷 Proof
+                                  </span>
+                                )}
+                                {q.requiresMessage && q.status !== "Approved" && q.status !== "Pending Verification" && (
+                                  <span style={{ fontSize: "0.64rem", padding: "2px 6px", borderRadius: "6px", background: "rgba(245, 158, 11, 0.2)", color: "#fbbf24", border: "1px solid rgba(245, 158, 11, 0.3)" }}>
+                                    💬 Note
+                                  </span>
+                                )}
+                              </div>
+                              <h3 className="quest-card__title">{q.title}</h3>
+                              <QuestCardDescription description={q.description} />
+
+                              {/* Highlight Admin Rejection Reason Directly on Card */}
+                              {q.status === "Rejected" && (
+                                <div
+                                  style={{
+                                    marginTop: 6,
+                                    padding: "6px 10px",
+                                    borderRadius: 8,
+                                    background: "rgba(239, 68, 68, 0.16)",
+                                    border: "1px dashed rgba(239, 68, 68, 0.45)",
+                                    fontSize: "0.74rem",
+                                    color: "#fca5a5",
+                                    display: "flex",
+                                    alignItems: "flex-start",
+                                    gap: 6,
+                                    lineHeight: 1.35,
+                                  }}
+                                >
+                                  <span style={{ flexShrink: 0, marginTop: 1 }}>💬</span>
+                                  <div>
+                                    <strong style={{ color: "#fecaca" }}>Feedback: </strong>
+                                    <span>
+                                      {verifForQuest?.rejection_reason
+                                        ? `"${verifForQuest.rejection_reason}"`
+                                        : "Admin requested a resubmission. Tap here to review requirements and retry."}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="quest-card__footer">
+                              {q.status === "Approved" ? (
+                                <span style={{ fontSize: "0.7rem", padding: "3px 8px", borderRadius: "6px", background: "rgba(16, 185, 129, 0.25)", color: "#34d399", border: "1px solid rgba(16, 185, 129, 0.4)", fontWeight: 800 }}>
+                                  🎉 Ready to Claim XP →
+                                </span>
+                              ) : q.status === "Rejected" ? (
+                                <span className="quest-retry-badge">
+                                  <span>🔄 Tap to Fix & Retry</span>
+                                  <span style={{ fontSize: "0.85rem" }}>→</span>
+                                </span>
+                              ) : q.status === "Pending Verification" ? (
+                                <span style={{ fontSize: "0.7rem", padding: "3px 8px", borderRadius: "6px", background: "rgba(245, 158, 11, 0.25)", color: "#fbbf24", border: "1px solid rgba(245, 158, 11, 0.4)", fontWeight: 800 }}>
+                                  ⏳ Pending Review
+                                </span>
+                              ) : (
+                                <span className={`status-badge status-badge--${q.status.toLowerCase().replace(/\s+/g, "-")}`}>
+                                  {q.status}
+                                </span>
+                              )}
+                              {q.status !== "Soon" && q.status !== "Done" && q.status !== "Pending Verification" && q.status !== "Approved" && q.status !== "Rejected" && (
+                                <span className="quest-card__arrow">→</span>
+                              )}
+                            </div>
                           </div>
-                          <h3 className="quest-card__title">{q.title}</h3>
-                          <QuestCardDescription description={q.description} />
-                        </div>
-                        <div className="quest-card__footer">
-                          {q.status === "Approved" ? (
-                            <span style={{ fontSize: "0.7rem", padding: "3px 8px", borderRadius: "6px", background: "rgba(16, 185, 129, 0.25)", color: "#34d399", border: "1px solid rgba(16, 185, 129, 0.4)", fontWeight: 800 }}>
-                              🎉 Ready to Claim XP →
-                            </span>
-                          ) : q.status === "Rejected" ? (
-                            <span style={{ fontSize: "0.7rem", padding: "3px 8px", borderRadius: "6px", background: "rgba(239, 68, 68, 0.25)", color: "#f87171", border: "1px solid rgba(239, 68, 68, 0.4)", fontWeight: 800 }}>
-                              ❌ Rejected - Retry →
-                            </span>
-                          ) : q.status === "Pending Verification" ? (
-                            <span style={{ fontSize: "0.7rem", padding: "3px 8px", borderRadius: "6px", background: "rgba(245, 158, 11, 0.25)", color: "#fbbf24", border: "1px solid rgba(245, 158, 11, 0.4)", fontWeight: 800 }}>
-                              ⏳ Pending Review
-                            </span>
-                          ) : (
-                            <span className={`status-badge status-badge--${q.status.toLowerCase().replace(/\s+/g, "-")}`}>
-                              {q.status}
-                            </span>
-                          )}
-                          {q.status !== "Soon" && q.status !== "Done" && q.status !== "Pending Verification" && q.status !== "Approved" && q.status !== "Rejected" && (
-                            <span className="quest-card__arrow">→</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                        );
+                      })}
 
                     {/* Completed Quests Toggle Section (STRICTLY Done ONLY) */}
                     {quests.filter((q) => q.status === "Done").length > 0 && (
@@ -2550,29 +2634,67 @@ export default function ZealyMobileApp() {
                                       v.status === "Approved"
                                         ? "rgba(16, 185, 129, 0.16)"
                                         : v.status === "Rejected"
-                                          ? "rgba(239, 68, 68, 0.16)"
+                                          ? "rgba(239, 68, 68, 0.25)"
                                           : "rgba(245, 158, 11, 0.16)",
                                     color:
                                       v.status === "Approved"
                                         ? "#34d399"
                                         : v.status === "Rejected"
-                                          ? "#f87171"
+                                          ? "#fecaca"
                                           : "#fbbf24",
                                     border:
                                       v.status === "Approved"
                                         ? "1px solid rgba(16, 185, 129, 0.3)"
                                         : v.status === "Rejected"
-                                          ? "1px solid rgba(239, 68, 68, 0.3)"
+                                          ? "1px solid rgba(239, 68, 68, 0.6)"
                                           : "1px solid rgba(245, 158, 11, 0.3)",
                                     whiteSpace: "nowrap",
                                     flexShrink: 0
                                   }}
                                 >
-                                  {v.status === "Approved" ? (v.displayStatus || "✓ Claimed") : v.status === "Rejected" ? "✕ Rejected" : "⏳ Pending"}
+                                  {v.status === "Approved" ? (v.displayStatus || "✓ Claimed") : v.status === "Rejected" ? "⚠️ Needs Retry" : "⏳ Pending"}
                                 </span>
                               </div>
 
-                              {v.user_message && (
+                              {v.status === "Rejected" && v.rejection_reason && (
+                                <div style={{ fontSize: "0.72rem", color: "#fca5a5", background: "rgba(239, 68, 68, 0.12)", border: "1px dashed rgba(239, 68, 68, 0.35)", padding: "5px 8px", borderRadius: 6 }}>
+                                  💬 <strong>Feedback:</strong> "{v.rejection_reason}"
+                                </div>
+                              )}
+
+                              {v.status === "Rejected" && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const matchingQuest = quests.find((q) => q.id === v.quest_id);
+                                    if (matchingQuest) {
+                                      setSelectedQuest(matchingQuest);
+                                    } else {
+                                      setActiveTab("quests");
+                                    }
+                                  }}
+                                  style={{
+                                    background: "linear-gradient(135deg, rgba(239, 68, 68, 0.3) 0%, rgba(225, 29, 72, 0.3) 100%)",
+                                    border: "1px solid rgba(239, 68, 68, 0.6)",
+                                    color: "#fecaca",
+                                    padding: "5px 10px",
+                                    borderRadius: 6,
+                                    fontSize: "0.72rem",
+                                    fontWeight: 800,
+                                    cursor: "pointer",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: 6,
+                                    marginTop: 2
+                                  }}
+                                >
+                                  <span>🔄 Open Quest to Fix & Retry</span>
+                                  <span>→</span>
+                                </button>
+                              )}
+
+                              {v.user_message && v.status !== "Rejected" && (
                                 <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.75)", background: "rgba(255,255,255,0.04)", padding: "4px 8px", borderRadius: 6, fontStyle: "italic" }}>
                                   💬 "{v.user_message}"
                                 </div>
@@ -2996,22 +3118,53 @@ export default function ZealyMobileApp() {
                               const lastVerif = userVerifications.find((v) => v.quest_id === liveQuest.id);
                               return (
                                 <div style={{
-                                  background: "rgba(239, 68, 68, 0.15)",
-                                  border: "1px solid rgba(239, 68, 68, 0.35)",
-                                  padding: "14px 16px",
+                                  background: "linear-gradient(135deg, rgba(239, 68, 68, 0.22) 0%, rgba(185, 28, 28, 0.15) 100%)",
+                                  border: "1.5px solid rgba(239, 68, 68, 0.7)",
+                                  padding: "16px 16px",
                                   borderRadius: 14,
-                                  marginBottom: 16
+                                  marginBottom: 16,
+                                  boxShadow: "0 4px 20px rgba(239, 68, 68, 0.25)"
                                 }}>
-                                  <div style={{ color: "#f87171", fontWeight: 800, fontSize: "0.92rem", display: "flex", alignItems: "center", gap: 6 }}>
-                                    <span>✕</span> Submission Rejected by Admin
+                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                                    <div style={{ color: "#fecaca", fontWeight: 900, fontSize: "0.95rem", display: "flex", alignItems: "center", gap: 8 }}>
+                                      <span style={{ fontSize: "1.2rem" }}>🚨</span>
+                                      <span>Action Needed: Proof Rejected</span>
+                                    </div>
+                                    <span style={{
+                                      fontSize: "0.68rem",
+                                      fontWeight: 900,
+                                      padding: "3px 8px",
+                                      borderRadius: 6,
+                                      background: "rgba(239, 68, 68, 0.4)",
+                                      color: "#fff",
+                                      border: "1px solid rgba(255, 255, 255, 0.3)",
+                                      textTransform: "uppercase"
+                                    }}>
+                                      Retry Open
+                                    </span>
                                   </div>
+                                  
                                   {lastVerif?.rejection_reason && (
-                                    <div style={{ color: "#fca5a5", fontSize: "0.82rem", marginTop: 6, lineHeight: 1.4 }}>
-                                      💬 <strong>Reason:</strong> "{lastVerif.rejection_reason}"
+                                    <div style={{
+                                      background: "rgba(0, 0, 0, 0.35)",
+                                      border: "1px dashed rgba(248, 113, 113, 0.5)",
+                                      padding: "10px 12px",
+                                      borderRadius: 10,
+                                      color: "#fca5a5",
+                                      fontSize: "0.84rem",
+                                      marginTop: 10,
+                                      lineHeight: 1.45
+                                    }}>
+                                      <div style={{ color: "#f87171", fontWeight: 800, fontSize: "0.72rem", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                                        Reviewer Feedback:
+                                      </div>
+                                      "{lastVerif.rejection_reason}"
                                     </div>
                                   )}
-                                  <div style={{ color: "var(--text-muted)", fontSize: "0.78rem", marginTop: 6 }}>
-                                    Please update your note/screenshot below and resubmit for admin review.
+                                  
+                                  <div style={{ color: "rgba(255, 255, 255, 0.85)", fontSize: "0.8rem", marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                                    <span>👉</span>
+                                    <span>Please fix your proof screenshot or link below and tap <strong>Resubmit for Verification</strong>.</span>
                                   </div>
                                 </div>
                               );
@@ -3325,13 +3478,19 @@ export default function ZealyMobileApp() {
                                         padding: "14px",
                                         borderRadius: 12,
                                         fontWeight: 800,
-                                        fontSize: "0.9rem",
+                                        fontSize: "0.92rem",
                                         border: "none",
                                         background: isReady
-                                          ? "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)"
+                                          ? selectedQuest.status === "Rejected"
+                                            ? "linear-gradient(135deg, #ef4444 0%, #f43f5e 50%, #e11d48 100%)"
+                                            : "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)"
                                           : "rgba(255, 255, 255, 0.08)",
                                         color: isReady ? "#fff" : "rgba(255, 255, 255, 0.4)",
-                                        boxShadow: isReady ? "0 0 25px rgba(168, 85, 247, 0.4)" : "none",
+                                        boxShadow: isReady
+                                          ? selectedQuest.status === "Rejected"
+                                            ? "0 0 25px rgba(239, 68, 68, 0.5)"
+                                            : "0 0 25px rgba(168, 85, 247, 0.4)"
+                                          : "none",
                                         opacity: isReady ? 1 : 0.6,
                                         cursor: isReady ? "pointer" : "not-allowed",
                                         transition: "all 0.25s ease"
