@@ -90,26 +90,33 @@ export async function GET(request: Request) {
 
           if (insertedCheckin) {
             list = [...list, insertedCheckin];
-          } else {
-            list = [...list, { ...newCheckinComp, created_at: new Date().toISOString() }];
           }
 
-          // Also record in quest_verifications as Approved for Quest Logs
-          await supabase.from("quest_verifications").insert({
-            quest_id: "checkin",
-            quest_title: "Physical Gate Check-in",
-            user_name: user.full_name || undefined,
-            user_email: email,
-            xp: 500,
-            proof_url: "Gate QR Scan Check-in",
-            user_message: "Auto-claimed upon entrance gate check-in",
-            status: "Approved",
-            approved_by: "Gate System",
-            reviewed_at: new Date().toISOString(),
-          });
+          // Check if already in quest_verifications to prevent duplicate spam
+          const { data: existingCheckinVerif } = await supabase
+            .from("quest_verifications")
+            .select("id")
+            .eq("user_email", email)
+            .eq("quest_id", "checkin")
+            .maybeSingle();
+
+          if (!existingCheckinVerif) {
+            await supabase.from("quest_verifications").insert({
+              quest_id: "checkin",
+              quest_title: "Physical Gate Check-in",
+              user_name: user.full_name || undefined,
+              user_email: email,
+              ticket_code: user.ticket_code || undefined,
+              xp: 500,
+              proof_url: "Gate QR Scan Check-in",
+              user_message: "Auto-claimed upon entrance gate check-in",
+              status: "Approved",
+              approved_by: "Gate System",
+              reviewed_at: new Date().toISOString(),
+            });
+          }
         } catch (checkinErr) {
           console.warn("Could not auto-insert checkin quest completion:", checkinErr);
-          list = [...list, { quest_id: "checkin", xp_awarded: 500, created_at: new Date().toISOString() }];
         }
       }
 
@@ -131,27 +138,33 @@ export async function GET(request: Request) {
 
           if (insertedAlias) {
             list = [...list, insertedAlias];
-          } else {
-            list = [...list, { ...newAliasComp, created_at: new Date().toISOString() }];
           }
 
-          // Also record in quest_verifications as Approved for Quest Logs
-          await supabase.from("quest_verifications").insert({
-            quest_id: "add-alias",
-            quest_title: "Profile: Add an Alias Name",
-            user_name: user.full_name || undefined,
-            user_email: email,
-            ticket_code: user.ticket_code || undefined,
-            xp: 50,
-            proof_url: "Auto-Verified (Alias Active)",
-            user_message: `Created alias name @${user.alias_name}`,
-            status: "Approved",
-            approved_by: "System",
-            reviewed_at: new Date().toISOString(),
-          });
+          // Check if already in quest_verifications to prevent duplicate spam
+          const { data: existingAliasVerif } = await supabase
+            .from("quest_verifications")
+            .select("id")
+            .eq("user_email", email)
+            .eq("quest_id", "add-alias")
+            .maybeSingle();
+
+          if (!existingAliasVerif) {
+            await supabase.from("quest_verifications").insert({
+              quest_id: "add-alias",
+              quest_title: "Profile: Add an Alias Name",
+              user_name: user.full_name || undefined,
+              user_email: email,
+              ticket_code: user.ticket_code || undefined,
+              xp: 50,
+              proof_url: "Auto-Verified (Alias Active)",
+              user_message: `Created alias name @${user.alias_name}`,
+              status: "Approved",
+              approved_by: "System",
+              reviewed_at: new Date().toISOString(),
+            });
+          }
         } catch (aliasErr) {
           console.warn("Could not auto-insert alias quest completion:", aliasErr);
-          list = [...list, { quest_id: "add-alias", xp_awarded: 50, created_at: new Date().toISOString() }];
         }
       }
 

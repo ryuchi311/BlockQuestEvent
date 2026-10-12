@@ -1233,7 +1233,7 @@ export default function AdminPage() {
     try {
       const res = await adminFetch("/api/admin/milestones");
       const json = await safeJson(res);
-      if (!res.ok) throw new Error(json.error || "Failed to load milestone tiers.");
+      if (!res.ok) throw new Error(json.error || "Failed to load milestones.");
       setMilestones(json.milestones ?? []);
     } catch (err: any) {
       if (!isBg) setError(err.message);
@@ -1242,28 +1242,18 @@ export default function AdminPage() {
     }
   }, [adminFetch]);
 
-  // Load ALL data immediately on auth so stat cards are always accurate
+  // Load only active tab data & lightweight quests on auth (lazy-load rest on demand)
   useEffect(() => {
     if (!authed) return;
-    fetchAttendees();
+    // Always load quests so quest categories and titles resolve everywhere
     fetchQuests();
-    fetchVerifications();
-    fetchMessageNotes();
-    fetchSupportTickets();
-    fetchPromoCodes();
-    fetchMilestones();
-  }, [authed, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes, fetchSupportTickets, fetchPromoCodes, fetchMilestones]);
-
-  // Refresh current tab data when switching tabs
-  useEffect(() => {
-    if (!authed) return;
+    // Load whichever tab is active initially
     if (tab === "attendees") fetchAttendees();
-    else if (tab === "quests") fetchQuests();
-    else if (tab === "milestones") fetchMilestones();
     else if (tab === "verifications") fetchVerifications();
     else if (tab === "messages") fetchMessageNotes();
     else if (tab === "tickets") fetchSupportTickets();
     else if (tab === "promocodes") fetchPromoCodes();
+    else if (tab === "milestones") fetchMilestones();
     else if (tab === "questlog") {
       fetchAttendees();
       fetchVerifications();
@@ -1271,9 +1261,9 @@ export default function AdminPage() {
     }
     else if (tab === "staff") fetchAdminUsers();
     else if (tab === "socials") fetchSocialMissions();
-  }, [tab, fetchAttendees, fetchQuests, fetchMilestones, fetchVerifications, fetchMessageNotes, fetchSupportTickets, fetchPromoCodes, fetchAdminUsers, fetchSocialMissions]);
+  }, [authed, tab, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes, fetchSupportTickets, fetchPromoCodes, fetchMilestones, fetchAdminUsers, fetchSocialMissions]);
 
-  // ── Auto Refresh (Background Silent Polling - No UI Flickering) ──
+  // ── Auto Refresh (Background Silent Polling - No UI Flickering, Only active tab) ──
   useEffect(() => {
     if (!authed || !autoRefresh || tab === "scanner") return;
     const interval = setInterval(() => {

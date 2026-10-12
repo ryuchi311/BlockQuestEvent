@@ -28,7 +28,7 @@ export async function GET() {
     // Fetch top 50 users ordered by total_xp descending
     const { data, error } = await supabase
       .from("registrations")
-      .select("full_name, alias_name, total_xp, email")
+      .select("full_name, alias_name, total_xp, email, ticket_code")
       .order("total_xp", { ascending: false })
       .limit(50);
 
@@ -51,6 +51,7 @@ export async function GET() {
           rank: index + 1,
           name: displayName,
           alias: user.alias_name?.trim() || null,
+          ticketCode: user.ticket_code || null,
           points: user.total_xp || 0,
           email: user.email, // Include email to easily match the current logged-in user
           change: index === 0 ? "up" : "same",

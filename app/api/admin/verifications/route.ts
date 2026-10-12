@@ -83,7 +83,20 @@ export async function GET(request: Request) {
         is_instant: true,
       }));
 
-      const combined = [...(verifs || []), ...formattedCompletions].sort(
+      // Deduplicate verifs to only 1 entry per quest_id (keeping highest status or latest)
+      const verifMap = new Map<string, any>();
+      (verifs || []).forEach((v: any) => {
+        const existing = verifMap.get(v.quest_id);
+        if (!existing || v.status === "Approved" || (existing.status !== "Approved" && v.status === "Pending")) {
+          verifMap.set(v.quest_id, v);
+        }
+      });
+      const cleanVerifs = Array.from(verifMap.values());
+
+      const compQuestIdSet = new Set(completions.map((c: any) => c.quest_id));
+      const nonDuplicateVerifs = cleanVerifs.filter((v: any) => !compQuestIdSet.has(v.quest_id));
+
+      const combined = [...formattedCompletions, ...nonDuplicateVerifs].sort(
         (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
 
@@ -146,7 +159,32 @@ export async function GET(request: Request) {
       return v;
     });
 
-    return NextResponse.json({ verifications: enrichedVerifications });
+    // Deduplicate any repeated auto-claim verification rows for identical user_email + quest_id
+    const seenUserQuests = new Set<string>();
+    const deduplicatedVerifications: any[] = [];
+
+    for (const item of enrichedVerifications) {
+      const email = (item.user_email || "").trim().toLowerCase();
+      const qId = item.quest_id || "";
+      // Only one entry for auto-claimed system quests (like add-alias, checkin, register) per user
+      const isAutoClaimed =
+        item.approved_by === "System" ||
+        item.approved_by === "Gate System" ||
+        qId === "add-alias" ||
+        qId === "checkin" ||
+        qId === "register";
+
+      if (isAutoClaimed && email && qId) {
+        const uniqueKey = `${email}_${qId}`;
+        if (seenUserQuests.has(uniqueKey)) {
+          continue; // Skip duplicate spam entry
+        }
+        seenUserQuests.add(uniqueKey);
+      }
+      deduplicatedVerifications.push(item);
+    }
+
+    return NextResponse.json({ verifications: deduplicatedVerifications });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

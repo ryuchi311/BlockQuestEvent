@@ -2050,34 +2050,115 @@ export default function ZealyMobileApp() {
                           isCurrentUser
                             ? {
                               border: "1.5px solid var(--gold-light)",
-                              background: "linear-gradient(135deg, rgba(245, 166, 35, 0.25) 0%, rgba(20, 20, 30, 0.95) 100%)",
-                              boxShadow: "0 0 15px rgba(245, 166, 35, 0.35)",
-                              transform: "scale(1.01)",
+                              background: "linear-gradient(135deg, rgba(245, 166, 35, 0.22) 0%, rgba(20, 20, 32, 0.95) 100%)",
+                              boxShadow: "0 4px 16px rgba(245, 166, 35, 0.25)",
+                              padding: "8px 12px",
                             }
-                            : undefined
+                            : {
+                              padding: "8px 12px",
+                            }
                         }
                       >
-                        <div className="leaderboard-item__rank" style={isCurrentUser ? { color: "var(--gold-light)", fontWeight: 900 } : undefined}>
+                        <div
+                          className="leaderboard-item__rank"
+                          style={{
+                            width: 30,
+                            height: 30,
+                            minWidth: 30,
+                            fontSize: "0.82rem",
+                            ...(isCurrentUser ? { color: "var(--gold-light)", fontWeight: 900, borderColor: "rgba(245, 166, 35, 0.4)" } : {})
+                          }}
+                        >
                           #{item.rank}
                         </div>
-                        <div className="leaderboard-item__info">
-                          <div className="leaderboard-item__name" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <span>{item.name}</span>
+                        <div className="leaderboard-item__info" style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                            <span
+                              style={{
+                                fontSize: "0.88rem",
+                                fontWeight: 800,
+                                color: isCurrentUser ? "#fff" : "rgba(255, 255, 255, 0.92)",
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                              }}
+                            >
+                              {item.name}
+                            </span>
                             {isCurrentUser && (
-                              <span style={{ fontSize: "0.65rem", padding: "1px 6px", borderRadius: 8, background: "var(--gold-light)", color: "#000", fontWeight: 900, textTransform: "uppercase" }}>
+                              <span
+                                style={{
+                                  fontSize: "0.58rem",
+                                  lineHeight: 1,
+                                  padding: "2px 5px",
+                                  borderRadius: 4,
+                                  background: "linear-gradient(135deg, #ffd166 0%, #f5a623 100%)",
+                                  color: "#0a0a10",
+                                  fontWeight: 900,
+                                  letterSpacing: "0.06em",
+                                  flexShrink: 0,
+                                }}
+                              >
                                 YOU
                               </span>
                             )}
                           </div>
-                          <div style={{ fontSize: "0.78rem", color: isCurrentUser ? "var(--gold-light)" : "var(--text-secondary)" }}>
-                            {isCurrentUser ? "🌟 Your Current Rank" : `Rank #${item.rank}`}
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "nowrap", minWidth: 0 }}>
+                            <span
+                              style={{
+                                fontSize: "0.7rem",
+                                color: isCurrentUser ? "var(--gold-light)" : "var(--text-secondary)",
+                                fontWeight: isCurrentUser ? 700 : 500,
+                                whiteSpace: "nowrap",
+                                flexShrink: 0,
+                              }}
+                            >
+                              {isCurrentUser ? "🌟 Your Rank" : `Rank #${item.rank}`}
+                            </span>
+                            {item.ticketCode && (
+                              <span
+                                style={{
+                                  fontSize: "0.62rem",
+                                  lineHeight: "1.2",
+                                  padding: "1px 6px",
+                                  borderRadius: 4,
+                                  background: "rgba(245, 166, 35, 0.1)",
+                                  border: "1px solid rgba(245, 166, 35, 0.28)",
+                                  color: "rgba(245, 166, 35, 0.95)",
+                                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                                  fontWeight: 700,
+                                  letterSpacing: "0.02em",
+                                  whiteSpace: "nowrap",
+                                  flexShrink: 0,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 3,
+                                }}
+                              >
+                                <span>🎟️</span>
+                                <span>{item.ticketCode}</span>
+                              </span>
+                            )}
                           </div>
                         </div>
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-                          <div className="leaderboard-item__xp" style={isCurrentUser ? { color: "#fff", fontWeight: 900, fontSize: "1rem" } : undefined}>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "center", gap: 1, flexShrink: 0 }}>
+                          <div
+                            style={{
+                              fontSize: "0.88rem",
+                              fontWeight: 900,
+                              color: isCurrentUser ? "var(--gold-light)" : "#fff",
+                              letterSpacing: "-0.01em",
+                              lineHeight: 1.1,
+                            }}
+                          >
                             {item.points} XP
                           </div>
-                          <div className="leaderboard-item__change">{item.change}</div>
+                          <div
+                            className="leaderboard-item__change"
+                            style={{ fontSize: "0.68rem", lineHeight: 1.1 }}
+                          >
+                            {item.change}
+                          </div>
                         </div>
                       </div>
                     );
