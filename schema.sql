@@ -109,6 +109,11 @@ ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS requires_message
 ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS discord_guild_id TEXT;
 ALTER TABLE public.fiesta_event_quests ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT;
 
+-- Update or drop category CHECK constraint to allow 'kol', 'influencer', etc.
+ALTER TABLE public.fiesta_event_quests DROP CONSTRAINT IF EXISTS fiesta_event_quests_category_check;
+ALTER TABLE public.fiesta_event_quests ADD CONSTRAINT fiesta_event_quests_category_check 
+  CHECK (category IN ('onboarding', 'social', 'daily', 'quiz', 'atfx', 'kol', 'influencer'));
+
 -- Quest Verifications table for user proof submissions & admin review
 CREATE TABLE IF NOT EXISTS public.quest_verifications (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
