@@ -20,10 +20,22 @@ type RegistrationPayload = {
 
 export async function POST(request: Request) {
   const ip = getClientIp(request);
-  const rateLimit = checkRateLimit(`register:${ip}`, 10, 60000);
-  if (!rateLimit.allowed) {
+
+  // Rate limit registration requests to a maximum of 2 successful/attempted per IP per 24 hours
+  // to prevent referral farming and multi-account spam.
+  const ipLimit = checkRateLimit(`register_ip_strict:${ip}`, 2, 24 * 60 * 60 * 1000);
+  if (!ipLimit.allowed) {
     return NextResponse.json(
-      { error: `Too many registration attempts. Please wait ${rateLimit.resetInSeconds} seconds before trying again.` },
+      { error: "Maximum registration limit reached for this IP network (Max 2 accounts per IP). Please connect using personal mobile data to register." },
+      { status: 429 }
+    );
+  }
+
+  // Short burst limit: max 5 requests per minute
+  const burstLimit = checkRateLimit(`register_burst:${ip}`, 5, 60000);
+  if (!burstLimit.allowed) {
+    return NextResponse.json(
+      { error: `Too many requests. Please wait ${burstLimit.resetInSeconds} seconds before trying again.` },
       { status: 429 }
     );
   }
@@ -192,35 +204,59 @@ export async function POST(request: Request) {
     }
   }
 
-  // 5. Insert registration record with initial XP bonus
+  // 5. Insert registration record with initial XP bonus (storing registration_ip for anti-abuse)
+  const insertPayload: Record<string, any> = {
+    full_name: fullName,
+    alias_name: finalAliasName,
+    email,
+    phone,
+    organization,
+    password_hash: hashPassword(password),
+    agreed_to_terms: true,
+    agreed_to_data_gathering: true,
+    agreed_at: new Date().toISOString(),
+    total_xp: initialXp,
+    promo_code: finalPromoCode,
+    referred_by_code: finalReferredByCode,
+    registration_ip: ip,
+  };
+
   const { data: newReg, error } = await supabase
     .from("registrations")
-    .insert({
-      full_name: fullName,
-      alias_name: finalAliasName,
-      email,
-      phone,
-      organization,
-      password_hash: hashPassword(password),
-      agreed_to_terms: true,
-      agreed_to_data_gathering: true,
-      agreed_at: new Date().toISOString(),
-      total_xp: initialXp,
-      promo_code: finalPromoCode,
-      referred_by_code: finalReferredByCode,
-    })
+    .insert(insertPayload)
     .select("id")
     .single();
 
   if (error) {
-    const message =
-      error.code === "23505"
-        ? (error.message?.includes("alias")
-            ? "That alias name is already taken. Please choose a different alias."
-            : "That email, phone number, or alias is already registered.")
-        : error.message || "Unable to store registration.";
+    // Fallback if registration_ip column does not exist yet in Supabase
+    if (error.message?.includes("registration_ip")) {
+      delete insertPayload.registration_ip;
+      const { data: retryReg, error: retryError } = await supabase
+        .from("registrations")
+        .insert(insertPayload)
+        .select("id")
+        .single();
 
-    return NextResponse.json({ error: message }, { status: 400 });
+      if (retryError) {
+        const message =
+          retryError.code === "23505"
+            ? (retryError.message?.includes("alias")
+                ? "That alias name is already taken. Please choose a different alias."
+                : "That email, phone number, or alias is already registered.")
+            : retryError.message || "Unable to store registration.";
+        return NextResponse.json({ error: message }, { status: 400 });
+      }
+      (newReg as any) = retryReg;
+    } else {
+      const message =
+        error.code === "23505"
+          ? (error.message?.includes("alias")
+              ? "That alias name is already taken. Please choose a different alias."
+              : "That email, phone number, or alias is already registered.")
+          : error.message || "Unable to store registration.";
+
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
   }
 
   // 6. Record registration completion in quest_completions
@@ -236,38 +272,45 @@ export async function POST(request: Request) {
     console.warn("Could not record quest completion for registration:", compErr);
   }
 
-  // 7. If valid referrer found, award referrer +100 XP and increment referral_count
+  // 7. If valid referrer found, award referrer +100 XP (MAX 5 REFERRALS PER USER)
   if (referrerRecord && referrerRecord.id !== newReg?.id) {
     try {
       const currentRefCount = Number(referrerRecord.referral_count) || 0;
-      const currentXp = Number(referrerRecord.total_xp) || 0;
-      const newRefCount = currentRefCount + 1;
-      const bonusXp = 100;
-      const newTotalXp = currentXp + bonusXp;
+      const MAX_REFERRALS = 5;
 
-      // Update referrer record
-      await supabase
-        .from("registrations")
-        .update({
-          referral_count: newRefCount,
-          total_xp: newTotalXp,
-        })
-        .eq("id", referrerRecord.id);
+      if (currentRefCount < MAX_REFERRALS) {
+        const currentXp = Number(referrerRecord.total_xp) || 0;
+        const newRefCount = currentRefCount + 1;
+        const bonusXp = 100;
+        const newTotalXp = currentXp + bonusXp;
 
-      // Log in quest_verifications for the referrer so it appears in their Quest Logs
-      const inviteeDisplayName = finalAliasName ? `@${finalAliasName}` : fullName;
-      await supabase.from("quest_verifications").insert({
-        quest_id: "referral-quest",
-        quest_title: "Referral Quest: Friend Joined",
-        user_name: referrerRecord.alias_name ? `@${referrerRecord.alias_name}` : referrerRecord.full_name,
-        user_email: referrerRecord.email,
-        xp: bonusXp,
-        proof_url: "Auto-Verified (Friend Registered)",
-        user_message: `Friend registered: ${inviteeDisplayName}`,
-        status: "Approved",
-        approved_by: "System",
-        reviewed_at: new Date().toISOString(),
-      });
+        // Update referrer record
+        await supabase
+          .from("registrations")
+          .update({
+            referral_count: newRefCount,
+            total_xp: newTotalXp,
+          })
+          .eq("id", referrerRecord.id);
+
+        // Log in quest_verifications for the referrer so it appears in their Quest Logs
+        const inviteeDisplayName = finalAliasName ? `@${finalAliasName}` : fullName;
+        await supabase.from("quest_verifications").insert({
+          quest_id: "referral-quest",
+          quest_title: `Referral Quest: Friend Joined (${newRefCount}/${MAX_REFERRALS})`,
+          user_name: referrerRecord.alias_name ? `@${referrerRecord.alias_name}` : referrerRecord.full_name,
+          user_email: referrerRecord.email,
+          xp: bonusXp,
+          proof_url: "Auto-Verified (Friend Registered)",
+          user_message: `Friend registered: ${inviteeDisplayName} (${newRefCount}/${MAX_REFERRALS} referrals claimed)`,
+          status: "Approved",
+          approved_by: "System",
+          reviewed_at: new Date().toISOString(),
+        });
+      } else {
+        // Referrer already reached the max cap of 5 referrals
+        console.log(`[Referral] Referrer ${referrerRecord.email} has already reached the maximum ${MAX_REFERRALS} referrals limit.`);
+      }
     } catch (refErr) {
       console.warn("Could not update referrer XP or logs:", refErr);
     }

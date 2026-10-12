@@ -3621,16 +3621,16 @@ export default function ZealyMobileApp() {
                                               border: "1px solid rgba(255, 255, 255, 0.08)"
                                             }}>
                                               <div>
-                                                <div style={{ fontSize: "0.7rem", color: "var(--text-secondary)" }}>Friends Joined</div>
+                                                <div style={{ fontSize: "0.7rem", color: "var(--text-secondary)" }}>Friends Joined (Max 5)</div>
                                                 <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#fff" }}>
-                                                  {userReferralCount}
+                                                  {Math.min(userReferralCount, 5)} / 5
                                                 </div>
                                               </div>
                                               <div style={{ width: 1, background: "rgba(255, 255, 255, 0.1)" }} />
                                               <div>
                                                 <div style={{ fontSize: "0.7rem", color: "var(--text-secondary)" }}>Referral XP Earned</div>
                                                 <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#fbbf24" }}>
-                                                  +{userReferralCount * 100} XP
+                                                  +{Math.min(userReferralCount, 5) * 100} XP
                                                 </div>
                                               </div>
                                             </div>
