@@ -672,7 +672,8 @@ export default function ZealyMobileApp() {
   }, [ticketEmail, authenticatedUser, qrPass]);
 
   const syncUserData = React.useCallback(async () => {
-    const email = authenticatedUser?.email || ticketEmail || qrPass?.email;
+    // Only sync if the user is genuinely authenticated (not while typing in a login input)
+    const email = authenticatedUser?.email || qrPass?.email;
     if (!email) return;
 
     try {

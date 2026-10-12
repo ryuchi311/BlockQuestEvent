@@ -23,12 +23,20 @@ export async function GET(request: Request) {
 
     const supabase = getSupabase();
 
-    // 1. Fetch user from registrations
+    // 1. Fetch user from registrations using maybeSingle() to avoid 406 error if record is absent
     const { data: user, error: userError } = await supabase
       .from("registrations")
       .select("id, full_name, alias_name, total_xp, checked_in, checked_in_at, promo_code, ticket_code, referral_count")
       .eq("email", email)
-      .single();
+      .maybeSingle();
+
+    if (userError) {
+      return NextResponse.json({ error: userError.message }, { status: 500 });
+    }
+
+    if (!user) {
+      return NextResponse.json({ error: "User registration not found." }, { status: 404 });
+    }
 
     let completions: string[] = [];
     let completedDetails: any[] = [];
