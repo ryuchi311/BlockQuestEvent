@@ -2211,6 +2211,15 @@ a {
   border: 1px solid rgba(14, 165, 233, 0.3);
 }
 
+.category-badge--kol,
+.category-badge--kols,
+.category-badge--influencer,
+.category-badge--influencers {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
 .xp-badge {
   font-size: 0.68rem;
   font-weight: 900;
@@ -3351,6 +3360,14 @@ a {
   background: rgba(14, 165, 233, 0.15);
   color: #7dd3fc;
   border: 1px solid rgba(14, 165, 233, 0.3);
+}
+.admin-category-badge--kol,
+.admin-category-badge--kols,
+.admin-category-badge--influencer,
+.admin-category-badge--influencers {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.35);
 }
 
 .admin-xp-badge {

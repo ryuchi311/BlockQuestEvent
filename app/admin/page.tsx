@@ -30,7 +30,7 @@ interface Quest {
   description: string | null;
   xp: number;
   status: "Live" | "Soon" | "Done" | "Draft";
-  category: "onboarding" | "social" | "daily" | "quiz" | "atfx";
+  category: "onboarding" | "social" | "daily" | "quiz" | "atfx" | "kol" | "influencer" | string;
   action_label: string | null;
   action_url: string | null;
   requires_proof?: boolean;
@@ -111,7 +111,7 @@ const ADMIN_TABS = ["scanner", "attendees", "quests", "milestones", "verificatio
 type AdminTab = (typeof ADMIN_TABS)[number];
 
 const STATUS_OPTIONS: Quest["status"][] = ["Live", "Soon", "Done", "Draft"];
-const CATEGORY_OPTIONS: Quest["category"][] = ["onboarding", "social", "daily", "quiz", "atfx"];
+const CATEGORY_OPTIONS: string[] = ["onboarding", "social", "daily", "quiz", "atfx", "kol"];
 
 const EMPTY_QUEST: Omit<Quest, "created_at" | "updated_at"> = {
   id: "",
@@ -305,6 +305,8 @@ function generateRandomShortId(category = "qst", existingQuests: { id: string }[
     daily: "daily",
     quiz: "quiz",
     atfx: "atfx",
+    kol: "kol",
+    influencer: "kol",
   };
   const prefix = prefixMap[category?.toLowerCase()] || "qst";
   const existingSet = new Set(existingQuests.map((q) => q.id.toLowerCase().trim()));
@@ -3874,6 +3876,9 @@ export default function AdminPage() {
                 <option value="atfx">
                   📈 ATFX ({quests.filter((q) => q.category === "atfx").length} | ⏳ {verifications.filter((v) => v.status === "Pending" && (quests.find((q) => q.id === v.quest_id)?.category || "other") === "atfx").length} pending)
                 </option>
+                <option value="kol">
+                  🎬 KOLs / Influencers ({quests.filter((q) => q.category === "kol" || q.category === "influencer").length} | ⏳ {verifications.filter((v) => v.status === "Pending" && ["kol", "influencer"].includes(quests.find((q) => q.id === v.quest_id)?.category || "other")).length} pending)
+                </option>
               </select>
 
               {/* ④ Verification Mode Filter */}
@@ -4288,6 +4293,9 @@ export default function AdminPage() {
                 </option>
                 <option value="atfx">
                   📈 ATFX ({verifications.filter((v) => (quests.find((q) => q.id === v.quest_id)?.category || "other") === "atfx").length} | ⏳ {verifications.filter((v) => v.status === "Pending" && (quests.find((q) => q.id === v.quest_id)?.category || "other") === "atfx").length} pending)
+                </option>
+                <option value="kol">
+                  🎬 KOLs / Influencers ({verifications.filter((v) => ["kol", "influencer"].includes(quests.find((q) => q.id === v.quest_id)?.category || "other")).length} | ⏳ {verifications.filter((v) => v.status === "Pending" && ["kol", "influencer"].includes(quests.find((q) => q.id === v.quest_id)?.category || "other")).length} pending)
                 </option>
               </select>
 
@@ -7574,15 +7582,15 @@ export default function AdminPage() {
                     </label>
                   </div>
 
-                  <label className="qf-label">
+                    <label className="qf-label">
                     Category
                     <div className="qf-pill-group">
-                      {(["onboarding", "social", "daily", "quiz", "atfx"] as Quest["category"][]).map((c) => (
+                      {(["onboarding", "social", "daily", "quiz", "atfx", "kol"] as string[]).map((c) => (
                         <button key={c} type="button"
-                          onClick={() => setQuestForm((f) => ({ ...f, category: c }))}
+                          onClick={() => setQuestForm((f) => ({ ...f, category: c as any }))}
                           className={`qf-pill${questForm.category === c ? " qf-pill--active" : ""}`}
                         >
-                          {c === "onboarding" ? "🚀" : c === "social" ? "📣" : c === "daily" ? "📅" : c === "atfx" ? "📈" : "❓"} {c === "atfx" ? "ATFX" : c.charAt(0).toUpperCase() + c.slice(1)}
+                          {c === "onboarding" ? "🚀" : c === "social" ? "📣" : c === "daily" ? "📅" : c === "atfx" ? "📈" : c === "kol" ? "🎬" : "❓"} {c === "atfx" ? "ATFX" : c === "kol" ? "KOLs" : c.charAt(0).toUpperCase() + c.slice(1)}
                         </button>
                       ))}
                     </div>
@@ -7900,8 +7908,8 @@ export default function AdminPage() {
                   <div className="quest-preview-card__top">
                     <div className="quest-preview-card__badges">
                       <span className={`quest-preview-badge quest-preview-badge--${questForm.category || "onboarding"}`}>
-                        {questForm.category === "social" ? "📣" : questForm.category === "daily" ? "📅" : questForm.category === "quiz" ? "❓" : questForm.category === "atfx" ? "📈" : "🚀"}
-                        {" "}{(questForm.category || "onboarding").charAt(0).toUpperCase() + (questForm.category || "onboarding").slice(1)}
+                        {questForm.category === "social" ? "📣" : questForm.category === "daily" ? "📅" : questForm.category === "quiz" ? "❓" : questForm.category === "atfx" ? "📈" : questForm.category === "kol" ? "🎬" : "🚀"}
+                        {" "}{questForm.category === "kol" ? "KOLs" : (questForm.category || "onboarding").charAt(0).toUpperCase() + (questForm.category || "onboarding").slice(1)}
                       </span>
                       {questForm.requires_proof && (
                         <span className="quest-preview-badge quest-preview-badge--proof">📷 Proof</span>

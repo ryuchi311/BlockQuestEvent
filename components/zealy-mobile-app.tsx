@@ -12,7 +12,7 @@ interface Quest {
   description: string;
   xp: number;
   status: "Live" | "Soon" | "Locked" | "Done" | "Pending Verification" | "Approved" | "Rejected";
-  category: "onboarding" | "social" | "daily" | "quiz" | "atfx";
+  category: "onboarding" | "social" | "daily" | "quiz" | "atfx" | "kol" | "influencer" | string;
   actionLabel?: string;
   actionUrl?: string;
   requiresProof?: boolean;
