@@ -24,6 +24,7 @@ interface Quest {
   has_passcode?: boolean;
   publish_at?: string;
   expires_at?: string;
+  created_at?: string;
   depends_on_quest_id?: string;
 }
 
@@ -538,6 +539,7 @@ export default function ZealyMobileApp() {
 
   const [newQuestAlert, setNewQuestAlert] = useState<{ count: number; questTitle: string } | null>(null);
   const previousQuestsCountRef = React.useRef<number | null>(null);
+  const previousQuestIdsRef = React.useRef<Set<string>>(new Set());
 
   // Dynamically sync quests from API
   const loadApiQuests = React.useCallback(async () => {
@@ -579,12 +581,22 @@ export default function ZealyMobileApp() {
           });
 
         // Detect if new quests were published by admin
-        if (previousQuestsCountRef.current !== null && mappedQuests.length > previousQuestsCountRef.current) {
-          const diff = mappedQuests.length - previousQuestsCountRef.current;
-          const latestQuest = mappedQuests[mappedQuests.length - 1];
-          setNewQuestAlert({ count: diff, questTitle: latestQuest.title });
+        if (previousQuestsCountRef.current !== null) {
+          const prevIds = previousQuestIdsRef.current;
+          const newlyAdded = mappedQuests.filter((q) => !prevIds.has(q.id));
+          if (newlyAdded.length > 0) {
+            // Pick the quest with the latest creation or publish date
+            const sortedByLatest = [...newlyAdded].sort((a, b) => {
+              const timeA = new Date(a.created_at || a.publish_at || 0).getTime();
+              const timeB = new Date(b.created_at || b.publish_at || 0).getTime();
+              return timeB - timeA;
+            });
+            const latestQuest = sortedByLatest[0];
+            setNewQuestAlert({ count: newlyAdded.length, questTitle: latestQuest.title });
+          }
         }
         previousQuestsCountRef.current = mappedQuests.length;
+        previousQuestIdsRef.current = new Set(mappedQuests.map((q) => q.id));
 
         // Preserve status only if the user is authenticated and has status or active verification
         setQuests((prevQuests) => {
@@ -1583,7 +1595,7 @@ export default function ZealyMobileApp() {
                 background: "linear-gradient(135deg, rgba(245, 166, 35, 0.98) 0%, rgba(224, 133, 11, 0.98) 100%)",
                 border: "1px solid rgba(255, 255, 255, 0.4)",
                 borderRadius: 16,
-                padding: "12px 16px",
+                padding: "10px 14px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -1593,27 +1605,55 @@ export default function ZealyMobileApp() {
                 animation: "slideInDown 0.3s ease-out",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: "1.4rem" }}>🔔</span>
-                <div style={{ textShadow: "0 1px 2px rgba(0,0,0,0.2)" }}>
-                  <div style={{ color: "#100b02", fontWeight: 900, fontSize: "0.86rem", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
+                <span style={{ fontSize: "1.3rem", flexShrink: 0 }}>🔔</span>
+                <div style={{ textShadow: "0 1px 2px rgba(0,0,0,0.2)", minWidth: 0, flex: 1 }}>
+                  <div style={{ color: "#100b02", fontWeight: 900, fontSize: "0.82rem", textTransform: "uppercase", letterSpacing: "0.02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     🎉 New Quest Arrived! ({newQuestAlert.count})
                   </div>
-                  <div style={{ color: "#2d1c03", fontSize: "0.78rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 200 }}>
+                  <div style={{ color: "#2d1c03", fontSize: "0.76rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     "{newQuestAlert.questTitle}"
                   </div>
                 </div>
               </div>
-              <span style={{
-                background: "#100b02",
-                color: "#fbbf24",
-                padding: "4px 10px",
-                borderRadius: 10,
-                fontSize: "0.74rem",
-                fontWeight: 800
-              }}>
-                View →
-              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                <span style={{
+                  background: "#100b02",
+                  color: "#fbbf24",
+                  padding: "5px 10px",
+                  borderRadius: 10,
+                  fontSize: "0.74rem",
+                  fontWeight: 800,
+                  whiteSpace: "nowrap"
+                }}>
+                  View →
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setNewQuestAlert(null);
+                  }}
+                  style={{
+                    background: "rgba(16, 11, 2, 0.2)",
+                    border: "none",
+                    borderRadius: "50%",
+                    width: 22,
+                    height: 22,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#100b02",
+                    fontSize: "0.75rem",
+                    fontWeight: 900,
+                    cursor: "pointer",
+                    padding: 0
+                  }}
+                  aria-label="Dismiss alert"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
           )}
 
