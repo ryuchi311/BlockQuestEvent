@@ -344,11 +344,95 @@ export default function ZealyMobileApp() {
   const [aliasModalError, setAliasModalError] = useState("");
   const [aliasSaving, setAliasSaving] = useState(false);
 
-  // Daily Wheel of Luck State
+  // Daily Wheel of Luck State & Audio
   const [wheelSpinning, setWheelSpinning] = useState(false);
   const [wheelRotation, setWheelRotation] = useState(0);
   const [wheelPrizeResult, setWheelPrizeResult] = useState<{ xp: number; label: string; color: string; tier: string } | null>(null);
   const [wheelClaimedToday, setWheelClaimedToday] = useState(false);
+  const wheelAudioCtxRef = React.useRef<AudioContext | null>(null);
+
+  // Play realistic mechanical flapper click/tick during wheel spin
+  const playWheelTick = React.useCallback((volume = 0.25, freq = 600) => {
+    if (typeof window === "undefined") return;
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!wheelAudioCtxRef.current) {
+        wheelAudioCtxRef.current = new AudioCtx();
+      }
+      const ctx = wheelAudioCtxRef.current;
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(freq, t);
+      osc.frequency.exponentialRampToValueAtTime(140, t + 0.035);
+
+      gain.gain.setValueAtTime(volume, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.036);
+    } catch {}
+  }, []);
+
+  // Play celebration fanfare when winning XP or playful bonk for Bokya
+  const playWheelFinishSound = React.useCallback((isBokya: boolean) => {
+    if (typeof window === "undefined") return;
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!wheelAudioCtxRef.current) {
+        wheelAudioCtxRef.current = new AudioCtx();
+      }
+      const ctx = wheelAudioCtxRef.current;
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
+      const t = ctx.currentTime;
+
+      if (isBokya) {
+        // Playful sad trumpet / slide for Bokya (0 XP)
+        const notes = [330, 311, 293, 277];
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const startT = t + idx * 0.16;
+          osc.type = "sawtooth";
+          osc.frequency.setValueAtTime(freq, startT);
+          osc.frequency.linearRampToValueAtTime(freq - 15, startT + 0.18);
+          gain.gain.setValueAtTime(0.18, startT);
+          gain.gain.exponentialRampToValueAtTime(0.001, startT + 0.2);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(startT);
+          osc.stop(startT + 0.22);
+        });
+      } else {
+        // Upbeat victory fiesta chime
+        const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const startT = t + idx * 0.12;
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(freq, startT);
+          gain.gain.setValueAtTime(0.25, startT);
+          gain.gain.exponentialRampToValueAtTime(0.001, startT + 0.45);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(startT);
+          osc.stop(startT + 0.48);
+        });
+      }
+    } catch {}
+  }, []);
   const [claimedQuestIds, setClaimedQuestIds] = useState<string[]>(() => {
     if (typeof window !== "undefined") {
       const savedUser = localStorage.getItem("bq_user");
@@ -1187,19 +1271,37 @@ export default function ZealyMobileApp() {
       // Slices are drawn starting from -90° (top center)
       const segCenterAngle = selectedSegmentIndex * segmentAngle + segmentAngle / 2;
       const targetAngle = (360 - segCenterAngle) % 360;
-      const totalSpins = 5 + Math.floor(Math.random() * 3); // 5 to 7 full spins
+      // 9 to 11 full rotations for an exciting, prolonged suspenseful spin
+      const totalSpins = 9 + Math.floor(Math.random() * 3);
       const currentModulo = wheelRotation % 360;
       const diff = (targetAngle - currentModulo + 360) % 360;
       const finalDegree = wheelRotation + (totalSpins * 360) + diff;
 
-      // 2. Animate wheel rotation smoothly to land directly on the server's prize
+      // 2. Animate wheel rotation with 8.5s realistic deceleration
       setWheelRotation(finalDegree);
 
-      // 3. Reveal prize and update state after rotation animation completes
+      // 3. Audio: realistic mechanical flapper clicking sound that decelerates over time
+      const totalDurationMs = 8500;
+      const totalTicks = 85; // clicks throughout the spin
+      for (let i = 0; i < totalTicks; i++) {
+        // Power curve (t^2.6) starts rapid (burst of clicks) and gradually spaces out as wheel slows down
+        const progress = i / totalTicks;
+        const tickTime = Math.pow(progress, 2.6) * totalDurationMs;
+        const clickPitch = 640 - progress * 140; // slightly deeper click as speed slows
+        const clickVol = Math.max(0.08, 0.28 * (1 - progress * 0.4));
+        setTimeout(() => {
+          playWheelTick(clickVol, clickPitch);
+        }, tickTime);
+      }
+
+      // 4. Reveal prize and play victory/bokya sound after rotation animation completes
       setTimeout(() => {
         setWheelPrizeResult(winningSegment);
         setWheelSpinning(false);
         setClaiming(false);
+
+        // Play outcome sound (fanfare or bokya slide)
+        playWheelFinishSound(winningSegment.xp === 0);
 
         // Mark local storage & component state as claimed today
         if (typeof window !== "undefined") {
@@ -1233,7 +1335,7 @@ export default function ZealyMobileApp() {
         fetchLeaderboard();
         syncUserData();
         fetchUserVerifications();
-      }, 4500);
+      }, totalDurationMs + 100);
     } catch (err: any) {
       setWheelSpinning(false);
       setClaiming(false);
@@ -3852,7 +3954,7 @@ export default function ZealyMobileApp() {
                                       overflow: "hidden",
                                       transform: `rotate(${wheelRotation}deg)`,
                                       transition: wheelSpinning
-                                        ? "transform 4.5s cubic-bezier(0.12, 0.88, 0.22, 1)"
+                                        ? "transform 8.5s cubic-bezier(0.15, 0.95, 0.2, 1)"
                                         : "transform 0.4s ease-out",
                                       zIndex: 10
                                     }}>
