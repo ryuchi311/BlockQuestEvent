@@ -128,8 +128,8 @@ const initialQuests: Quest[] = [
   },
   {
     id: "daily-claim",
-    title: "Daily Wheel of Luck",
-    description: "Spin the lucky wheel once daily to earn mystery bonus XP! Test your luck: high tiers are ultra rare!",
+    title: "Peryahan Color Wheel of Luck",
+    description: "Paikutin ang roleta sa Peryahan once daily! Subukan ang iyong swerte: baka maka-Jackpot o baka ma-Bokya! 🎪🎲",
     xp: 50,
     status: "Live",
     category: "daily"
@@ -140,17 +140,22 @@ export interface WheelSegment {
   xp: number;
   label: string;
   color: string;
+  textColor?: string;
   weight: number; // probability weight
-  tier: "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Jackpot";
+  tier: "Bokya" | "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Jackpot";
 }
 
 export const WHEEL_SEGMENTS: WheelSegment[] = [
-  { xp: 5, label: "+5 XP", color: "#64748b", weight: 45, tier: "Common" },
-  { xp: 10, label: "+10 XP", color: "#3b82f6", weight: 30, tier: "Uncommon" },
-  { xp: 20, label: "+20 XP", color: "#10b981", weight: 15, tier: "Rare" },
-  { xp: 30, label: "+30 XP", color: "#8b5cf6", weight: 7, tier: "Epic" },
-  { xp: 50, label: "+50 XP", color: "#f59e0b", weight: 2.5, tier: "Legendary" },
-  { xp: 100, label: "+100 XP", color: "#ec4899", weight: 0.5, tier: "Jackpot" },
+  { xp: 0, label: "BOKYA", color: "#16a34a", textColor: "#ffffff", weight: 25, tier: "Bokya" },
+  { xp: 5, label: "5", color: "#eab308", textColor: "#1e1b4b", weight: 22, tier: "Common" },
+  { xp: 10, label: "10", color: "#dc2626", textColor: "#ffffff", weight: 18, tier: "Uncommon" },
+  { xp: 20, label: "20", color: "#ea580c", textColor: "#ffffff", weight: 12, tier: "Rare" },
+  { xp: 5, label: "5", color: "#0284c7", textColor: "#ffffff", weight: 10, tier: "Common" },
+  { xp: 0, label: "BOKYA", color: "#dc2626", textColor: "#ffffff", weight: 5, tier: "Bokya" },
+  { xp: 30, label: "30", color: "#16a34a", textColor: "#ffffff", weight: 4.5, tier: "Epic" },
+  { xp: 50, label: "50", color: "#ea580c", textColor: "#ffffff", weight: 2, tier: "Legendary" },
+  { xp: 10, label: "10", color: "#0284c7", textColor: "#ffffff", weight: 1, tier: "Uncommon" },
+  { xp: 100, label: "100", color: "#eab308", textColor: "#1e1b4b", weight: 0.5, tier: "Jackpot" },
 ];
 
 const initialLeaderboard: { rank: number; name: string; points: number; change: string; accent?: string }[] = [];
@@ -1163,13 +1168,16 @@ export default function ZealyMobileApp() {
     }
 
     const winningSegment = WHEEL_SEGMENTS[selectedSegmentIndex];
-    const segmentAngle = 360 / WHEEL_SEGMENTS.length; // 60 deg each
-    // Target pointer is at top (270 deg or 0 deg with pointer pointing down from top)
-    // If pointer is at top center: index 0 center is at angle 0°..60° -> 30°
-    // Spin formula: extra full revolutions (min 5 = 1800 deg)
-    const targetAngle = 360 - (selectedSegmentIndex * segmentAngle + segmentAngle / 2);
+    const segmentAngle = 360 / WHEEL_SEGMENTS.length; // 36 deg each (10 segments)
+    // The diamond flapper stopper is at top center (0° / 360°)
+    // Slices are drawn starting from -90° (top center)
+    // To align segment `selectedSegmentIndex` center with top pointer:
+    const segCenterAngle = selectedSegmentIndex * segmentAngle + segmentAngle / 2;
+    const targetAngle = (360 - segCenterAngle) % 360;
     const totalSpins = 5 + Math.floor(Math.random() * 3); // 5 to 7 full spins
-    const finalDegree = wheelRotation + (totalSpins * 360) + targetAngle;
+    const currentModulo = wheelRotation % 360;
+    const diff = (targetAngle - currentModulo + 360) % 360;
+    const finalDegree = wheelRotation + (totalSpins * 360) + diff;
 
     setWheelRotation(finalDegree);
 
@@ -1205,12 +1213,21 @@ export default function ZealyMobileApp() {
           prevQuests.map((q) => (q.id === "daily-claim" ? { ...q, status: "Done", completedAt: new Date().toISOString() } : q))
         );
 
-        showNotice(
-          `Congratulations! You hit ${winningSegment.label} (${winningSegment.tier} Tier) from the Daily Wheel of Luck!`,
-          "success",
-          "🎉 Daily Spin Reward Claimed!",
-          winningSegment.tier === "Jackpot" ? "🌟" : winningSegment.tier === "Legendary" ? "👑" : "🎯"
-        );
+        if (winningSegment.xp === 0) {
+          showNotice(
+            "Aray kupo! Bokya! Better luck next time! Bawi na lang bukas sa Peryahan!",
+            "info",
+            "🎪 Bokya! (0 XP)",
+            "🃏"
+          );
+        } else {
+          showNotice(
+            `Panalo! You hit ${winningSegment.label} (${winningSegment.tier} Tier) from the Peryahan Wheel!`,
+            "success",
+            "🎉 Peryahan Reward Claimed!",
+            winningSegment.tier === "Jackpot" ? "🌟" : winningSegment.tier === "Legendary" ? "👑" : "🎯"
+          );
+        }
       } catch (err: any) {
         showNotice(err.message || "Failed to claim spin XP reward.", "error", "Daily Spin Notice", "⚠️");
       } finally {
@@ -2053,10 +2070,10 @@ export default function ZealyMobileApp() {
                                   </span>
                                 )}
                                 <span className={`category-badge category-badge--${q.category}`}>
-                                  {q.id === "daily-claim" ? "🎡 Daily Spin" : q.category}
+                                  {q.id === "daily-claim" ? "🎪 Peryahan Wheel" : q.category}
                                 </span>
                                 <span className="xp-badge">
-                                  {q.id === "daily-claim" ? "🎲 5-100 XP" : `+${q.xp} XP`}
+                                  {q.id === "daily-claim" ? "🎲 0-100 XP" : `+${q.xp} XP`}
                                 </span>
                                 {q.passcode && (
                                   <span style={{ fontSize: "0.64rem", padding: "2px 6px", borderRadius: "6px", background: "rgba(245, 158, 11, 0.2)", color: "#fbbf24", border: "1px solid rgba(245, 158, 11, 0.3)" }}>
@@ -3203,7 +3220,7 @@ export default function ZealyMobileApp() {
                     </button>
                   </div>
                   <div className="modal-xp-reward">
-                    {liveQuest.id === "daily-claim" ? "🎲 Mystery Wheel Reward: 5 ~ 100 XP" : liveQuest.id === "referral-quest" ? "+100 XP per Friend (Max 5)" : `Reward: ${liveQuest.xp} XP`}
+                    {liveQuest.id === "daily-claim" ? "🎪 Peryahan Wheel: 0 ~ 100 XP" : liveQuest.id === "referral-quest" ? "+100 XP per Friend (Max 5)" : `Reward: ${liveQuest.xp} XP`}
                   </div>
                   <p className="modal-body" style={{ whiteSpace: "pre-wrap" }}>{liveQuest.description}</p>
                   {(() => {
@@ -3725,242 +3742,466 @@ export default function ZealyMobileApp() {
                                 </button>
                               </div>
                             ) : selectedQuest.id === "daily-claim" ? (
-                              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 14, alignItems: "center" }}>
-                                <div style={{
-                                  width: "100%",
-                                  background: "linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.1) 100%)",
-                                  border: "1px solid rgba(139, 92, 246, 0.35)",
-                                  padding: "12px 14px",
-                                  borderRadius: 14,
-                                  textAlign: "center"
-                                }}>
-                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                                    <span style={{ fontSize: "1.2rem" }}>🎡</span>
-                                    <span style={{ color: "#c084fc", fontWeight: 800, fontSize: "0.95rem" }}>
-                                      Daily Wheel of Luck
-                                    </span>
-                                    <span style={{
-                                      fontSize: "0.68rem",
-                                      padding: "2px 7px",
-                                      borderRadius: "6px",
-                                      background: "rgba(236, 72, 153, 0.25)",
-                                      color: "#f472b6",
-                                      fontWeight: 800,
-                                      border: "1px solid rgba(236, 72, 153, 0.4)"
-                                    }}>
-                                      1 Spin / Day
-                                    </span>
-                                  </div>
-                                  <div style={{ color: "rgba(255, 255, 255, 0.78)", fontSize: "0.76rem", marginTop: 4, lineHeight: 1.35 }}>
-                                    Points are random and higher amounts are very rare! Spin once every day to rack up your score on the leaderboard.
-                                  </div>
-                                </div>
-
+                              <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 14, alignItems: "center", width: "100%" }}>
+                                {/* Mexican Fiesta Arch Container */}
                                 <div style={{
                                   position: "relative",
-                                  width: 250,
-                                  height: 250,
-                                  margin: "10px 0",
+                                  width: "100%",
+                                  maxWidth: 360,
                                   display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center"
+                                  flexDirection: "column",
+                                  alignItems: "center"
                                 }}>
+                                  {/* Fiesta Golden Arch Frame with Navy Outline */}
                                   <div style={{
-                                    position: "absolute",
-                                    top: -8,
-                                    left: "50%",
-                                    transform: "translateX(-50%)",
-                                    width: 0,
-                                    height: 0,
-                                    borderLeft: "14px solid transparent",
-                                    borderRight: "14px solid transparent",
-                                    borderTop: "24px solid #fbbf24",
-                                    filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.7))",
-                                    zIndex: 20
-                                  }} />
-
-                                  <div style={{
-                                    width: "100%",
-                                    height: "100%",
-                                    borderRadius: "50%",
-                                    boxShadow: "0 0 25px rgba(139, 92, 246, 0.4), inset 0 0 15px rgba(0,0,0,0.8)",
-                                    border: "4px solid #fbbf24",
-                                    overflow: "hidden",
-                                    transform: `rotate(${wheelRotation}deg)`,
-                                    transition: wheelSpinning ? "transform 4.2s cubic-bezier(0.15, 0.85, 0.2, 1)" : "none"
-                                  }}>
-                                    <svg viewBox="0 0 240 240" width="100%" height="100%">
-                                      <defs>
-                                        <filter id="wheelShadow" x="-20%" y="-20%" width="140%" height="140%">
-                                          <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#000" floodOpacity="0.8" />
-                                        </filter>
-                                      </defs>
-                                      {WHEEL_SEGMENTS.map((seg, idx) => {
-                                        const anglePerSeg = 360 / WHEEL_SEGMENTS.length;
-                                        const startAngle = idx * anglePerSeg - 90;
-                                        const endAngle = (idx + 1) * anglePerSeg - 90;
-                                        const startRad = (startAngle * Math.PI) / 180;
-                                        const endRad = (endAngle * Math.PI) / 180;
-                                        const x1 = 120 + 120 * Math.cos(startRad);
-                                        const y1 = 120 + 120 * Math.sin(startRad);
-                                        const x2 = 120 + 120 * Math.cos(endRad);
-                                        const y2 = 120 + 120 * Math.sin(endRad);
-                                        const pathData = `M 120 120 L ${x1} ${y1} A 120 120 0 0 1 ${x2} ${y2} Z`;
-
-                                        const midAngle = startAngle + anglePerSeg / 2;
-                                        const textRad = (midAngle * Math.PI) / 180;
-                                        const textX = 120 + 74 * Math.cos(textRad);
-                                        const textY = 120 + 74 * Math.sin(textRad);
-
-                                        return (
-                                          <g key={idx}>
-                                            <path
-                                              d={pathData}
-                                              fill={seg.color}
-                                              stroke="#1e1b4b"
-                                              strokeWidth="2.5"
-                                            />
-                                            <text
-                                              x={textX}
-                                              y={textY}
-                                              fill="#ffffff"
-                                              fontSize="12.5"
-                                              fontWeight="900"
-                                              textAnchor="middle"
-                                              dominantBaseline="central"
-                                              transform={`rotate(${midAngle + 90}, ${textX}, ${textY})`}
-                                              filter="url(#wheelShadow)"
-                                            >
-                                              {seg.label}
-                                            </text>
-                                          </g>
-                                        );
-                                      })}
-                                    </svg>
-                                  </div>
-
-                                  <div style={{
-                                    position: "absolute",
-                                    width: 48,
-                                    height: 48,
-                                    borderRadius: "50%",
-                                    background: "radial-gradient(circle, #fbbf24 30%, #b45309 100%)",
-                                    border: "3px solid #fff",
-                                    boxShadow: "0 0 12px rgba(0,0,0,0.8)",
+                                    position: "relative",
+                                    width: 330,
+                                    height: 330,
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    fontSize: "1.2rem",
-                                    zIndex: 10,
-                                    pointerEvents: "none"
+                                    filter: "drop-shadow(0 10px 25px rgba(0,0,0,0.6))"
                                   }}>
-                                    ⭐
+                                    {/* Outer Deep Navy Arch Ring */}
+                                    <div style={{
+                                      position: "absolute",
+                                      width: 326,
+                                      height: 326,
+                                      borderRadius: "50%",
+                                      background: "#0c1a3b",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center"
+                                    }}>
+                                      {/* Bold Golden Yellow Rim */}
+                                      <div style={{
+                                        position: "absolute",
+                                        width: 308,
+                                        height: 308,
+                                        borderRadius: "50%",
+                                        background: "linear-gradient(135deg, #facc15 0%, #eab308 100%)",
+                                        border: "4px solid #0c1a3b",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center"
+                                      }}>
+                                        {/* Inner Red Accent Ring */}
+                                        <div style={{
+                                          position: "absolute",
+                                          width: 284,
+                                          height: 284,
+                                          borderRadius: "50%",
+                                          background: "#dc2626",
+                                          border: "3px solid #0c1a3b",
+                                          overflow: "hidden"
+                                        }} />
+                                      </div>
+                                    </div>
+
+                                    {/* Top Fiery Diamond Pointer Pin (Pointing downward to top slice) */}
+                                    <div style={{
+                                      position: "absolute",
+                                      top: -12,
+                                      left: "50%",
+                                      transform: "translateX(-50%)",
+                                      zIndex: 40,
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      alignItems: "center",
+                                      filter: "drop-shadow(0 5px 8px rgba(0,0,0,0.7))"
+                                    }}>
+                                      {/* Diamond Gem */}
+                                      <div style={{
+                                        width: 30,
+                                        height: 30,
+                                        background: "linear-gradient(135deg, #fde047 0%, #ea580c 60%, #b91c1c 100%)",
+                                        border: "3px solid #0c1a3b",
+                                        borderRadius: 6,
+                                        transform: "rotate(45deg)",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center"
+                                      }}>
+                                        <div style={{
+                                          width: 12,
+                                          height: 12,
+                                          background: "#ffffff",
+                                          borderRadius: 3,
+                                          opacity: 0.9
+                                        }} />
+                                      </div>
+                                      {/* Pointer Arrow Tip */}
+                                      <div style={{
+                                        width: 0,
+                                        height: 0,
+                                        borderLeft: "11px solid transparent",
+                                        borderRight: "11px solid transparent",
+                                        borderTop: "16px solid #b91c1c",
+                                        marginTop: -7
+                                      }} />
+                                    </div>
+
+                                    {/* Rotating Wheel Disc with Fiesta Graphics */}
+                                    <div style={{
+                                      position: "relative",
+                                      width: 278,
+                                      height: 278,
+                                      borderRadius: "50%",
+                                      overflow: "hidden",
+                                      transform: `rotate(${wheelRotation}deg)`,
+                                      transition: wheelSpinning
+                                        ? "transform 4.5s cubic-bezier(0.12, 0.88, 0.22, 1)"
+                                        : "transform 0.4s ease-out",
+                                      zIndex: 10
+                                    }}>
+                                      <svg viewBox="0 0 240 240" width="100%" height="100%">
+                                        <defs>
+                                          <filter id="fiestaTextDrop" x="-30%" y="-30%" width="160%" height="160%">
+                                            <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" floodColor="#000000" floodOpacity="0.9" />
+                                          </filter>
+                                        </defs>
+
+                                        {WHEEL_SEGMENTS.map((seg, idx) => {
+                                          const anglePerSeg = 360 / WHEEL_SEGMENTS.length;
+                                          const startAngle = idx * anglePerSeg - 90;
+                                          const endAngle = (idx + 1) * anglePerSeg - 90;
+                                          const startRad = (startAngle * Math.PI) / 180;
+                                          const endRad = (endAngle * Math.PI) / 180;
+                                          const x1 = 120 + 120 * Math.cos(startRad);
+                                          const y1 = 120 + 120 * Math.sin(startRad);
+                                          const x2 = 120 + 120 * Math.cos(endRad);
+                                          const y2 = 120 + 120 * Math.sin(endRad);
+                                          const pathData = `M 120 120 L ${x1} ${y1} A 120 120 0 0 1 ${x2} ${y2} Z`;
+
+                                          const midAngle = startAngle + anglePerSeg / 2;
+                                          const textRad = (midAngle * Math.PI) / 180;
+
+                                          // Outer position for chevron arrow / dot ornament
+                                          const arrowX = 120 + 96 * Math.cos(textRad);
+                                          const arrowY = 120 + 96 * Math.sin(textRad);
+
+                                          // Mid position for text or calavera icon
+                                          const textX = 120 + 72 * Math.cos(textRad);
+                                          const textY = 120 + 72 * Math.sin(textRad);
+
+                                          // Inner peg circle on boundary line
+                                          const pegX = 120 + 38 * Math.cos(startRad);
+                                          const pegY = 120 + 38 * Math.sin(startRad);
+
+                                          const isBokya = seg.tier === "Bokya";
+
+                                          return (
+                                            <g key={idx}>
+                                              {/* Slice background */}
+                                              <path
+                                                d={pathData}
+                                                fill={seg.color}
+                                                stroke="#0c1a3b"
+                                                strokeWidth="3"
+                                              />
+
+                                              {/* Outer Chevron Flag / Arrow Motif like Reference */}
+                                              <g transform={`rotate(${midAngle + 90}, ${arrowX}, ${arrowY})`}>
+                                                <polyline
+                                                  points={`${arrowX - 8},${arrowY - 4} ${arrowX},${arrowY + 4} ${arrowX + 8},${arrowY - 4}`}
+                                                  fill="none"
+                                                  stroke={isBokya ? "#fde047" : "#ffffff"}
+                                                  strokeWidth="2.5"
+                                                  strokeLinecap="round"
+                                                  strokeLinejoin="round"
+                                                />
+                                                <circle
+                                                  cx={arrowX}
+                                                  cy={arrowY - 7}
+                                                  r="2.5"
+                                                  fill={isBokya ? "#fde047" : "#ffffff"}
+                                                />
+                                              </g>
+
+                                              {/* Slice Content: Calavera Skull + sharp Bokya label for Bokya, razor-sharp vertical radial text for XP */}
+                                              {isBokya ? (
+                                                <g transform={`rotate(${midAngle + 90}, ${textX}, ${textY})`}>
+                                                  {/* Calavera Sugar Skull Graphic with sharp borders */}
+                                                  <circle cx={textX} cy={textY - 3} r="13" fill="#facc15" stroke="#0c1a3b" strokeWidth="2.5" />
+                                                  {/* Skull eyes */}
+                                                  <circle cx={textX - 4.5} cy={textY - 5} r="2.8" fill="#dc2626" />
+                                                  <circle cx={textX + 4.5} cy={textY - 5} r="2.8" fill="#dc2626" />
+                                                  {/* Nose */}
+                                                  <polygon points={`${textX},${textY - 2} ${textX - 2},${textY + 1} ${textX + 2},${textY + 1}`} fill="#0c1a3b" />
+                                                  {/* Teeth */}
+                                                  <rect x={textX - 5.5} cy={textY + 3} y={textY + 3} width="3" height="3" rx="0.5" fill="#ffffff" stroke="#0c1a3b" strokeWidth="1" />
+                                                  <rect x={textX - 1.5} cy={textY + 3} y={textY + 3} width="3" height="3" rx="0.5" fill="#ffffff" stroke="#0c1a3b" strokeWidth="1" />
+                                                  <rect x={textX + 2.5} cy={textY + 3} y={textY + 3} width="3" height="3" rx="0.5" fill="#ffffff" stroke="#0c1a3b" strokeWidth="1" />
+                                                  {/* Ultra-sharp BOKYA text badge below skull */}
+                                                  <text
+                                                    x={textX}
+                                                    y={textY + 14}
+                                                    fill="#ffffff"
+                                                    stroke="#0c1a3b"
+                                                    strokeWidth="3"
+                                                    strokeLinejoin="round"
+                                                    paintOrder="stroke fill"
+                                                    fontSize="8.5"
+                                                    fontWeight="900"
+                                                    fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Impact, sans-serif"
+                                                    letterSpacing="0.08em"
+                                                    textAnchor="middle"
+                                                    dominantBaseline="central"
+                                                  >
+                                                    BOKYA
+                                                  </text>
+                                                </g>
+                                              ) : (
+                                                <g transform={`rotate(${midAngle + 90}, ${textX}, ${textY})`}>
+                                                  {/* Crisp, ultra-sharp text with heavy dark outline for maximum legibility */}
+                                                  <text
+                                                    x={textX}
+                                                    y={textY}
+                                                    fill="#ffffff"
+                                                    stroke="#0c1a3b"
+                                                    strokeWidth="3.5"
+                                                    strokeLinejoin="round"
+                                                    paintOrder="stroke fill"
+                                                    fontSize="15.5"
+                                                    fontWeight="900"
+                                                    fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Impact, Arial, sans-serif"
+                                                    letterSpacing="0.04em"
+                                                    textAnchor="middle"
+                                                    dominantBaseline="central"
+                                                  >
+                                                    {seg.label}
+                                                  </text>
+                                                </g>
+                                              )}
+
+                                              {/* Inner golden divider rivet */}
+                                              <circle cx={pegX} cy={pegY} r="3" fill="#fef08a" stroke="#0c1a3b" strokeWidth="1.5" />
+                                            </g>
+                                          );
+                                        })}
+                                      </svg>
+                                    </div>
+
+                                    {/* Center Hexagonal Heart Badge (from reference image) */}
+                                    <div style={{
+                                      position: "absolute",
+                                      width: 62,
+                                      height: 62,
+                                      zIndex: 30,
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.5))",
+                                      pointerEvents: "none"
+                                    }}>
+                                      {/* Outer Blue Hex/Circle Frame */}
+                                      <div style={{
+                                        position: "absolute",
+                                        width: 62,
+                                        height: 62,
+                                        borderRadius: "50%",
+                                        background: "#0284c7",
+                                        border: "4px solid #0c1a3b",
+                                        boxShadow: "0 0 10px rgba(2, 132, 199, 0.6)"
+                                      }} />
+
+                                      {/* Golden Hexagon with Red Heart */}
+                                      <div style={{
+                                        position: "relative",
+                                        width: 44,
+                                        height: 44,
+                                        background: "linear-gradient(135deg, #fef08a 0%, #eab308 100%)",
+                                        border: "3px solid #0c1a3b",
+                                        borderRadius: 12,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center"
+                                      }}>
+                                        <svg
+                                          width="20"
+                                          height="20"
+                                          viewBox="0 0 24 24"
+                                          fill="#dc2626"
+                                          style={{
+                                            filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.3))",
+                                            transform: wheelSpinning ? "scale(1.25)" : "scale(1)",
+                                            transition: "transform 0.3s ease"
+                                          }}
+                                        >
+                                          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                                        </svg>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Bottom Fiesta Arch Stand Ribbon (Matching Reference Bottom Bar) */}
+                                  <div style={{
+                                    position: "relative",
+                                    width: "100%",
+                                    marginTop: -38,
+                                    zIndex: 25,
+                                    background: "#0284c7",
+                                    border: "4px solid #0c1a3b",
+                                    borderRadius: 22,
+                                    padding: "10px 14px",
+                                    boxShadow: "0 10px 25px rgba(0,0,0,0.55)",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                    gap: 8
+                                  }}>
+                                    {/* Colorful Aztec Triangle Bunting Garland */}
+                                    <div style={{
+                                      width: "100%",
+                                      display: "flex",
+                                      justifyContent: "space-between",
+                                      alignItems: "center",
+                                      padding: "0 8px"
+                                    }}>
+                                      {/* Left Flower Rosette */}
+                                      <div style={{
+                                        width: 24,
+                                        height: 24,
+                                        borderRadius: "50%",
+                                        background: "#dc2626",
+                                        border: "2px solid #ffffff",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontSize: "0.75rem",
+                                        color: "#ffffff"
+                                      }}>
+                                        ✿
+                                      </div>
+
+                                      {/* Festive Geometric Zigzag Pennants */}
+                                      <div style={{ display: "flex", gap: 6 }}>
+                                        {["#facc15", "#16a34a", "#dc2626", "#facc15", "#16a34a", "#dc2626"].map((c, i) => (
+                                          <div
+                                            key={i}
+                                            style={{
+                                              width: 0,
+                                              height: 0,
+                                              borderLeft: "6px solid transparent",
+                                              borderRight: "6px solid transparent",
+                                              borderTop: `10px solid ${c}`
+                                            }}
+                                          />
+                                        ))}
+                                      </div>
+
+                                      {/* Right Flower Rosette */}
+                                      <div style={{
+                                        width: 24,
+                                        height: 24,
+                                        borderRadius: "50%",
+                                        background: "#dc2626",
+                                        border: "2px solid #ffffff",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontSize: "0.75rem",
+                                        color: "#ffffff"
+                                      }}>
+                                        ✿
+                                      </div>
+                                    </div>
+
+                                    {/* Action Button: Pill-Shaped Yellow Spin Button (Exact Reference Match) */}
+                                    {wheelClaimedToday ? (
+                                      <div style={{ width: "100%", textAlign: "center" }}>
+                                        <div style={{
+                                          background: "rgba(0,0,0,0.35)",
+                                          border: "2px solid rgba(250, 204, 21, 0.4)",
+                                          borderRadius: 14,
+                                          padding: "8px 12px",
+                                          marginBottom: 6
+                                        }}>
+                                          <div style={{ color: "#facc15", fontWeight: 800, fontSize: "0.85rem" }}>
+                                            ✓ Daily Spin Completed
+                                          </div>
+                                          <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "0.72rem" }}>
+                                            Next free spin unlocks tomorrow at 00:00 UTC!
+                                          </div>
+                                        </div>
+                                        <button
+                                          disabled
+                                          style={{
+                                            width: "100%",
+                                            padding: "10px",
+                                            borderRadius: 20,
+                                            background: "rgba(255,255,255,0.1)",
+                                            color: "rgba(255,255,255,0.4)",
+                                            border: "2px solid rgba(255,255,255,0.2)",
+                                            fontSize: "0.85rem",
+                                            fontWeight: 800,
+                                            cursor: "not-allowed"
+                                          }}
+                                        >
+                                          🔒 Come Back Tomorrow
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        onClick={handleSpinDailyWheel}
+                                        disabled={wheelSpinning || claiming}
+                                        style={{
+                                          width: "90%",
+                                          padding: "12px 18px",
+                                          borderRadius: 25,
+                                          background: wheelSpinning
+                                            ? "#ca8a04"
+                                            : "linear-gradient(180deg, #fef08a 0%, #facc15 60%, #eab308 100%)",
+                                          color: "#0c1a3b",
+                                          border: "3.5px solid #0c1a3b",
+                                          fontWeight: 900,
+                                          fontSize: "1.05rem",
+                                          letterSpacing: "0.04em",
+                                          cursor: wheelSpinning ? "not-allowed" : "pointer",
+                                          boxShadow: "0 4px 14px rgba(0,0,0,0.45), inset 0 2px 0 rgba(255,255,255,0.8)",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          gap: 8,
+                                          transition: "transform 0.15s ease"
+                                        }}
+                                      >
+                                        <span>{wheelSpinning ? "SPINNING IN PROGRESS..." : "SPINNING IN 3.. 🎯"}</span>
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
 
+                                {/* Prize / Result Banner */}
                                 {wheelPrizeResult && (
                                   <div style={{
                                     width: "100%",
-                                    padding: "12px",
-                                    borderRadius: 12,
-                                    background: "rgba(16, 185, 129, 0.15)",
-                                    border: "1px solid rgba(16, 185, 129, 0.4)",
-                                    textAlign: "center"
+                                    padding: "14px",
+                                    borderRadius: 16,
+                                    background: wheelPrizeResult.xp === 0
+                                      ? "linear-gradient(135deg, rgba(220, 38, 38, 0.25) 0%, rgba(12, 26, 59, 0.95) 100%)"
+                                      : "linear-gradient(135deg, rgba(234, 179, 8, 0.25) 0%, rgba(12, 26, 59, 0.95) 100%)",
+                                    border: wheelPrizeResult.xp === 0 ? "2px solid #dc2626" : "2px solid #facc15",
+                                    textAlign: "center",
+                                    boxShadow: "0 6px 20px rgba(0,0,0,0.45)"
                                   }}>
-                                    <div style={{ fontSize: "1.4rem" }}>🎉</div>
-                                    <div style={{ color: "#34d399", fontWeight: 800, fontSize: "0.95rem" }}>
-                                      You Won {wheelPrizeResult.label}!
+                                    <div style={{ fontSize: "1.8rem", marginBottom: 2 }}>
+                                      {wheelPrizeResult.xp === 0 ? "💀 😢" : "🎉 🏆"}
                                     </div>
-                                    <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.76rem", marginTop: 2 }}>
-                                      Rarity: <strong style={{ color: wheelPrizeResult.color }}>{wheelPrizeResult.tier}</strong> (+{wheelPrizeResult.xp} XP credited to your profile)
-                                    </div>
-                                  </div>
-                                )}
-
-                                {wheelClaimedToday ? (
-                                  <div style={{ width: "100%", textAlign: "center" }}>
                                     <div style={{
-                                      background: "rgba(245, 158, 11, 0.12)",
-                                      border: "1px solid rgba(245, 158, 11, 0.3)",
-                                      padding: "12px",
-                                      borderRadius: 12,
-                                      marginBottom: 8
+                                      color: wheelPrizeResult.xp === 0 ? "#f87171" : "#fde047",
+                                      fontWeight: 900,
+                                      fontSize: "1.15rem"
                                     }}>
-                                      <div style={{ color: "#fbbf24", fontWeight: 800, fontSize: "0.88rem" }}>
-                                        ✅ Daily Spin Used for Today
-                                      </div>
-                                      <div style={{ color: "rgba(255, 255, 255, 0.75)", fontSize: "0.75rem", marginTop: 3 }}>
-                                        1 spin per day limit. Next spin unlocks tomorrow at 00:00 UTC!
-                                      </div>
+                                      {wheelPrizeResult.xp === 0 ? "BOKYA! (0 XP)" : `Panalo! +${wheelPrizeResult.xp} XP!`}
                                     </div>
-                                    <button
-                                      disabled
-                                      className="modal-claim-btn"
-                                      style={{
-                                        width: "100%",
-                                        padding: "14px",
-                                        borderRadius: 12,
-                                        fontWeight: 800,
-                                        fontSize: "0.92rem",
-                                        background: "rgba(255, 255, 255, 0.08)",
-                                        color: "rgba(255, 255, 255, 0.4)",
-                                        border: "none",
-                                        cursor: "not-allowed",
-                                        opacity: 0.6
-                                      }}
-                                    >
-                                      🔒 Come Back Tomorrow
-                                    </button>
+                                    <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "0.82rem", marginTop: 4 }}>
+                                      {wheelPrizeResult.xp === 0
+                                        ? "No XP awarded this round. Better luck tomorrow!"
+                                        : `+${wheelPrizeResult.xp} XP credited to your profile!`}
+                                    </div>
                                   </div>
-                                ) : (
-                                  <button
-                                    onClick={handleSpinDailyWheel}
-                                    disabled={wheelSpinning || claiming}
-                                    className="modal-claim-btn"
-                                    style={{
-                                      width: "100%",
-                                      padding: "15px",
-                                      borderRadius: 12,
-                                      fontWeight: 800,
-                                      fontSize: "1rem",
-                                      background: wheelSpinning
-                                        ? "rgba(139, 92, 246, 0.4)"
-                                        : "linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #f59e0b 100%)",
-                                      color: "#fff",
-                                      border: "none",
-                                      cursor: wheelSpinning ? "not-allowed" : "pointer",
-                                      boxShadow: wheelSpinning ? "none" : "0 0 25px rgba(236, 72, 153, 0.45)",
-                                      transition: "all 0.2s ease"
-                                    }}
-                                  >
-                                    {wheelSpinning ? "🎰 Spinning Wheel of Luck..." : "🎯 Spin Wheel of Luck Now (1 Spin Daily) →"}
-                                  </button>
                                 )}
-
-                                <div style={{
-                                  width: "100%",
-                                  background: "rgba(0,0,0,0.35)",
-                                  border: "1px solid rgba(255,255,255,0.07)",
-                                  borderRadius: 12,
-                                  padding: "10px 12px"
-                                }}>
-                                  <div style={{ fontSize: "0.72rem", fontWeight: 800, color: "rgba(255,255,255,0.6)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                                    Segment Rarity & Odds
-                                  </div>
-                                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px" }}>
-                                    {WHEEL_SEGMENTS.map((s, idx) => (
-                                      <div key={idx} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "0.72rem" }}>
-                                        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: s.color, display: "inline-block" }} />
-                                          <strong style={{ color: "#fff" }}>{s.label}</strong>
-                                        </span>
-                                        <span style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.68rem" }}>
-                                          {s.weight}% ({s.tier})
-                                        </span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
                               </div>
                             ) : selectedQuest.id === "promo-bonus" ? (
                               <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>

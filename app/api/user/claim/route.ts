@@ -97,14 +97,14 @@ export async function POST(request: Request) {
 
     let awardXp = quest_id === "add-alias" ? 50 : (Number(xp) || 100);
 
-    // If it's a daily spin claim, validate that awarded XP matches allowed wheel segments (5, 10, 20, 30, 50, 100)
+    // If it's a daily spin claim, validate that awarded XP matches allowed wheel segments (0 for Bokya, 5, 10, 20, 30, 50, 100)
     if (isDailyClaim) {
-      const allowedPoints = [5, 10, 20, 30, 50, 100];
+      const allowedPoints = [0, 5, 10, 20, 30, 50, 100];
       const parsedXp = Number(xp);
       if (allowedPoints.includes(parsedXp)) {
         awardXp = parsedXp;
       } else {
-        awardXp = 5; // fallback
+        awardXp = 0; // fallback
       }
     }
 
@@ -185,7 +185,9 @@ export async function POST(request: Request) {
 
     let userMsg =
       isDailyClaim
-        ? `Spun the Daily Wheel of Luck and won +${awardXp} XP!`
+        ? awardXp === 0
+          ? "Spun the Peryahan Wheel of Luck and got Bokya! (0 XP)"
+          : `Spun the Peryahan Wheel of Luck and won +${awardXp} XP!`
         : quest_id === "add-alias" && user.alias_name
         ? `Added alias name @${user.alias_name}`
         : user.promo_code
