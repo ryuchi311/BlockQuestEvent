@@ -1153,62 +1153,64 @@ export default function ZealyMobileApp() {
 
     setWheelSpinning(true);
     setWheelPrizeResult(null);
+    setClaiming(true);
 
-    // Pick segment according to weighted rarity
-    // Total weight = 45 + 30 + 15 + 7 + 2.5 + 0.5 = 100
-    const rand = Math.random() * 100;
-    let accumulated = 0;
-    let selectedSegmentIndex = 0;
-    for (let i = 0; i < WHEEL_SEGMENTS.length; i++) {
-      accumulated += WHEEL_SEGMENTS[i].weight;
-      if (rand <= accumulated) {
-        selectedSegmentIndex = i;
-        break;
+    try {
+      // 1. Request the server to perform the spin securely.
+      // The server rolls weighted probabilities and locks the claim so it CANNOT be spoofed or re-spun.
+      const res = await fetch("/api/user/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quest_id: "daily-claim",
+          user_email: email,
+        }),
+      });
+
+      const json = await safeJson(res);
+      if (!res.ok) {
+        throw new Error(json.error || "Failed to record daily spin reward.");
       }
-    }
 
-    const winningSegment = WHEEL_SEGMENTS[selectedSegmentIndex];
-    const segmentAngle = 360 / WHEEL_SEGMENTS.length; // 36 deg each (10 segments)
-    // The diamond flapper stopper is at top center (0° / 360°)
-    // Slices are drawn starting from -90° (top center)
-    // To align segment `selectedSegmentIndex` center with top pointer:
-    const segCenterAngle = selectedSegmentIndex * segmentAngle + segmentAngle / 2;
-    const targetAngle = (360 - segCenterAngle) % 360;
-    const totalSpins = 5 + Math.floor(Math.random() * 3); // 5 to 7 full spins
-    const currentModulo = wheelRotation % 360;
-    const diff = (targetAngle - currentModulo + 360) % 360;
-    const finalDegree = wheelRotation + (totalSpins * 360) + diff;
+      // Identify server-chosen segment index (fallback to segment matching awarded XP if index not returned)
+      let selectedSegmentIndex = 0;
+      if (typeof json.segment_index === "number" && json.segment_index >= 0 && json.segment_index < WHEEL_SEGMENTS.length) {
+        selectedSegmentIndex = json.segment_index;
+      } else {
+        const foundIdx = WHEEL_SEGMENTS.findIndex((s) => s.xp === json.xp_awarded);
+        if (foundIdx !== -1) selectedSegmentIndex = foundIdx;
+      }
 
-    setWheelRotation(finalDegree);
+      const winningSegment = WHEEL_SEGMENTS[selectedSegmentIndex];
+      const segmentAngle = 360 / WHEEL_SEGMENTS.length; // 36 deg each (10 segments)
+      // The diamond flapper stopper is at top center (0° / 360°)
+      // Slices are drawn starting from -90° (top center)
+      const segCenterAngle = selectedSegmentIndex * segmentAngle + segmentAngle / 2;
+      const targetAngle = (360 - segCenterAngle) % 360;
+      const totalSpins = 5 + Math.floor(Math.random() * 3); // 5 to 7 full spins
+      const currentModulo = wheelRotation % 360;
+      const diff = (targetAngle - currentModulo + 360) % 360;
+      const finalDegree = wheelRotation + (totalSpins * 360) + diff;
 
-    // After animation finishes (~4.2 seconds)
-    setTimeout(async () => {
-      setWheelPrizeResult(winningSegment);
-      setWheelSpinning(false);
-      setClaiming(true);
+      // 2. Animate wheel rotation smoothly to land directly on the server's prize
+      setWheelRotation(finalDegree);
 
-      try {
-        const res = await fetch("/api/user/claim", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            quest_id: "daily-claim",
-            user_email: email,
-            xp: winningSegment.xp,
-          }),
-        });
-
-        const json = await safeJson(res);
-        if (!res.ok) {
-          throw new Error(json.error || "Failed to record daily spin reward.");
-        }
+      // 3. Reveal prize and update state after rotation animation completes
+      setTimeout(() => {
+        setWheelPrizeResult(winningSegment);
+        setWheelSpinning(false);
+        setClaiming(false);
 
         // Mark local storage & component state as claimed today
         if (typeof window !== "undefined") {
           localStorage.setItem(storageKey, JSON.stringify({ xp: winningSegment.xp, date: todayStr }));
         }
         setWheelClaimedToday(true);
-        setUserXp((prev) => prev + winningSegment.xp);
+        if (typeof json.total_xp === "number") {
+          setUserXp(json.total_xp);
+        } else {
+          setUserXp((prev) => prev + winningSegment.xp);
+        }
         setQuests((prevQuests) =>
           prevQuests.map((q) => (q.id === "daily-claim" ? { ...q, status: "Done", completedAt: new Date().toISOString() } : q))
         );
@@ -1228,15 +1230,15 @@ export default function ZealyMobileApp() {
             winningSegment.tier === "Jackpot" ? "🌟" : winningSegment.tier === "Legendary" ? "👑" : "🎯"
           );
         }
-      } catch (err: any) {
-        showNotice(err.message || "Failed to claim spin XP reward.", "error", "Daily Spin Notice", "⚠️");
-      } finally {
-        setClaiming(false);
         fetchLeaderboard();
         syncUserData();
         fetchUserVerifications();
-      }
-    }, 4200);
+      }, 4500);
+    } catch (err: any) {
+      setWheelSpinning(false);
+      setClaiming(false);
+      showNotice(err.message || "Failed to claim spin XP reward.", "error", "Daily Spin Notice", "⚠️");
+    }
   };
 
   const handleLinkTicket = async (e: React.FormEvent) => {

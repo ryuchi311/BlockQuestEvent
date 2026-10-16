@@ -95,17 +95,37 @@ export async function POST(request: Request) {
       }
     }
 
+    // Server-side wheel segments configuration (matches client WHEEL_SEGMENTS)
+    const SERVER_WHEEL_SEGMENTS = [
+      { xp: 0, label: "BOKYA", weight: 25, tier: "Bokya" },
+      { xp: 5, label: "5", weight: 22, tier: "Common" },
+      { xp: 10, label: "10", weight: 18, tier: "Uncommon" },
+      { xp: 20, label: "20", weight: 12, tier: "Rare" },
+      { xp: 5, label: "5", weight: 10, tier: "Common" },
+      { xp: 0, label: "BOKYA", weight: 5, tier: "Bokya" },
+      { xp: 30, label: "30", weight: 4.5, tier: "Epic" },
+      { xp: 50, label: "50", weight: 2, tier: "Legendary" },
+      { xp: 10, label: "10", weight: 1, tier: "Uncommon" },
+      { xp: 100, label: "100", weight: 0.5, tier: "Jackpot" },
+    ];
+
+    let serverSegmentIndex = 0;
     let awardXp = quest_id === "add-alias" ? 50 : (Number(xp) || 100);
 
-    // If it's a daily spin claim, validate that awarded XP matches allowed wheel segments (0 for Bokya, 5, 10, 20, 30, 50, 100)
+    // If it's a daily spin claim, the server ALWAYS determines the winning segment using weighted randomness
+    // to strictly prevent client-side spoofing / DevTools tampering.
     if (isDailyClaim) {
-      const allowedPoints = [0, 5, 10, 20, 30, 50, 100];
-      const parsedXp = Number(xp);
-      if (allowedPoints.includes(parsedXp)) {
-        awardXp = parsedXp;
-      } else {
-        awardXp = 0; // fallback
+      const totalWeight = SERVER_WHEEL_SEGMENTS.reduce((sum, s) => sum + s.weight, 0);
+      const rand = Math.random() * totalWeight;
+      let accumulated = 0;
+      for (let i = 0; i < SERVER_WHEEL_SEGMENTS.length; i++) {
+        accumulated += SERVER_WHEEL_SEGMENTS[i].weight;
+        if (rand <= accumulated) {
+          serverSegmentIndex = i;
+          break;
+        }
       }
+      awardXp = SERVER_WHEEL_SEGMENTS[serverSegmentIndex].xp;
     }
 
     // Check if dynamic quest requires admin review, passcode, or quiz validation
@@ -241,7 +261,14 @@ export async function POST(request: Request) {
       .update({ total_xp: calculatedTotalXp })
       .eq("id", user.id);
 
-    return NextResponse.json({ success: true, xp_awarded: awardXp, total_xp: calculatedTotalXp }, { status: 201 });
+    return NextResponse.json({
+      success: true,
+      xp_awarded: awardXp,
+      segment_index: isDailyClaim ? serverSegmentIndex : undefined,
+      tier: isDailyClaim ? SERVER_WHEEL_SEGMENTS[serverSegmentIndex].tier : undefined,
+      label: isDailyClaim ? SERVER_WHEEL_SEGMENTS[serverSegmentIndex].label : undefined,
+      total_xp: calculatedTotalXp
+    }, { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
