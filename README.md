@@ -18,13 +18,53 @@ The suite powers end-to-end event operations—from attendee registration with l
 | :--- | :--- | :--- | :--- |
 | **🏠 Launchpad** | `/` | All Visitors | Glassmorphic interactive gateway leading to tickets or game portal. |
 | **🎫 Ticket Desk** | `/register` | Attendees | RA 10173 privacy compliant registration, social handles, and instant QR entry pass (`BQF-XXXXXX`) generation with wallet pass styling. |
-| **🎮 BlockQuest App** | `/zealy` | Attendees | Gamified mobile app with daily missions, trivia quizzes, passcodes, flash countdowns, quest chains, milestone badges, live leaderboards, and user feedback/support ticket center. |
+| **🎮 BlockQuest App** | `/zealy` | Attendees | Gamified mobile app with daily missions, trivia quizzes, passcodes, flash countdowns, quest chains, milestone badges, live leaderboards, user feedback ticket center, and the **Peryahan Daily Wheel of Luck**. |
+| **🎡 Peryahan Wheel** | `/zealy` | Attendees | Mexican Fiesta / Dia de los Muertos style daily roleta with anti-spoofing server validation, custom mechanical ticking audio, Bokya (0 XP), and weighted jackpot tiers. |
 | **📷 Gate Scanner** | `/scan` | Gate Staff | Sub-second camera QR scanner (`html5-qrcode`) for pass validation and check-ins with manual search fallback and audio cues. |
 | **🏪 Booth Scanner** | `/booth-scan` | Sponsor Booths | Station scanner awarding XP (+150 XP) to attendees visiting booths with duplicate check-in protection. |
 | **⚙️ Admin Dashboard** | `/admin` | Organizers & Staff | Complete operational control center with RBAC (6 roles), 12 specialized operations tabs, drag-and-drop quest builder, proof verifier, support ticket helpdesk, audit logs, and staff provisioning. |
 | **🧭 Shortcut Hub** | `/shortcuts` | Staff & Sponsors | Quick launcher bookmark hub for on-site live operations and station bookmarks. |
 | **🧪 Stress Test** | `/stress-test` | Engineers / QA | Automated load and stress testing simulator for API performance benchmarking. |
 | **📖 Visual Manual** | `/manual-presentation.html` | Organizers & Partners | Interactive HTML presentation manual, architecture diagrams, and operational playbooks. |
+
+---
+
+## 🎡 Peryahan Daily Wheel of Luck (Roleta ng Kapalaran)
+
+Embedded inside the mobile questing portal (`/zealy`), attendees can spin the Mexican Fiesta / Dia de los Muertos themed **Peryahan Wheel** once every 24 hours UTC.
+
+### 1. Visual & Graphic Design
+- **Theme**: Authentic Mexican Fiesta palette (vivid gold `#eab308`, fiesta red `#dc2626`, radiant orange `#ea580c`, sky blue `#0284c7`, festive green `#16a34a`).
+- **Ornaments**: Traditional fiesta bunting flags, outer perimeter golden rivets, navy outline arch frame, and a central heart hex badge.
+- **Typography**: Ultra-sharp, razor-clean vertical radial numbers (`paint-order: stroke fill` with 3.5px contrast navy outline and zero blur filters).
+- **Bokya Slices**: Illustrated with custom **Calavera Sugar Skull** badges and bold "BOKYA" labels for immediate identification.
+
+### 2. Segment Distribution & Odds
+| Slice Label | Reward | Tier | Rarity Weight | Odds |
+| :---: | :---: | :---: | :---: | :---: |
+| **BOKYA** | 0 XP | Bokya | 25 | 25.0% |
+| **5** | +5 XP | Common | 22 | 22.0% |
+| **10** | +10 XP | Uncommon | 18 | 18.0% |
+| **20** | +20 XP | Rare | 12 | 12.0% |
+| **5** | +5 XP | Common | 10 | 10.0% |
+| **BOKYA** | 0 XP | Bokya | 5 | 5.0% |
+| **30** | +30 XP | Epic | 4.5 | 4.5% |
+| **50** | +50 XP | Legendary | 2.0 | 2.0% |
+| **10** | +10 XP | Uncommon | 1.0 | 1.0% |
+| **100** | +100 XP | Jackpot | 0.5 | 0.5% |
+
+### 3. Anti-Spoofing & Security Architecture
+- **Server-Determined RNG**: The client **never** dictates the awarded XP. When the user taps "Spin", `/api/user/claim` computes the weighted roll securely on the backend server.
+- **Client DevTools Tampering Immune**: Direct API injection or body tampering (e.g., trying to send `{ xp: 100 }`) is completely ignored by the server.
+- **Synchronized Landing**: The server returns the exact segment index, and the wheel's rotation mathematics (`targetAngle = (360 - segCenterAngle) % 360`) land precisely on the server-chosen slice.
+- **Strict 24h Daily Rate-Limiting**: Enforced both in client `localStorage` and via Supabase database queries against `quest_completions` checking `daily-claim-YYYY-MM-DD`.
+
+### 4. Audio Synthesis (Web Audio API)
+- **Zero Asset Latency**: All sound effects are synthesized purely in real-time via the browser's native `AudioContext` without external MP3/WAV dependencies.
+- **Realistic Mechanical Flapper Ticking**: Plays authentic clicking audio that starts rapid at maximum velocity and realistically decelerates and spaces out over an **8.5-second spin**.
+- **Outcome Fanfares**:
+  - **Victory Chime**: 4-note ascending chord (`C5, E5, G5, C6`) on prize wins.
+  - **Bokya Slide**: Comical descending slide tone on Bokya (0 XP).
 
 ---
 
