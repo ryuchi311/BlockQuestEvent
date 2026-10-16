@@ -5685,12 +5685,19 @@ export default function AdminPage() {
           const allLogs = [
             ...registrationLogs,
             ...verifications.map((v) => {
+              const isWheelOfLuck =
+                v.quest_id === "daily-claim" ||
+                (v.quest_id && String(v.quest_id).startsWith("daily-claim")) ||
+                (v.proof_url && v.proof_url.includes("Wheel of Luck"));
               const isAuto =
+                isWheelOfLuck ||
                 v.approved_by === "System" ||
+                v.approved_by === "Gate System" ||
                 (v.proof_url && v.proof_url.startsWith("Auto-Verified"));
               return {
                 ...v,
-                logType: "Screenshot Proof",
+                logType: isWheelOfLuck ? "Daily Wheel Spin" : "Screenshot Proof",
+                category: isWheelOfLuck ? "daily" : ((v as any).category || (v.quest_id && String(v.quest_id).startsWith("daily-claim") ? "daily" : undefined)),
                 claim_type: isAuto ? "Auto Claim" : "Manual Claim",
                 raw_item: v,
               };
@@ -5706,6 +5713,18 @@ export default function AdminPage() {
             }),
           ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
+          const getLogCategory = (item: any) => {
+            if (item.category) return item.category;
+            const qId = String(item.quest_id || "");
+            if (qId === "daily-claim" || qId.startsWith("daily-claim") || (item.proof_url && String(item.proof_url).includes("Wheel of Luck"))) {
+              return "daily";
+            }
+            if (qId === "register" || qId === "add-alias" || qId === "checkin") {
+              return "onboarding";
+            }
+            return quests.find((q) => q.id === item.quest_id)?.category || "other";
+          };
+
           const filteredLogs = allLogs.filter((item: any) => {
             const query = questLogSearch.toLowerCase();
             const matchesQuery =
@@ -5716,11 +5735,12 @@ export default function AdminPage() {
               (item.ticket_code || "").toLowerCase().includes(query) ||
               (item.approved_by || "").toLowerCase().includes(query) ||
               (item.claim_type || "").toLowerCase().includes(query) ||
+              (item.logType || "").toLowerCase().includes(query) ||
               (item.user_message || "").toLowerCase().includes(query);
 
             if (!matchesQuery) return false;
             if (questLogStatusFilter !== "all" && item.status !== questLogStatusFilter) return false;
-            const questCategory = item.category || quests.find(q => q.id === item.quest_id)?.category || "other";
+            const questCategory = getLogCategory(item);
             if (questLogCategoryFilter !== "all" && questCategory !== questLogCategoryFilter) return false;
             if (questLogClaimTypeFilter !== "all" && item.claim_type !== questLogClaimTypeFilter) return false;
             return true;
@@ -5751,7 +5771,7 @@ export default function AdminPage() {
               item.user_email || "",
               item.ticket_code || "",
               item.quest_title || "",
-              item.category || quests.find(q => q.id === item.quest_id)?.category || "other",
+              getLogCategory(item),
               item.xp || 0,
               item.logType || "",
               item.claim_type || "",
@@ -5811,19 +5831,19 @@ export default function AdminPage() {
                   >
                     <option value="all">All Categories ({allLogs.length})</option>
                     <option value="onboarding">
-                      🚀 Onboarding ({allLogs.filter((i: any) => (i.category || quests.find(q => q.id === i.quest_id)?.category || "other") === "onboarding").length} | ⏳ {allLogs.filter((i: any) => i.status === "Pending" && (i.category || quests.find(q => q.id === i.quest_id)?.category || "other") === "onboarding").length} pending)
+                      🚀 Onboarding ({allLogs.filter((i: any) => getLogCategory(i) === "onboarding").length} | ⏳ {allLogs.filter((i: any) => i.status === "Pending" && getLogCategory(i) === "onboarding").length} pending)
                     </option>
                     <option value="social">
-                      📣 Social ({allLogs.filter((i: any) => (i.category || quests.find(q => q.id === i.quest_id)?.category || "other") === "social").length} | ⏳ {allLogs.filter((i: any) => i.status === "Pending" && (i.category || quests.find(q => q.id === i.quest_id)?.category || "other") === "social").length} pending)
+                      📣 Social ({allLogs.filter((i: any) => getLogCategory(i) === "social").length} | ⏳ {allLogs.filter((i: any) => i.status === "Pending" && getLogCategory(i) === "social").length} pending)
                     </option>
                     <option value="daily">
-                      📅 Daily ({allLogs.filter((i: any) => (i.category || quests.find(q => q.id === i.quest_id)?.category || "other") === "daily").length} | ⏳ {allLogs.filter((i: any) => i.status === "Pending" && (i.category || quests.find(q => q.id === i.quest_id)?.category || "other") === "daily").length} pending)
+                      📅 Daily ({allLogs.filter((i: any) => getLogCategory(i) === "daily").length} | ⏳ {allLogs.filter((i: any) => i.status === "Pending" && getLogCategory(i) === "daily").length} pending)
                     </option>
                     <option value="quiz">
-                      ❓ Quiz ({allLogs.filter((i: any) => (i.category || quests.find(q => q.id === i.quest_id)?.category || "other") === "quiz").length} | ⏳ {allLogs.filter((i: any) => i.status === "Pending" && (i.category || quests.find(q => q.id === i.quest_id)?.category || "other") === "quiz").length} pending)
+                      ❓ Quiz ({allLogs.filter((i: any) => getLogCategory(i) === "quiz").length} | ⏳ {allLogs.filter((i: any) => i.status === "Pending" && getLogCategory(i) === "quiz").length} pending)
                     </option>
                     <option value="atfx">
-                      📈 ATFX ({allLogs.filter((i: any) => (i.category || quests.find(q => q.id === i.quest_id)?.category || "other") === "atfx").length} | ⏳ {allLogs.filter((i: any) => i.status === "Pending" && (i.category || quests.find(q => q.id === i.quest_id)?.category || "other") === "atfx").length} pending)
+                      📈 ATFX ({allLogs.filter((i: any) => getLogCategory(i) === "atfx").length} | ⏳ {allLogs.filter((i: any) => i.status === "Pending" && getLogCategory(i) === "atfx").length} pending)
                     </option>
                   </select>
                 </div>
@@ -5965,7 +5985,7 @@ export default function AdminPage() {
                       filteredLogs.slice((questLogPage - 1) * questLogPageSize, (questLogPage - 1) * questLogPageSize + questLogPageSize).map((item: any) => {
                         const logKey = `${item.logType}-${item.id}`;
                         const isLogEmailRevealed = revealQuestLogEmails || revealedQuestLogKeys.has(logKey);
-                        const questCategory = item.category || quests.find(q => q.id === item.quest_id)?.category || "other";
+                        const questCategory = getLogCategory(item);
                         const decisionDate = item.reviewed_at || (item.status === "Approved" ? item.created_at : null);
                         return (
                           <tr key={logKey}>

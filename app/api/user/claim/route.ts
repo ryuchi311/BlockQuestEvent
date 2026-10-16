@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     // 1. Fetch current user to get ID and physical check-in status
     const { data: user, error: userError } = await supabase
       .from("registrations")
-      .select("id, total_xp, checked_in, checked_in_at, promo_code, alias_name, ticket_code")
+      .select("id, full_name, total_xp, checked_in, checked_in_at, promo_code, alias_name, ticket_code")
       .eq("email", user_email.trim().toLowerCase())
       .single();
       
@@ -73,10 +73,43 @@ export async function POST(request: Request) {
       }
     }
 
+    let isDailyClaim = quest_id === "daily-claim" || quest_id.startsWith("daily-claim-");
+    let dailyClaimDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    let effectiveQuestId = quest_id;
+
+    if (isDailyClaim) {
+      effectiveQuestId = `daily-claim-${dailyClaimDate}`;
+      // Verify if user has already spun the wheel today
+      const { data: existingDaily } = await supabase
+        .from("quest_completions")
+        .select("id, created_at")
+        .eq("registration_id", user.id)
+        .eq("quest_id", effectiveQuestId)
+        .maybeSingle();
+
+      if (existingDaily) {
+        return NextResponse.json(
+          { error: "You have already spun the Daily Wheel today! Come back tomorrow for another spin." },
+          { status: 400 }
+        );
+      }
+    }
+
     let awardXp = quest_id === "add-alias" ? 50 : (Number(xp) || 100);
 
+    // If it's a daily spin claim, validate that awarded XP matches allowed wheel segments (5, 10, 20, 30, 50, 100)
+    if (isDailyClaim) {
+      const allowedPoints = [5, 10, 20, 30, 50, 100];
+      const parsedXp = Number(xp);
+      if (allowedPoints.includes(parsedXp)) {
+        awardXp = parsedXp;
+      } else {
+        awardXp = 5; // fallback
+      }
+    }
+
     // Check if dynamic quest requires admin review, passcode, or quiz validation
-    if (quest_id !== "checkin" && quest_id !== "register") {
+    if (quest_id !== "checkin" && quest_id !== "register" && !isDailyClaim) {
       const { data: quest, error: questError } = await supabase
         .from("fiesta_event_quests")
         .select("id, title, xp, status, requires_proof, requires_message, is_quiz, quiz_answer, passcode")
@@ -125,7 +158,7 @@ export async function POST(request: Request) {
     const { error: completionError } = await supabase
       .from("quest_completions")
       .insert({
-        quest_id,
+        quest_id: effectiveQuestId,
         registration_id: user.id,
         xp_awarded: awardXp
       });
@@ -140,7 +173,9 @@ export async function POST(request: Request) {
 
     // 3. Log to quest_verifications table as 'Approved' so it displays in Quest Logs & Admin panel
     let logTitle =
-      quest_id === "promo-bonus"
+      isDailyClaim
+        ? "Daily Wheel of Luck"
+        : quest_id === "promo-bonus"
         ? "Media Partner: Promo Code Bonus"
         : quest_id === "checkin"
         ? "Physical Gate Check-in"
@@ -149,26 +184,33 @@ export async function POST(request: Request) {
         : "Event Quest Claim";
 
     let userMsg =
-      quest_id === "add-alias" && user.alias_name
+      isDailyClaim
+        ? `Spun the Daily Wheel of Luck and won +${awardXp} XP!`
+        : quest_id === "add-alias" && user.alias_name
         ? `Added alias name @${user.alias_name}`
         : user.promo_code
         ? `Claimed Promo Code Bonus (Code: ${user.promo_code})`
         : `Claimed quest reward: ${quest_id}`;
 
+    const questerName = user.alias_name ? `@${user.alias_name}` : (user.full_name || "Registered Quester");
+
     try {
-      await supabase.from("quest_verifications").insert({
-        quest_id,
+      const { error: verifInsertErr } = await supabase.from("quest_verifications").insert({
+        quest_id: "daily-claim",
         quest_title: logTitle,
-        user_name: user.id ? undefined : "Quester",
+        user_name: questerName,
         user_email: user_email.trim().toLowerCase(),
         ticket_code: user.ticket_code || undefined,
         xp: awardXp,
-        proof_url: "Auto-Verified (System Claim)",
+        proof_url: isDailyClaim ? `Wheel of Luck Spin (Daily - ${new Date().toISOString().slice(0, 10)})` : "Auto-Verified (System Claim)",
         user_message: userMsg,
         status: "Approved",
         approved_by: "System",
         reviewed_at: new Date().toISOString(),
       });
+      if (verifInsertErr) {
+        console.warn("quest_verifications insert error:", verifInsertErr);
+      }
     } catch (verifErr) {
       console.warn("Could not log to quest_verifications:", verifErr);
     }

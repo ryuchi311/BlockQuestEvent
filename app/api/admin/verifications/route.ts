@@ -19,7 +19,7 @@ const QUEST_TITLES: Record<string, string> = {
   "checkin": "Complete physical check-in",
   "follow-x": "Follow @BlockQuest on X",
   "join-tg": "Join BlockQuest PH Telegram",
-  "daily-claim": "Daily Check-in"
+  "daily-claim": "Daily Lucky Spin Wheel"
 };
 
 // GET — fetch all verifications (Admin queue requires auth, public ?email= filter for quester status)
@@ -72,29 +72,50 @@ export async function GET(request: Request) {
       });
 
       // Map instant claims into activity log entries
-      const formattedCompletions = completions.map((c: any) => ({
-        id: `comp_${c.id}`,
-        quest_id: c.quest_id,
-        quest_title: dynamicTitles[c.quest_id] || c.quest_id,
-        user_email: email,
-        xp: c.xp_awarded,
-        status: "Approved",
-        created_at: c.completed_at || c.created_at || new Date().toISOString(),
-        is_instant: true,
-      }));
+      const formattedCompletions = completions.map((c: any) => {
+        const isDaily = c.quest_id === "daily-claim" || String(c.quest_id).startsWith("daily-claim-");
+        const title = isDaily
+          ? "Daily Wheel of Luck"
+          : (dynamicTitles[c.quest_id] || c.quest_id);
+        return {
+          id: `comp_${c.id}`,
+          quest_id: c.quest_id,
+          quest_title: title,
+          user_email: email,
+          xp: c.xp_awarded,
+          status: "Approved",
+          created_at: c.completed_at || c.created_at || new Date().toISOString(),
+          is_instant: true,
+        };
+      });
 
-      // Deduplicate verifs to only 1 entry per quest_id (keeping highest status or latest)
+      // Deduplicate verifs to only 1 entry per quest_id (keeping highest status or latest),
+      // but for daily-claim entries, preserve by date so each day's spin is shown in history
       const verifMap = new Map<string, any>();
       (verifs || []).forEach((v: any) => {
-        const existing = verifMap.get(v.quest_id);
+        const isDaily = v.quest_id === "daily-claim" || String(v.quest_id).startsWith("daily-claim-");
+        const dateKey = isDaily ? (v.created_at ? v.created_at.slice(0, 10) : "") : "";
+        const mapKey = isDaily ? `${v.quest_id}_${dateKey}` : v.quest_id;
+        const existing = verifMap.get(mapKey);
         if (!existing || v.status === "Approved" || (existing.status !== "Approved" && v.status === "Pending")) {
-          verifMap.set(v.quest_id, v);
+          verifMap.set(mapKey, v);
         }
       });
       const cleanVerifs = Array.from(verifMap.values());
 
       const compQuestIdSet = new Set(completions.map((c: any) => c.quest_id));
-      const nonDuplicateVerifs = cleanVerifs.filter((v: any) => !compQuestIdSet.has(v.quest_id));
+      const nonDuplicateVerifs = cleanVerifs.filter((v: any) => {
+        if (v.quest_id === "daily-claim") {
+          // If a completion exists with today's dated ID or daily-claim, filter duplicate if on same date
+          const vDate = v.created_at ? v.created_at.slice(0, 10) : "";
+          const hasSameDatedComp = completions.some((c: any) =>
+            (c.quest_id === "daily-claim" || c.quest_id === `daily-claim-${vDate}`) &&
+            (c.completed_at || c.created_at || "").slice(0, 10) === vDate
+          );
+          return !hasSameDatedComp;
+        }
+        return !compQuestIdSet.has(v.quest_id);
+      });
 
       const combined = [...formattedCompletions, ...nonDuplicateVerifs].sort(
         (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -175,7 +196,10 @@ export async function GET(request: Request) {
         qId === "register";
 
       if (isAutoClaimed && email && qId) {
-        const uniqueKey = `${email}_${qId}`;
+        // For daily-claim, differentiate by date so spins on different days are never dropped from the Quest Log
+        const isDaily = qId === "daily-claim" || qId.startsWith("daily-claim");
+        const dateKey = isDaily ? (item.created_at ? item.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)) : "";
+        const uniqueKey = isDaily ? `${email}_${qId}_${dateKey}` : `${email}_${qId}`;
         if (seenUserQuests.has(uniqueKey)) {
           continue; // Skip duplicate spam entry
         }

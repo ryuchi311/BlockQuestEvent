@@ -128,13 +128,29 @@ const initialQuests: Quest[] = [
   },
   {
     id: "daily-claim",
-
-    title: "Daily Check-in",
-    description: "Claim your daily check-in points to boost your leaderboard ranking.",
+    title: "Daily Wheel of Luck",
+    description: "Spin the lucky wheel once daily to earn mystery bonus XP! Test your luck: high tiers are ultra rare!",
     xp: 50,
     status: "Live",
     category: "daily"
   }
+];
+
+export interface WheelSegment {
+  xp: number;
+  label: string;
+  color: string;
+  weight: number; // probability weight
+  tier: "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Jackpot";
+}
+
+export const WHEEL_SEGMENTS: WheelSegment[] = [
+  { xp: 5, label: "+5 XP", color: "#64748b", weight: 45, tier: "Common" },
+  { xp: 10, label: "+10 XP", color: "#3b82f6", weight: 30, tier: "Uncommon" },
+  { xp: 20, label: "+20 XP", color: "#10b981", weight: 15, tier: "Rare" },
+  { xp: 30, label: "+30 XP", color: "#8b5cf6", weight: 7, tier: "Epic" },
+  { xp: 50, label: "+50 XP", color: "#f59e0b", weight: 2.5, tier: "Legendary" },
+  { xp: 100, label: "+100 XP", color: "#ec4899", weight: 0.5, tier: "Jackpot" },
 ];
 
 const initialLeaderboard: { rank: number; name: string; points: number; change: string; accent?: string }[] = [];
@@ -322,6 +338,12 @@ export default function ZealyMobileApp() {
   const [aliasInput, setAliasInput] = useState("");
   const [aliasModalError, setAliasModalError] = useState("");
   const [aliasSaving, setAliasSaving] = useState(false);
+
+  // Daily Wheel of Luck State
+  const [wheelSpinning, setWheelSpinning] = useState(false);
+  const [wheelRotation, setWheelRotation] = useState(0);
+  const [wheelPrizeResult, setWheelPrizeResult] = useState<{ xp: number; label: string; color: string; tier: string } | null>(null);
+  const [wheelClaimedToday, setWheelClaimedToday] = useState(false);
   const [claimedQuestIds, setClaimedQuestIds] = useState<string[]>(() => {
     if (typeof window !== "undefined") {
       const savedUser = localStorage.getItem("bq_user");
@@ -600,7 +622,11 @@ export default function ZealyMobileApp() {
 
         // Preserve status only if the user is authenticated and has status or active verification
         setQuests((prevQuests) => {
-          return mappedQuests.map((newQ) => {
+          // Merge API quests with initial built-in quests so essential quests like daily-claim aren't lost if missing in DB
+          const apiIds = new Set(mappedQuests.map((q) => q.id));
+          const combinedQuests = [...mappedQuests, ...initialQuests.filter((iq) => !apiIds.has(iq.id))];
+
+          return combinedQuests.map((newQ) => {
             const existing = prevQuests.find((p) => p.id === newQ.id);
             if (newQ.id === "checkin") {
               if (existing?.status === "Done") return { ...newQ, status: "Done", completedAt: (existing as any).completedAt };
@@ -762,6 +788,17 @@ export default function ZealyMobileApp() {
               completedAt: isDone ? (compMap.get(q.id) || (q as any).completedAt) : undefined,
             };
           }
+          if (q.id === "daily-claim") {
+            const todayStr = new Date().toISOString().slice(0, 10);
+            const isDoneToday = compMap.has(`daily-claim-${todayStr}`) || compMap.has("daily-claim");
+            // If already claimed today:
+            if (isDoneToday) {
+              const compTime = compMap.get(`daily-claim-${todayStr}`) || compMap.get("daily-claim") || new Date().toISOString();
+              return { ...q, status: "Done", completedAt: compTime };
+            }
+            // Otherwise, reset to Live for today's spin!
+            return { ...q, status: "Live", completedAt: undefined };
+          }
           if (compMap.has(q.id)) {
             return { ...q, status: "Done", completedAt: compMap.get(q.id) || (q as any).completedAt };
           }
@@ -866,6 +903,14 @@ export default function ZealyMobileApp() {
     }
 
     if (quest.status === "Soon" && quest.id !== "checkin") return;
+
+    if (quest.id === "daily-claim") {
+      const email = ticketEmail || authenticatedUser?.email || qrPass?.email;
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const isDone = quest.status === "Done" || (email && typeof window !== "undefined" && !!localStorage.getItem(`bq_daily_wheel_${email}_${todayStr}`));
+      setWheelClaimedToday(isDone);
+      setWheelPrizeResult(null);
+    }
 
     setSelectedQuest(quest);
   };
@@ -1081,6 +1126,100 @@ export default function ZealyMobileApp() {
       setClaiming(false);
       fetchLeaderboard();
     }
+  };
+
+  const handleSpinDailyWheel = async () => {
+    if (wheelSpinning || wheelClaimedToday) return;
+
+    // Check if user is authenticated/has ticket
+    const email = ticketEmail || authenticatedUser?.email || qrPass?.email;
+    if (!email) {
+      showNotice("Please link your event ticket first to claim daily spin points!", "warning", "Ticket Pass Required", "🎟️");
+      return;
+    }
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const storageKey = `bq_daily_wheel_${email}_${todayStr}`;
+    if (typeof window !== "undefined" && localStorage.getItem(storageKey)) {
+      showNotice("You have already used your 1 daily spin for today! Come back tomorrow at 00:00 UTC.", "info", "Daily Limit Reached", "⏳");
+      setWheelClaimedToday(true);
+      return;
+    }
+
+    setWheelSpinning(true);
+    setWheelPrizeResult(null);
+
+    // Pick segment according to weighted rarity
+    // Total weight = 45 + 30 + 15 + 7 + 2.5 + 0.5 = 100
+    const rand = Math.random() * 100;
+    let accumulated = 0;
+    let selectedSegmentIndex = 0;
+    for (let i = 0; i < WHEEL_SEGMENTS.length; i++) {
+      accumulated += WHEEL_SEGMENTS[i].weight;
+      if (rand <= accumulated) {
+        selectedSegmentIndex = i;
+        break;
+      }
+    }
+
+    const winningSegment = WHEEL_SEGMENTS[selectedSegmentIndex];
+    const segmentAngle = 360 / WHEEL_SEGMENTS.length; // 60 deg each
+    // Target pointer is at top (270 deg or 0 deg with pointer pointing down from top)
+    // If pointer is at top center: index 0 center is at angle 0°..60° -> 30°
+    // Spin formula: extra full revolutions (min 5 = 1800 deg)
+    const targetAngle = 360 - (selectedSegmentIndex * segmentAngle + segmentAngle / 2);
+    const totalSpins = 5 + Math.floor(Math.random() * 3); // 5 to 7 full spins
+    const finalDegree = wheelRotation + (totalSpins * 360) + targetAngle;
+
+    setWheelRotation(finalDegree);
+
+    // After animation finishes (~4.2 seconds)
+    setTimeout(async () => {
+      setWheelPrizeResult(winningSegment);
+      setWheelSpinning(false);
+      setClaiming(true);
+
+      try {
+        const res = await fetch("/api/user/claim", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            quest_id: "daily-claim",
+            user_email: email,
+            xp: winningSegment.xp,
+          }),
+        });
+
+        const json = await safeJson(res);
+        if (!res.ok) {
+          throw new Error(json.error || "Failed to record daily spin reward.");
+        }
+
+        // Mark local storage & component state as claimed today
+        if (typeof window !== "undefined") {
+          localStorage.setItem(storageKey, JSON.stringify({ xp: winningSegment.xp, date: todayStr }));
+        }
+        setWheelClaimedToday(true);
+        setUserXp((prev) => prev + winningSegment.xp);
+        setQuests((prevQuests) =>
+          prevQuests.map((q) => (q.id === "daily-claim" ? { ...q, status: "Done", completedAt: new Date().toISOString() } : q))
+        );
+
+        showNotice(
+          `Congratulations! You hit ${winningSegment.label} (${winningSegment.tier} Tier) from the Daily Wheel of Luck!`,
+          "success",
+          "🎉 Daily Spin Reward Claimed!",
+          winningSegment.tier === "Jackpot" ? "🌟" : winningSegment.tier === "Legendary" ? "👑" : "🎯"
+        );
+      } catch (err: any) {
+        showNotice(err.message || "Failed to claim spin XP reward.", "error", "Daily Spin Notice", "⚠️");
+      } finally {
+        setClaiming(false);
+        fetchLeaderboard();
+        syncUserData();
+        fetchUserVerifications();
+      }
+    }, 4200);
   };
 
   const handleLinkTicket = async (e: React.FormEvent) => {
@@ -1914,9 +2053,11 @@ export default function ZealyMobileApp() {
                                   </span>
                                 )}
                                 <span className={`category-badge category-badge--${q.category}`}>
-                                  {q.category}
+                                  {q.id === "daily-claim" ? "🎡 Daily Spin" : q.category}
                                 </span>
-                                <span className="xp-badge">+{q.xp} XP</span>
+                                <span className="xp-badge">
+                                  {q.id === "daily-claim" ? "🎲 5-100 XP" : `+${q.xp} XP`}
+                                </span>
                                 {q.passcode && (
                                   <span style={{ fontSize: "0.64rem", padding: "2px 6px", borderRadius: "6px", background: "rgba(245, 158, 11, 0.2)", color: "#fbbf24", border: "1px solid rgba(245, 158, 11, 0.3)" }}>
                                     🔑 Passcode
@@ -2576,12 +2717,15 @@ export default function ZealyMobileApp() {
                   {(() => {
                     const instantLogs = (completedQuestRecords || []).map((c: any) => {
                       const matchingQuest = quests.find((q) => q.id === c.quest_id);
+                      const isDailySpin = c.quest_id === "daily-claim" || String(c.quest_id).startsWith("daily-claim-");
                       const title =
                         c.quest_id === "register"
                           ? "⚡ Register for BlockQuest Fiesta PH"
                           : c.quest_id === "checkin"
                             ? "🎟️ Gate Entrance Check-in"
-                            : matchingQuest?.title || `Quest: ${c.quest_id}`;
+                            : isDailySpin
+                              ? "🎡 Daily Wheel of Luck"
+                              : matchingQuest?.title || `Quest: ${c.quest_id}`;
                       const xp = c.xp_awarded || matchingQuest?.xp || (c.quest_id === "register" ? 250 : 100);
                       return {
                         uniqueKey: `instant_${c.quest_id}`,
@@ -3059,7 +3203,7 @@ export default function ZealyMobileApp() {
                     </button>
                   </div>
                   <div className="modal-xp-reward">
-                    {liveQuest.id === "referral-quest" ? "+100 XP per Friend (Max 5)" : `Reward: ${liveQuest.xp} XP`}
+                    {liveQuest.id === "daily-claim" ? "🎲 Mystery Wheel Reward: 5 ~ 100 XP" : liveQuest.id === "referral-quest" ? "+100 XP per Friend (Max 5)" : `Reward: ${liveQuest.xp} XP`}
                   </div>
                   <p className="modal-body" style={{ whiteSpace: "pre-wrap" }}>{liveQuest.description}</p>
                   {(() => {
@@ -3579,6 +3723,244 @@ export default function ZealyMobileApp() {
                                 >
                                   {claiming ? "Claiming..." : isActionCompleted ? "Submit Answer & Claim XP" : "🔒 Complete Task First"}
                                 </button>
+                              </div>
+                            ) : selectedQuest.id === "daily-claim" ? (
+                              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 14, alignItems: "center" }}>
+                                <div style={{
+                                  width: "100%",
+                                  background: "linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.1) 100%)",
+                                  border: "1px solid rgba(139, 92, 246, 0.35)",
+                                  padding: "12px 14px",
+                                  borderRadius: 14,
+                                  textAlign: "center"
+                                }}>
+                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                                    <span style={{ fontSize: "1.2rem" }}>🎡</span>
+                                    <span style={{ color: "#c084fc", fontWeight: 800, fontSize: "0.95rem" }}>
+                                      Daily Wheel of Luck
+                                    </span>
+                                    <span style={{
+                                      fontSize: "0.68rem",
+                                      padding: "2px 7px",
+                                      borderRadius: "6px",
+                                      background: "rgba(236, 72, 153, 0.25)",
+                                      color: "#f472b6",
+                                      fontWeight: 800,
+                                      border: "1px solid rgba(236, 72, 153, 0.4)"
+                                    }}>
+                                      1 Spin / Day
+                                    </span>
+                                  </div>
+                                  <div style={{ color: "rgba(255, 255, 255, 0.78)", fontSize: "0.76rem", marginTop: 4, lineHeight: 1.35 }}>
+                                    Points are random and higher amounts are very rare! Spin once every day to rack up your score on the leaderboard.
+                                  </div>
+                                </div>
+
+                                <div style={{
+                                  position: "relative",
+                                  width: 250,
+                                  height: 250,
+                                  margin: "10px 0",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center"
+                                }}>
+                                  <div style={{
+                                    position: "absolute",
+                                    top: -8,
+                                    left: "50%",
+                                    transform: "translateX(-50%)",
+                                    width: 0,
+                                    height: 0,
+                                    borderLeft: "14px solid transparent",
+                                    borderRight: "14px solid transparent",
+                                    borderTop: "24px solid #fbbf24",
+                                    filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.7))",
+                                    zIndex: 20
+                                  }} />
+
+                                  <div style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    borderRadius: "50%",
+                                    boxShadow: "0 0 25px rgba(139, 92, 246, 0.4), inset 0 0 15px rgba(0,0,0,0.8)",
+                                    border: "4px solid #fbbf24",
+                                    overflow: "hidden",
+                                    transform: `rotate(${wheelRotation}deg)`,
+                                    transition: wheelSpinning ? "transform 4.2s cubic-bezier(0.15, 0.85, 0.2, 1)" : "none"
+                                  }}>
+                                    <svg viewBox="0 0 240 240" width="100%" height="100%">
+                                      <defs>
+                                        <filter id="wheelShadow" x="-20%" y="-20%" width="140%" height="140%">
+                                          <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#000" floodOpacity="0.8" />
+                                        </filter>
+                                      </defs>
+                                      {WHEEL_SEGMENTS.map((seg, idx) => {
+                                        const anglePerSeg = 360 / WHEEL_SEGMENTS.length;
+                                        const startAngle = idx * anglePerSeg - 90;
+                                        const endAngle = (idx + 1) * anglePerSeg - 90;
+                                        const startRad = (startAngle * Math.PI) / 180;
+                                        const endRad = (endAngle * Math.PI) / 180;
+                                        const x1 = 120 + 120 * Math.cos(startRad);
+                                        const y1 = 120 + 120 * Math.sin(startRad);
+                                        const x2 = 120 + 120 * Math.cos(endRad);
+                                        const y2 = 120 + 120 * Math.sin(endRad);
+                                        const pathData = `M 120 120 L ${x1} ${y1} A 120 120 0 0 1 ${x2} ${y2} Z`;
+
+                                        const midAngle = startAngle + anglePerSeg / 2;
+                                        const textRad = (midAngle * Math.PI) / 180;
+                                        const textX = 120 + 74 * Math.cos(textRad);
+                                        const textY = 120 + 74 * Math.sin(textRad);
+
+                                        return (
+                                          <g key={idx}>
+                                            <path
+                                              d={pathData}
+                                              fill={seg.color}
+                                              stroke="#1e1b4b"
+                                              strokeWidth="2.5"
+                                            />
+                                            <text
+                                              x={textX}
+                                              y={textY}
+                                              fill="#ffffff"
+                                              fontSize="12.5"
+                                              fontWeight="900"
+                                              textAnchor="middle"
+                                              dominantBaseline="central"
+                                              transform={`rotate(${midAngle + 90}, ${textX}, ${textY})`}
+                                              filter="url(#wheelShadow)"
+                                            >
+                                              {seg.label}
+                                            </text>
+                                          </g>
+                                        );
+                                      })}
+                                    </svg>
+                                  </div>
+
+                                  <div style={{
+                                    position: "absolute",
+                                    width: 48,
+                                    height: 48,
+                                    borderRadius: "50%",
+                                    background: "radial-gradient(circle, #fbbf24 30%, #b45309 100%)",
+                                    border: "3px solid #fff",
+                                    boxShadow: "0 0 12px rgba(0,0,0,0.8)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    fontSize: "1.2rem",
+                                    zIndex: 10,
+                                    pointerEvents: "none"
+                                  }}>
+                                    ⭐
+                                  </div>
+                                </div>
+
+                                {wheelPrizeResult && (
+                                  <div style={{
+                                    width: "100%",
+                                    padding: "12px",
+                                    borderRadius: 12,
+                                    background: "rgba(16, 185, 129, 0.15)",
+                                    border: "1px solid rgba(16, 185, 129, 0.4)",
+                                    textAlign: "center"
+                                  }}>
+                                    <div style={{ fontSize: "1.4rem" }}>🎉</div>
+                                    <div style={{ color: "#34d399", fontWeight: 800, fontSize: "0.95rem" }}>
+                                      You Won {wheelPrizeResult.label}!
+                                    </div>
+                                    <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.76rem", marginTop: 2 }}>
+                                      Rarity: <strong style={{ color: wheelPrizeResult.color }}>{wheelPrizeResult.tier}</strong> (+{wheelPrizeResult.xp} XP credited to your profile)
+                                    </div>
+                                  </div>
+                                )}
+
+                                {wheelClaimedToday ? (
+                                  <div style={{ width: "100%", textAlign: "center" }}>
+                                    <div style={{
+                                      background: "rgba(245, 158, 11, 0.12)",
+                                      border: "1px solid rgba(245, 158, 11, 0.3)",
+                                      padding: "12px",
+                                      borderRadius: 12,
+                                      marginBottom: 8
+                                    }}>
+                                      <div style={{ color: "#fbbf24", fontWeight: 800, fontSize: "0.88rem" }}>
+                                        ✅ Daily Spin Used for Today
+                                      </div>
+                                      <div style={{ color: "rgba(255, 255, 255, 0.75)", fontSize: "0.75rem", marginTop: 3 }}>
+                                        1 spin per day limit. Next spin unlocks tomorrow at 00:00 UTC!
+                                      </div>
+                                    </div>
+                                    <button
+                                      disabled
+                                      className="modal-claim-btn"
+                                      style={{
+                                        width: "100%",
+                                        padding: "14px",
+                                        borderRadius: 12,
+                                        fontWeight: 800,
+                                        fontSize: "0.92rem",
+                                        background: "rgba(255, 255, 255, 0.08)",
+                                        color: "rgba(255, 255, 255, 0.4)",
+                                        border: "none",
+                                        cursor: "not-allowed",
+                                        opacity: 0.6
+                                      }}
+                                    >
+                                      🔒 Come Back Tomorrow
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={handleSpinDailyWheel}
+                                    disabled={wheelSpinning || claiming}
+                                    className="modal-claim-btn"
+                                    style={{
+                                      width: "100%",
+                                      padding: "15px",
+                                      borderRadius: 12,
+                                      fontWeight: 800,
+                                      fontSize: "1rem",
+                                      background: wheelSpinning
+                                        ? "rgba(139, 92, 246, 0.4)"
+                                        : "linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #f59e0b 100%)",
+                                      color: "#fff",
+                                      border: "none",
+                                      cursor: wheelSpinning ? "not-allowed" : "pointer",
+                                      boxShadow: wheelSpinning ? "none" : "0 0 25px rgba(236, 72, 153, 0.45)",
+                                      transition: "all 0.2s ease"
+                                    }}
+                                  >
+                                    {wheelSpinning ? "🎰 Spinning Wheel of Luck..." : "🎯 Spin Wheel of Luck Now (1 Spin Daily) →"}
+                                  </button>
+                                )}
+
+                                <div style={{
+                                  width: "100%",
+                                  background: "rgba(0,0,0,0.35)",
+                                  border: "1px solid rgba(255,255,255,0.07)",
+                                  borderRadius: 12,
+                                  padding: "10px 12px"
+                                }}>
+                                  <div style={{ fontSize: "0.72rem", fontWeight: 800, color: "rgba(255,255,255,0.6)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                                    Segment Rarity & Odds
+                                  </div>
+                                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px" }}>
+                                    {WHEEL_SEGMENTS.map((s, idx) => (
+                                      <div key={idx} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "0.72rem" }}>
+                                        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: s.color, display: "inline-block" }} />
+                                          <strong style={{ color: "#fff" }}>{s.label}</strong>
+                                        </span>
+                                        <span style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.68rem" }}>
+                                          {s.weight}% ({s.tier})
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
                               </div>
                             ) : selectedQuest.id === "promo-bonus" ? (
                               <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
