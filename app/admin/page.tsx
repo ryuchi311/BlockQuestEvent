@@ -1280,11 +1280,17 @@ export default function AdminPage() {
     }
   }, [adminFetch]);
 
-  // Load only active tab data & lightweight quests on auth (lazy-load rest on demand)
+  // Load active tab data, lightweight quests on auth, and badge queues in the background
   useEffect(() => {
     if (!authed) return;
     // Always load quests so quest categories and titles resolve everywhere
     fetchQuests();
+
+    // Silently pre-fetch pending queues in the background so badge counts update immediately
+    if (tab !== "verifications") fetchVerifications(true);
+    if (tab !== "messages") fetchMessageNotes(true);
+    if (tab !== "tickets") fetchSupportTickets(true);
+
     // Load whichever tab is active initially
     if (tab === "attendees") fetchAttendees();
     else if (tab === "verifications") fetchVerifications();
@@ -1301,21 +1307,21 @@ export default function AdminPage() {
     else if (tab === "socials") fetchSocialMissions();
   }, [authed, tab, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes, fetchSupportTickets, fetchPromoCodes, fetchMilestones, fetchAdminUsers, fetchSocialMissions]);
 
-  // ── Auto Refresh (Background Silent Polling - No UI Flickering, Only active tab) ──
+  // ── Auto Refresh (Background Silent Polling - No UI Flickering) ──
   useEffect(() => {
     if (!authed || !autoRefresh || tab === "scanner") return;
     const interval = setInterval(() => {
+      // Always refresh queues silently in the background so tab badges stay up to date
+      fetchVerifications(true);
+      fetchMessageNotes(true);
+      fetchSupportTickets(true);
+
       if (tab === "attendees") fetchAttendees(true);
       else if (tab === "quests") fetchQuests(true);
       else if (tab === "milestones") fetchMilestones(true);
-      else if (tab === "verifications") fetchVerifications(true);
-      else if (tab === "messages") fetchMessageNotes(true);
-      else if (tab === "tickets") fetchSupportTickets(true);
       else if (tab === "promocodes") fetchPromoCodes(true);
       else if (tab === "questlog") {
         fetchAttendees(true);
-        fetchVerifications(true);
-        fetchMessageNotes(true);
       }
       else if (tab === "staff") fetchAdminUsers(true);
       else if (tab === "socials") fetchSocialMissions(true);
