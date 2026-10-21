@@ -2020,6 +2020,331 @@ a {
   display: block;
 }
 
+/* Dedicated Interactive Peryahan Center Tab Button */
+.tab-btn--peryahan {
+  position: relative;
+  flex: 1.25;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  z-index: 105;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.tab-btn--peryahan:hover {
+  transform: translateY(-2px);
+}
+
+.tab-btn--peryahan:active {
+  transform: translateY(1px) scale(0.96);
+}
+
+.peryahan-btn-floating {
+  position: absolute;
+  top: -20px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #facc15 0%, #ea580c 50%, #dc2626 100%);
+  border: 3px solid #0c1a3b;
+  box-shadow: 0 6px 18px rgba(234, 88, 12, 0.5), 0 0 14px rgba(250, 204, 21, 0.4), inset 0 2px 3px rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.tab-btn--peryahan.tab-btn--active .peryahan-btn-floating {
+  box-shadow: 0 0 22px rgba(250, 204, 21, 0.8), 0 8px 24px rgba(220, 38, 38, 0.6), inset 0 2px 4px #ffffff;
+  border-color: #ffd166;
+  transform: scale(1.08);
+}
+
+.peryahan-btn-floating__ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px dashed rgba(250, 204, 21, 0.65);
+  animation: peryahanRingSpin 10s linear infinite;
+  pointer-events: none;
+}
+
+.peryahan-btn-floating__pulse {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(250, 204, 21, 0.35) 0%, rgba(220, 38, 38, 0) 70%);
+  animation: peryahanAuraPulse 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes peryahanRingSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes peryahanAuraPulse {
+  0%, 100% { transform: scale(0.92); opacity: 0.4; }
+  50% { transform: scale(1.2); opacity: 0.85; }
+}
+
+.peryahan-btn-icon {
+  font-size: 1.55rem;
+  line-height: 1;
+  display: inline-block;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.tab-btn--peryahan:hover .peryahan-btn-icon {
+  transform: rotate(45deg) scale(1.1);
+}
+
+.tab-btn--peryahan.is-spinning .peryahan-btn-icon {
+  animation: peryahanBtnSpinFast 0.8s linear infinite;
+}
+
+@keyframes peryahanBtnSpinFast {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Idle gentle continuous spin for the Peryahan wheel (eye-catcher when viewing) */
+.peryahan-wheel-disc.is-idle-spinning {
+  animation: peryahanIdleRoleta 22s linear infinite;
+}
+
+@keyframes peryahanIdleRoleta {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Ambient Carnival Pop-up Fireworks around the Wheel during idle viewing */
+.wheel-ambient-fireworks-container {
+  position: absolute;
+  inset: -30px;
+  pointer-events: none;
+  z-index: 35;
+  overflow: visible;
+}
+
+.ambient-firework-burst {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  animation: ambientBurstPop 3s ease-in-out infinite;
+  opacity: 0;
+}
+
+@keyframes ambientBurstPop {
+  0% {
+    transform: scale(0.2) rotate(0deg);
+    opacity: 0;
+  }
+  35% {
+    transform: scale(0.2) rotate(0deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.4) rotate(45deg);
+    opacity: 1;
+    filter: drop-shadow(0 0 12px currentColor);
+  }
+  70% {
+    transform: scale(1.8) rotate(90deg);
+    opacity: 0.85;
+    box-shadow:
+      0 -24px 0 2px currentColor,
+      17px -17px 0 2px #fff,
+      24px 0 0 2px currentColor,
+      17px 17px 0 2px #fff,
+      0 24px 0 2px currentColor,
+      -17px 17px 0 2px #fff,
+      -24px 0 0 2px currentColor,
+      -17px -17px 0 2px #fff;
+  }
+  90%, 100% {
+    transform: scale(2.2) rotate(120deg);
+    opacity: 0;
+    box-shadow:
+      0 -36px 0 1px transparent,
+      25px -25px 0 1px transparent,
+      36px 0 0 1px transparent,
+      25px 25px 0 1px transparent,
+      0 36px 0 1px transparent,
+      -25px 25px 0 1px transparent,
+      -36px 0 0 1px transparent,
+      -25px -25px 0 1px transparent;
+  }
+}
+
+
+/* Jackpot Fireworks Celebration Overlay */
+.jackpot-fireworks-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  pointer-events: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, rgba(12, 26, 59, 0.4) 0%, rgba(0, 0, 0, 0.75) 100%);
+  animation: fireworksOverlayFade 4s ease-out forwards;
+}
+
+@keyframes fireworksOverlayFade {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.jackpot-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  animation: jackpotPopBounce 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  z-index: 10;
+  filter: drop-shadow(0 10px 30px rgba(250, 204, 21, 0.8));
+}
+
+@keyframes jackpotPopBounce {
+  0% { transform: scale(0.2) translateY(50px); opacity: 0; }
+  50% { transform: scale(1.15) translateY(-10px); opacity: 1; }
+  75% { transform: scale(0.95) translateY(0); }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.jackpot-banner__crown {
+  font-size: 3.5rem;
+  animation: crownBounce 1s ease-in-out infinite alternate;
+}
+
+@keyframes crownBounce {
+  0% { transform: translateY(0) rotate(-4deg); }
+  100% { transform: translateY(-10px) rotate(4deg); }
+}
+
+.jackpot-banner__title {
+  font-size: 2.4rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #ffffff 0%, #fef08a 25%, #facc15 50%, #ea580c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.9));
+  text-align: center;
+  margin: 0;
+  line-height: 1.1;
+}
+
+.jackpot-banner__sub {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #34d399;
+  letter-spacing: 0.04em;
+  background: rgba(12, 26, 59, 0.85);
+  border: 2px solid #facc15;
+  padding: 6px 20px;
+  border-radius: 30px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+}
+
+.firework-rocket {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  box-shadow: 0 0 10px 4px currentColor;
+  animation: fireworkBurst 1.8s ease-out infinite;
+}
+
+@keyframes fireworkBurst {
+  0% {
+    transform: translate(var(--startX), 100vh) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(var(--targetX), var(--targetY)) scale(1.6);
+    opacity: 1;
+  }
+  52% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--targetX), var(--targetY)) scale(1);
+    opacity: 0;
+    box-shadow:
+      0 -60px 0 3px currentColor,
+      42px -42px 0 3px currentColor,
+      60px 0 0 3px currentColor,
+      42px 42px 0 3px currentColor,
+      0 60px 0 3px currentColor,
+      -42px 42px 0 3px currentColor,
+      -60px 0 0 3px currentColor,
+      -42px -42px 0 3px currentColor,
+      0 -90px 0 2px #fff,
+      64px -64px 0 2px #fff,
+      90px 0 0 2px #fff,
+      64px 64px 0 2px #fff,
+      0 90px 0 2px #fff,
+      -64px 64px 0 2px #fff,
+      -90px 0 0 2px #fff,
+      -64px -64px 0 2px #fff;
+  }
+}
+
+
+.peryahan-badge-free {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 8px;
+  border: 1.5px solid #0c1a3b;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  animation: bounce 1.8s infinite;
+  white-space: nowrap;
+}
+
+.peryahan-label {
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-top: 26px;
+  background: linear-gradient(135deg, #ffd166 0%, #f5a623 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
+}
+
+.tab-btn--peryahan.tab-btn--active .peryahan-label {
+  background: linear-gradient(135deg, #ffffff 0%, #ffd166 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 900;
+}
+
+
 /* Zealy Tab content layouts */
 .zealy-tab-content {
   animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);

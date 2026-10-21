@@ -197,7 +197,7 @@ function getDefaultQuestStatus(
 
 export default function ZealyMobileApp() {
   const [mounted, setMounted] = React.useState(false);
-  const [activeTab, setActiveTab] = useState<"quests" | "leaderboard" | "info" | "profile">("quests");
+  const [activeTab, setActiveTab] = useState<"quests" | "leaderboard" | "peryahan" | "info" | "profile">("quests");
   const [quests, setQuests] = useState<Quest[]>(() => {
     if (typeof window !== "undefined") {
       const savedUser = localStorage.getItem("bq_user");
@@ -350,6 +350,7 @@ export default function ZealyMobileApp() {
   const [wheelRotation, setWheelRotation] = useState(0);
   const [wheelPrizeResult, setWheelPrizeResult] = useState<{ xp: number; label: string; color: string; tier: string } | null>(null);
   const [wheelClaimedToday, setWheelClaimedToday] = useState(false);
+  const [showJackpotFireworks, setShowJackpotFireworks] = useState(false);
   const wheelAudioCtxRef = React.useRef<AudioContext | null>(null);
 
   // Play realistic mechanical flapper click/tick during wheel spin
@@ -384,7 +385,7 @@ export default function ZealyMobileApp() {
   }, []);
 
   // Play celebration fanfare when winning XP or playful bonk for Bokya
-  const playWheelFinishSound = React.useCallback((isBokya: boolean) => {
+  const playWheelFinishSound = React.useCallback((isBokya: boolean, isJackpot = false) => {
     if (typeof window === "undefined") return;
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -414,6 +415,22 @@ export default function ZealyMobileApp() {
           gain.connect(ctx.destination);
           osc.start(startT);
           osc.stop(startT + 0.22);
+        });
+      } else if (isJackpot) {
+        // Grand Royal Jackpot Fanfare
+        const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98]; // C5, E5, G5, C6, E6, G6
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const startT = t + idx * 0.1;
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(freq, startT);
+          gain.gain.setValueAtTime(0.35, startT);
+          gain.gain.exponentialRampToValueAtTime(0.001, startT + 0.6);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(startT);
+          osc.stop(startT + 0.65);
         });
       } else {
         // Upbeat victory fiesta chime
@@ -1031,6 +1048,8 @@ export default function ZealyMobileApp() {
       const isDone = quest.status === "Done" || (email && typeof window !== "undefined" && !!localStorage.getItem(`bq_daily_wheel_${email}_${todayStr}`));
       setWheelClaimedToday(isDone);
       setWheelPrizeResult(null);
+      setActiveTab("peryahan");
+      return;
     }
 
     setSelectedQuest(quest);
@@ -1332,8 +1351,10 @@ export default function ZealyMobileApp() {
         setWheelSpinning(false);
         setClaiming(false);
 
+        const isJackpotWin = winningSegment.tier === "Jackpot" || winningSegment.xp >= 100;
+
         // Play outcome sound (fanfare or bokya slide)
-        playWheelFinishSound(winningSegment.xp === 0);
+        playWheelFinishSound(winningSegment.xp === 0, isJackpotWin);
 
         // Mark local storage & component state as claimed today
         if (typeof window !== "undefined") {
@@ -1356,12 +1377,24 @@ export default function ZealyMobileApp() {
             "🎪 Bokya! (0 XP)",
             "🃏"
           );
+        } else if (isJackpotWin) {
+          // 🎆 Show grand fireworks celebration FIRST, then reveal congratulations modal
+          setShowJackpotFireworks(true);
+          setTimeout(() => {
+            setShowJackpotFireworks(false);
+            showNotice(
+              `🎊 JACKPOT WINNER! 🎊\n\nIncredible luck! You hit the MAX PRIZE ${winningSegment.label} (${winningSegment.tier} Tier) from the Peryahan Roleta! +100 XP has been credited!`,
+              "success",
+              "🌟 GRAND JACKPOT WINNER!",
+              "👑"
+            );
+          }, 3200);
         } else {
           showNotice(
             `Panalo! You hit ${winningSegment.label} (${winningSegment.tier} Tier) from the Peryahan Wheel!`,
             "success",
             "🎉 Peryahan Reward Claimed!",
-            winningSegment.tier === "Jackpot" ? "🌟" : winningSegment.tier === "Legendary" ? "👑" : "🎯"
+            winningSegment.tier === "Legendary" ? "👑" : "🎯"
           );
         }
         fetchLeaderboard();
@@ -1950,7 +1983,7 @@ export default function ZealyMobileApp() {
           )}
 
           <div className="app-content-scroll">
-            {activeTab !== "profile" && activeTab !== "info" && (authenticatedUser || qrPass) && (
+            {activeTab !== "profile" && activeTab !== "info" && activeTab !== "peryahan" && (authenticatedUser || qrPass) && (
               <div className="xp-card">
                 {authenticatedUser && (
                   <p style={{
@@ -2156,11 +2189,11 @@ export default function ZealyMobileApp() {
 
                     {/* Active / In Progress Quests */}
                     <div className="quest-category__title" style={{ marginTop: "2px", marginBottom: "2px", fontSize: "0.72rem" }}>
-                      <span>⚡ Active Quests ({quests.filter((q) => q.status !== "Done").length})</span>
+                      <span>⚡ Active Quests ({quests.filter((q) => q.status !== "Done" && q.id !== "daily-claim").length})</span>
                     </div>
 
                     {quests
-                      .filter((q) => q.status !== "Done")
+                      .filter((q) => q.status !== "Done" && q.id !== "daily-claim")
                       .sort((a, b) => {
                         // Priority: Rejected (needs retry immediately) & Approved (ready to claim) at top
                         const priorityScore = (status: string) => {
@@ -2297,7 +2330,7 @@ export default function ZealyMobileApp() {
                       })}
 
                     {/* Completed Quests Toggle Section (STRICTLY Done ONLY) */}
-                    {quests.filter((q) => q.status === "Done").length > 0 && (
+                    {quests.filter((q) => q.status === "Done" && q.id !== "daily-claim").length > 0 && (
                       <div style={{ marginTop: 20 }}>
                         <button
                           onClick={() => setShowCompletedQuests((prev) => !prev)}
@@ -2318,7 +2351,7 @@ export default function ZealyMobileApp() {
                           }}
                         >
                           <span>
-                            ✅ Completed Quests ({quests.filter((q) => q.status === "Done").length})
+                            ✅ Completed Quests ({quests.filter((q) => q.status === "Done" && q.id !== "daily-claim").length})
                           </span>
                           <span style={{ color: "var(--gold-light)", fontWeight: 800, fontSize: "0.85rem" }}>
                             {showCompletedQuests ? "Hide ▴" : "Show ▾"}
@@ -2328,7 +2361,7 @@ export default function ZealyMobileApp() {
                         {showCompletedQuests && (
                           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
                             {quests
-                              .filter((q) => q.status === "Done")
+                              .filter((q) => q.status === "Done" && q.id !== "daily-claim")
                               .sort((a, b) => {
                                 const timeA = (a as any).completedAt ? new Date((a as any).completedAt).getTime() : 0;
                                 const timeB = (b as any).completedAt ? new Date((b as any).completedAt).getTime() : 0;
@@ -2582,6 +2615,527 @@ export default function ZealyMobileApp() {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+            {activeTab === "peryahan" && (
+              <div className="zealy-tab-content">
+                <div className="section-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 8 }}>
+                  <div>
+                    <p className="section-head__eyebrow">Fiesta Carnival Game</p>
+                    <h2 style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span>🎪</span>
+                      <span>Peryahan Wheel of Spin</span>
+                    </h2>
+                  </div>
+                  <div style={{
+                    fontSize: "0.72rem",
+                    fontWeight: 800,
+                    padding: "4px 10px",
+                    borderRadius: 10,
+                    background: wheelClaimedToday ? "rgba(255,255,255,0.08)" : "linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.2) 100%)",
+                    border: wheelClaimedToday ? "1px solid rgba(255,255,255,0.15)" : "1px solid rgba(16, 185, 129, 0.5)",
+                    color: wheelClaimedToday ? "rgba(255,255,255,0.6)" : "#34d399",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6
+                  }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: wheelClaimedToday ? "#6b7280" : "#10b981", boxShadow: wheelClaimedToday ? "none" : "0 0 8px #10b981" }} />
+                    <span>{wheelClaimedToday ? "Claimed Today" : "1 Free Spin Ready"}</span>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: "radial-gradient(ellipse at top, rgba(245, 166, 35, 0.15) 0%, rgba(12, 26, 59, 0.7) 60%, rgba(8, 8, 16, 0.95) 100%)",
+                  border: "1.5px solid rgba(250, 204, 21, 0.35)",
+                  borderRadius: 20,
+                  padding: "16px 12px 20px",
+                  boxShadow: "0 12px 36px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.15)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 14
+                }}>
+                  <div style={{ textAlign: "center", maxWidth: 320 }}>
+                    <p style={{ margin: "0 0 4px", fontSize: "0.86rem", fontWeight: 800, color: "#fef08a", letterSpacing: "0.02em" }}>
+                      🎡 Spin the Festive Peryahan Roleta!
+                    </p>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "rgba(255,255,255,0.7)", lineHeight: 1.4 }}>
+                      Hit the jackpot slice to win up to <strong>100 XP</strong> for the global leaderboard! Watch out for the Calavera Bokya!
+                    </p>
+                  </div>
+
+                  {/* Mexican Fiesta Arch Container */}
+                  <div style={{
+                    position: "relative",
+                    width: "100%",
+                    maxWidth: 360,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center"
+                  }}>
+                    {/* Fiesta Golden Arch Frame with Navy Outline */}
+                    <div style={{
+                      position: "relative",
+                      width: 330,
+                      height: 330,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      filter: "drop-shadow(0 10px 25px rgba(0,0,0,0.6))"
+                    }}>
+                      {/* Outer Deep Navy Arch Ring */}
+                      <div style={{
+                        position: "absolute",
+                        width: 326,
+                        height: 326,
+                        borderRadius: "50%",
+                        background: "#0c1a3b",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center"
+                      }}>
+                        {/* Bold Golden Yellow Rim */}
+                        <div style={{
+                          position: "absolute",
+                          width: 308,
+                          height: 308,
+                          borderRadius: "50%",
+                          background: "linear-gradient(135deg, #facc15 0%, #eab308 100%)",
+                          border: "4px solid #0c1a3b",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center"
+                        }}>
+                          {/* Inner Red Accent Ring */}
+                          <div style={{
+                            position: "absolute",
+                            width: 284,
+                            height: 284,
+                            borderRadius: "50%",
+                            background: "#dc2626",
+                            border: "3px solid #0c1a3b",
+                            overflow: "hidden"
+                          }} />
+                        </div>
+                      </div>
+
+                      {/* Top Fiery Diamond Pointer Pin (Pointing downward to top slice) */}
+                      <div style={{
+                        position: "absolute",
+                        top: -12,
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        zIndex: 40,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        filter: "drop-shadow(0 5px 8px rgba(0,0,0,0.7))"
+                      }}>
+                        {/* Diamond Gem */}
+                        <div style={{
+                          width: 30,
+                          height: 30,
+                          background: "linear-gradient(135deg, #fde047 0%, #ea580c 60%, #b91c1c 100%)",
+                          border: "3px solid #0c1a3b",
+                          borderRadius: 6,
+                          transform: "rotate(45deg)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center"
+                        }}>
+                          <div style={{
+                            width: 12,
+                            height: 12,
+                            background: "#ffffff",
+                            borderRadius: 3,
+                            opacity: 0.9
+                          }} />
+                        </div>
+                        {/* Pointer Arrow Tip */}
+                        <div style={{
+                          width: 0,
+                          height: 0,
+                          borderLeft: "11px solid transparent",
+                          borderRight: "11px solid transparent",
+                          borderTop: "16px solid #b91c1c",
+                          marginTop: -7
+                        }} />
+                      </div>
+
+                      {/* Ambient Pop-up Carnival Fireworks while viewing / temporary spin */}
+                      {!wheelSpinning && !wheelPrizeResult && !wheelClaimedToday && (
+                        <div className="wheel-ambient-fireworks-container" aria-hidden="true">
+                          {[
+                            { top: "6%", left: "4%", color: "#facc15", delay: "0s" },
+                            { top: "12%", right: "6%", color: "#38bdf8", delay: "1.1s" },
+                            { top: "72%", left: "2%", color: "#ec4899", delay: "1.9s" },
+                            { top: "68%", right: "4%", color: "#34d399", delay: "0.6s" },
+                            { top: "2%", left: "50%", color: "#f97316", delay: "2.3s" },
+                            { top: "84%", left: "48%", color: "#a855f7", delay: "1.5s" },
+                          ].map((burst, i) => (
+                            <div
+                              key={i}
+                              className="ambient-firework-burst"
+                              style={{
+                                top: burst.top,
+                                left: (burst as any).left,
+                                right: (burst as any).right,
+                                color: burst.color,
+                                animationDelay: burst.delay,
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Rotating Wheel Disc with Fiesta Graphics */}
+                      <div
+                        className={`peryahan-wheel-disc ${!wheelSpinning && !wheelPrizeResult && !wheelClaimedToday ? "is-idle-spinning" : ""}`}
+                        style={{
+                          position: "relative",
+                          width: 278,
+                          height: 278,
+                          borderRadius: "50%",
+                          overflow: "hidden",
+                          transform: wheelSpinning || wheelPrizeResult || wheelClaimedToday ? `rotate(${wheelRotation}deg)` : undefined,
+                          transition: wheelSpinning
+                            ? "transform 8.5s cubic-bezier(0.15, 0.95, 0.2, 1)"
+                            : "transform 0.4s ease-out",
+                          zIndex: 10
+                        }}
+                      >
+                        <svg viewBox="0 0 240 240" width="100%" height="100%">
+                          <defs>
+                            <filter id="fiestaTextDropDedicated" x="-30%" y="-30%" width="160%" height="160%">
+                              <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" floodColor="#000000" floodOpacity="0.9" />
+                            </filter>
+                          </defs>
+
+                          {WHEEL_SEGMENTS.map((seg, idx) => {
+                            const anglePerSeg = 360 / WHEEL_SEGMENTS.length;
+                            const startAngle = idx * anglePerSeg - 90;
+                            const endAngle = (idx + 1) * anglePerSeg - 90;
+                            const startRad = (startAngle * Math.PI) / 180;
+                            const endRad = (endAngle * Math.PI) / 180;
+                            const x1 = 120 + 120 * Math.cos(startRad);
+                            const y1 = 120 + 120 * Math.sin(startRad);
+                            const x2 = 120 + 120 * Math.cos(endRad);
+                            const y2 = 120 + 120 * Math.sin(endRad);
+                            const pathData = `M 120 120 L ${x1} ${y1} A 120 120 0 0 1 ${x2} ${y2} Z`;
+
+                            const midAngle = startAngle + anglePerSeg / 2;
+                            const textRad = (midAngle * Math.PI) / 180;
+
+                            const arrowX = 120 + 96 * Math.cos(textRad);
+                            const arrowY = 120 + 96 * Math.sin(textRad);
+
+                            const textX = 120 + 72 * Math.cos(textRad);
+                            const textY = 120 + 72 * Math.sin(textRad);
+
+                            const pegX = 120 + 38 * Math.cos(startRad);
+                            const pegY = 120 + 38 * Math.sin(startRad);
+
+                            const isBokya = seg.tier === "Bokya";
+
+                            return (
+                              <g key={idx}>
+                                <path
+                                  d={pathData}
+                                  fill={seg.color}
+                                  stroke="#0c1a3b"
+                                  strokeWidth="3"
+                                />
+
+                                <g transform={`rotate(${midAngle + 90}, ${arrowX}, ${arrowY})`}>
+                                  <polyline
+                                    points={`${arrowX - 8},${arrowY - 4} ${arrowX},${arrowY + 4} ${arrowX + 8},${arrowY - 4}`}
+                                    fill="none"
+                                    stroke={isBokya ? "#fde047" : "#ffffff"}
+                                    strokeWidth="2.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                  <circle
+                                    cx={arrowX}
+                                    cy={arrowY - 7}
+                                    r="2.5"
+                                    fill={isBokya ? "#fde047" : "#ffffff"}
+                                  />
+                                </g>
+
+                                {isBokya ? (
+                                  <g transform={`rotate(${midAngle + 90}, ${textX}, ${textY})`}>
+                                    <circle cx={textX} cy={textY - 3} r="13" fill="#facc15" stroke="#0c1a3b" strokeWidth="2.5" />
+                                    <circle cx={textX - 4.5} cy={textY - 5} r="2.8" fill="#dc2626" />
+                                    <circle cx={textX + 4.5} cy={textY - 5} r="2.8" fill="#dc2626" />
+                                    <polygon points={`${textX},${textY - 2} ${textX - 2},${textY + 1} ${textX + 2},${textY + 1}`} fill="#0c1a3b" />
+                                    <rect x={textX - 5.5} cy={textY + 3} y={textY + 3} width="3" height="3" rx="0.5" fill="#ffffff" stroke="#0c1a3b" strokeWidth="1" />
+                                    <rect x={textX - 1.5} cy={textY + 3} y={textY + 3} width="3" height="3" rx="0.5" fill="#ffffff" stroke="#0c1a3b" strokeWidth="1" />
+                                    <rect x={textX + 2.5} cy={textY + 3} y={textY + 3} width="3" height="3" rx="0.5" fill="#ffffff" stroke="#0c1a3b" strokeWidth="1" />
+                                    <text
+                                      x={textX}
+                                      y={textY + 14}
+                                      fill="#ffffff"
+                                      stroke="#0c1a3b"
+                                      strokeWidth="3"
+                                      strokeLinejoin="round"
+                                      paintOrder="stroke fill"
+                                      fontSize="8.5"
+                                      fontWeight="900"
+                                      fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Impact, sans-serif"
+                                      letterSpacing="0.08em"
+                                      textAnchor="middle"
+                                      dominantBaseline="central"
+                                    >
+                                      BOKYA
+                                    </text>
+                                  </g>
+                                ) : (
+                                  <g transform={`rotate(${midAngle + 90}, ${textX}, ${textY})`}>
+                                    <text
+                                      x={textX}
+                                      y={textY}
+                                      fill="#ffffff"
+                                      stroke="#0c1a3b"
+                                      strokeWidth="3.5"
+                                      strokeLinejoin="round"
+                                      paintOrder="stroke fill"
+                                      fontSize="15.5"
+                                      fontWeight="900"
+                                      fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Impact, Arial, sans-serif"
+                                      letterSpacing="0.04em"
+                                      textAnchor="middle"
+                                      dominantBaseline="central"
+                                    >
+                                      {seg.label}
+                                    </text>
+                                  </g>
+                                )}
+
+                                <circle cx={pegX} cy={pegY} r="3" fill="#fef08a" stroke="#0c1a3b" strokeWidth="1.5" />
+                              </g>
+                            );
+                          })}
+                        </svg>
+                      </div>
+
+                      {/* Center Hexagonal Heart Badge */}
+                      <div style={{
+                        position: "absolute",
+                        width: 62,
+                        height: 62,
+                        zIndex: 30,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.5))",
+                        pointerEvents: "none"
+                      }}>
+                        <div style={{
+                          position: "absolute",
+                          width: 62,
+                          height: 62,
+                          borderRadius: "50%",
+                          background: "#0284c7",
+                          border: "4px solid #0c1a3b",
+                          boxShadow: "0 0 10px rgba(2, 132, 199, 0.6)"
+                        }} />
+
+                        <div style={{
+                          position: "relative",
+                          width: 44,
+                          height: 44,
+                          background: "linear-gradient(135deg, #fef08a 0%, #eab308 100%)",
+                          border: "3px solid #0c1a3b",
+                          borderRadius: 12,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center"
+                        }}>
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="#dc2626"
+                            style={{
+                              filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.3))",
+                              transform: wheelSpinning ? "scale(1.25)" : "scale(1)",
+                              transition: "transform 0.3s ease"
+                            }}
+                          >
+                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom Fiesta Arch Stand Ribbon */}
+                    <div style={{
+                      position: "relative",
+                      width: "100%",
+                      marginTop: -38,
+                      zIndex: 25,
+                      background: "#0284c7",
+                      border: "4px solid #0c1a3b",
+                      borderRadius: 22,
+                      padding: "10px 14px",
+                      boxShadow: "0 10px 25px rgba(0,0,0,0.55)",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 8
+                    }}>
+                      {/* Colorful Aztec Triangle Bunting Garland */}
+                      <div style={{
+                        width: "100%",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "0 8px"
+                      }}>
+                        <div style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: "50%",
+                          background: "#dc2626",
+                          border: "2px solid #ffffff",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "0.75rem",
+                          color: "#ffffff"
+                        }}>
+                          ✿
+                        </div>
+
+                        <div style={{ display: "flex", gap: 6 }}>
+                          {["#facc15", "#16a34a", "#dc2626", "#facc15", "#16a34a", "#dc2626"].map((c, i) => (
+                            <div
+                              key={i}
+                              style={{
+                                width: 0,
+                                height: 0,
+                                borderLeft: "6px solid transparent",
+                                borderRight: "6px solid transparent",
+                                borderTop: `10px solid ${c}`
+                              }}
+                            />
+                          ))}
+                        </div>
+
+                        <div style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: "50%",
+                          background: "#dc2626",
+                          border: "2px solid #ffffff",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "0.75rem",
+                          color: "#ffffff"
+                        }}>
+                          ✿
+                        </div>
+                      </div>
+
+                      {/* Action Button */}
+                      {wheelClaimedToday ? (
+                        <div style={{ width: "100%", textAlign: "center" }}>
+                          <div style={{
+                            background: "rgba(0,0,0,0.35)",
+                            border: "2px solid rgba(250, 204, 21, 0.4)",
+                            borderRadius: 14,
+                            padding: "8px 12px",
+                            marginBottom: 6
+                          }}>
+                            <div style={{ color: "#facc15", fontWeight: 800, fontSize: "0.85rem" }}>
+                              ✓ Daily Spin Completed
+                            </div>
+                            <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "0.72rem" }}>
+                              Next free spin unlocks tomorrow at 00:00 UTC!
+                            </div>
+                          </div>
+                          <button
+                            disabled
+                            style={{
+                              width: "100%",
+                              padding: "10px",
+                              borderRadius: 20,
+                              background: "rgba(255,255,255,0.1)",
+                              color: "rgba(255,255,255,0.4)",
+                              border: "2px solid rgba(255,255,255,0.2)",
+                              fontSize: "0.85rem",
+                              fontWeight: 800,
+                              cursor: "not-allowed"
+                            }}
+                          >
+                            🔒 Come Back Tomorrow
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={handleSpinDailyWheel}
+                          disabled={wheelSpinning || claiming}
+                          style={{
+                            width: "90%",
+                            padding: "12px 18px",
+                            borderRadius: 25,
+                            background: wheelSpinning
+                              ? "#ca8a04"
+                              : "linear-gradient(180deg, #fef08a 0%, #facc15 60%, #eab308 100%)",
+                            color: "#0c1a3b",
+                            border: "3.5px solid #0c1a3b",
+                            fontWeight: 900,
+                            fontSize: "1.05rem",
+                            letterSpacing: "0.04em",
+                            cursor: wheelSpinning ? "not-allowed" : "pointer",
+                            boxShadow: "0 4px 14px rgba(0,0,0,0.45), inset 0 2px 0 rgba(255,255,255,0.8)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 8,
+                            transition: "transform 0.15s ease"
+                          }}
+                        >
+                          <span>{wheelSpinning ? "SPINNING IN PROGRESS..." : "SPINNING IN 3.. 🎯"}</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Prize / Result Banner */}
+                  {wheelPrizeResult && (
+                    <div style={{
+                      width: "100%",
+                      maxWidth: 360,
+                      padding: "14px",
+                      borderRadius: 16,
+                      background: wheelPrizeResult.xp === 0
+                        ? "linear-gradient(135deg, rgba(220, 38, 38, 0.25) 0%, rgba(12, 26, 59, 0.95) 100%)"
+                        : "linear-gradient(135deg, rgba(234, 179, 8, 0.25) 0%, rgba(12, 26, 59, 0.95) 100%)",
+                      border: wheelPrizeResult.xp === 0 ? "2px solid #dc2626" : "2px solid #facc15",
+                      textAlign: "center",
+                      boxShadow: "0 6px 20px rgba(0,0,0,0.45)"
+                    }}>
+                      <div style={{ fontSize: "1.8rem", marginBottom: 2 }}>
+                        {wheelPrizeResult.xp === 0 ? "💀 😢" : "🎉 🏆"}
+                      </div>
+                      <div style={{
+                        color: wheelPrizeResult.xp === 0 ? "#f87171" : "#fde047",
+                        fontWeight: 900,
+                        fontSize: "1.15rem"
+                      }}>
+                        {wheelPrizeResult.xp === 0 ? "BOKYA! (0 XP)" : `Panalo! +${wheelPrizeResult.xp} XP!`}
+                      </div>
+                      <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "0.82rem", marginTop: 4 }}>
+                        {wheelPrizeResult.xp === 0
+                          ? "No XP awarded this round. Better luck tomorrow!"
+                          : `+${wheelPrizeResult.xp} XP credited to your profile!`}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -3320,6 +3874,30 @@ export default function ZealyMobileApp() {
             >
               <span className="tab-icon">🏆</span>
               <span className="tab-label">Rank</span>
+            </button>
+            {/* Dedicated Interactive Peryahan Roleta Wheel Action Button */}
+            <button
+              onClick={() => {
+                setActiveTab("peryahan");
+                // Check if already claimed today
+                const email = ticketEmail || authenticatedUser?.email || qrPass?.email;
+                const todayStr = new Date().toISOString().slice(0, 10);
+                const dailyQuest = quests.find((q) => q.id === "daily-claim");
+                const isDone = dailyQuest?.status === "Done" || (email && typeof window !== "undefined" && !!localStorage.getItem(`bq_daily_wheel_${email}_${todayStr}`));
+                setWheelClaimedToday(!!isDone);
+              }}
+              className={`tab-btn--peryahan ${activeTab === "peryahan" ? "tab-btn--active" : ""} ${wheelSpinning ? "is-spinning" : ""}`}
+              aria-label="Peryahan Wheel of Spin"
+            >
+              <div className="peryahan-btn-floating">
+                {!wheelClaimedToday && <div className="peryahan-btn-floating__pulse" />}
+                <div className="peryahan-btn-floating__ring" />
+                <span className="peryahan-btn-icon">🎡</span>
+                {!wheelClaimedToday && (
+                  <span className="peryahan-badge-free">FREE</span>
+                )}
+              </div>
+              <span className="peryahan-label">Peryahan</span>
             </button>
             <button
               onClick={() => setActiveTab("info")}
@@ -5683,6 +6261,41 @@ export default function ZealyMobileApp() {
               showNotice(`Your support ticket #${ref} was submitted successfully! Our event admin team will review it.`, "success", "Ticket Submitted");
             }}
           />
+
+          {/* ── Grand Jackpot Fireworks Celebration Overlay ── */}
+          {showJackpotFireworks && (
+            <div className="jackpot-fireworks-overlay" role="dialog" aria-modal="true" aria-label="Jackpot Celebration">
+              {/* Multicolored Skyward Firework Rockets & Bursts */}
+              {[
+                { startX: "15vw", targetX: "20vw", targetY: "25vh", color: "#facc15", delay: "0s" },
+                { startX: "80vw", targetX: "75vw", targetY: "20vh", color: "#38bdf8", delay: "0.25s" },
+                { startX: "48vw", targetX: "50vw", targetY: "18vh", color: "#ec4899", delay: "0.45s" },
+                { startX: "30vw", targetX: "35vw", targetY: "38vh", color: "#34d399", delay: "0.7s" },
+                { startX: "65vw", targetX: "65vw", targetY: "34vh", color: "#f97316", delay: "0.9s" },
+                { startX: "22vw", targetX: "28vw", targetY: "22vh", color: "#a855f7", delay: "1.15s" },
+                { startX: "78vw", targetX: "72vw", targetY: "26vh", color: "#facc15", delay: "1.35s" },
+                { startX: "50vw", targetX: "48vw", targetY: "15vh", color: "#22c55e", delay: "1.6s" },
+              ].map((fw, i) => (
+                <div
+                  key={i}
+                  className="firework-rocket"
+                  style={{
+                    color: fw.color,
+                    animationDelay: fw.delay,
+                    ["--startX" as any]: fw.startX,
+                    ["--targetX" as any]: fw.targetX,
+                    ["--targetY" as any]: fw.targetY,
+                  }}
+                />
+              ))}
+
+              <div className="jackpot-banner">
+                <span className="jackpot-banner__crown">👑</span>
+                <h1 className="jackpot-banner__title">🎆 JACKPOT! 🎆</h1>
+                <span className="jackpot-banner__sub">🌟 +100 XP WON! 🌟</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       <InstallPrompt />
