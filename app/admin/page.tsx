@@ -7,6 +7,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import Footer from "../../components/footer";
+import { createClient } from "../../utils/supabase/client";
 
 const QrScanner = dynamic(() => import("../../components/qr-scanner"), { ssr: false, loading: () => <p className="admin-loading">Loading scanner…</p> });
 
@@ -587,6 +588,8 @@ export default function AdminPage() {
     return () => { observer.disconnect(); cancelAnimationFrame(raf); };
   }, []);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
+  const [onlineAttendeesCount, setOnlineAttendeesCount] = useState<number>(0);
+  const [onlineAttendeeKeys, setOnlineAttendeeKeys] = useState<Set<string>>(new Set());
   const [quests, setQuests] = useState<Quest[]>([]);
 
   const sensors = useSensors(
@@ -1328,6 +1331,33 @@ export default function AdminPage() {
     }, 10000);
     return () => clearInterval(interval);
   }, [authed, autoRefresh, tab, fetchAttendees, fetchQuests, fetchMilestones, fetchVerifications, fetchMessageNotes, fetchSupportTickets, fetchPromoCodes, fetchAdminUsers, fetchSocialMissions]);
+
+  // ── Real-time Online Attendees Presence Listener ──
+  useEffect(() => {
+    if (!authed) return;
+    try {
+      const supabase = createClient();
+      const channel = supabase.channel("online_attendees");
+
+      channel
+        .on("presence", { event: "sync" }, () => {
+          const state = channel.presenceState();
+          const keys = new Set<string>();
+          Object.keys(state).forEach((k) => {
+            keys.add(k.toLowerCase().trim());
+          });
+          setOnlineAttendeesCount(keys.size);
+          setOnlineAttendeeKeys(keys);
+        })
+        .subscribe();
+
+      return () => {
+        channel.unsubscribe();
+      };
+    } catch {
+      // Gracefully ignore if offline
+    }
+  }, [authed]);
 
   const [rejectingItem, setRejectingItem] = useState<QuestVerification | null>(null);
   const [rejectionReasonInput, setRejectionReasonInput] = useState("");
@@ -2806,6 +2836,30 @@ export default function AdminPage() {
             <span>Database Live</span>
           </div>
 
+          {/* Real-time Online Attendees Indicator */}
+          <div
+            className="admin-subheader__pill"
+            style={{
+              borderColor: onlineAttendeesCount > 0 ? "rgba(16, 185, 129, 0.4)" : "rgba(255, 255, 255, 0.12)",
+              background: onlineAttendeesCount > 0 ? "rgba(16, 185, 129, 0.12)" : undefined,
+              color: onlineAttendeesCount > 0 ? "#34d399" : "var(--text-secondary)",
+              fontWeight: 800,
+            }}
+            title="Real-time Attendees currently active in the BlockQuest community app"
+          >
+            <span
+              style={{
+                display: "inline-block",
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: onlineAttendeesCount > 0 ? "#10b981" : "#64748b",
+                boxShadow: onlineAttendeesCount > 0 ? "0 0 8px #10b981" : "none",
+              }}
+            />
+            <span>🟢 {onlineAttendeesCount} {onlineAttendeesCount === 1 ? "User" : "Users"} Online</span>
+          </div>
+
           {/* Quick Metrics Ticker */}
           <div className="admin-subheader__pill admin-subheader__metrics" style={{ borderColor: "rgba(245, 166, 35, 0.25)", color: "var(--gold-light)" }}>
             <span>⚡ {liveQuestCount} Live Quests</span>
@@ -2998,6 +3052,27 @@ export default function AdminPage() {
           <div>
             <p className="admin-stat-card__label">Total Attendees</p>
             <p className="admin-stat-card__value">{attendees.length}</p>
+          </div>
+        </div>
+        <div
+          className="admin-stat-card"
+          style={{
+            borderLeft: onlineAttendeesCount > 0 ? "3px solid #10b981" : "3px solid rgba(16, 185, 129, 0.4)",
+            background: onlineAttendeesCount > 0 ? "rgba(16, 185, 129, 0.08)" : undefined,
+          }}
+          title="Active Questers currently online in the event community app"
+        >
+          <span className="admin-stat-card__icon">🟢</span>
+          <div>
+            <p className="admin-stat-card__label" style={{ color: onlineAttendeesCount > 0 ? "#34d399" : undefined }}>
+              Online Now
+            </p>
+            <p
+              className="admin-stat-card__value"
+              style={{ color: onlineAttendeesCount > 0 ? "#10b981" : undefined }}
+            >
+              {onlineAttendeesCount}
+            </p>
           </div>
         </div>
         <div className="admin-stat-card">
@@ -3315,7 +3390,39 @@ export default function AdminPage() {
                       return (
                         <tr key={a.id} className="admin-table__row">
                           <td className="admin-table__num">{attendeeStartIndex + i + 1}</td>
-                          <td className="admin-table__name">{a.full_name}</td>
+                          <td className="admin-table__name">
+                            <div style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+                              <span
+                                style={{
+                                  display: "inline-block",
+                                  width: 8,
+                                  height: 8,
+                                  borderRadius: "50%",
+                                  background: onlineAttendeeKeys.has(a.email?.toLowerCase().trim()) ? "#10b981" : "rgba(255,255,255,0.2)",
+                                  boxShadow: onlineAttendeeKeys.has(a.email?.toLowerCase().trim()) ? "0 0 7px #10b981" : "none",
+                                  flexShrink: 0,
+                                }}
+                                title={onlineAttendeeKeys.has(a.email?.toLowerCase().trim()) ? "Online now in BlockQuest app" : "Offline"}
+                              />
+                              <span>{a.full_name}</span>
+                              {onlineAttendeeKeys.has(a.email?.toLowerCase().trim()) && (
+                                <span
+                                  style={{
+                                    fontSize: "0.65rem",
+                                    fontWeight: 800,
+                                    color: "#34d399",
+                                    background: "rgba(16, 185, 129, 0.15)",
+                                    border: "1px solid rgba(16, 185, 129, 0.35)",
+                                    padding: "1px 6px",
+                                    borderRadius: 10,
+                                    lineHeight: 1.2,
+                                  }}
+                                >
+                                  ONLINE
+                                </span>
+                              )}
+                            </div>
+                          </td>
                           <td>
                             {a.alias_name ? (
                               <span style={{

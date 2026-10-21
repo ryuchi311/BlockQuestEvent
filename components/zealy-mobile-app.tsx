@@ -5,6 +5,7 @@ import Link from "next/link";
 import ZealyIntroAnimation from "./zealy-intro-animation";
 import InstallPrompt from "./install-prompt";
 import FeedbackTicketModal from "./feedback-ticket-modal";
+import { createClient } from "../utils/supabase/client";
 
 interface Quest {
   id: string;
@@ -614,6 +615,37 @@ export default function ZealyMobileApp() {
       if (warningCountdownRef.current) clearInterval(warningCountdownRef.current);
     };
   }, [mounted, authenticatedUser, resetInactivityTimer]);
+
+  // Real-time Attendee Online Presence tracking
+  React.useEffect(() => {
+    if (!mounted) return;
+    try {
+      const supabase = createClient();
+      const userIdentifier = authenticatedUser?.email || qrPass?.email || "guest-" + Math.random().toString(36).substring(2, 9);
+      const userName = authenticatedUser?.full_name || qrPass?.name || userAlias || "Quester";
+
+      const channel = supabase.channel("online_attendees", {
+        config: { presence: { key: userIdentifier } },
+      });
+
+      channel
+        .subscribe(async (status) => {
+          if (status === "SUBSCRIBED") {
+            await channel.track({
+              user_id: userIdentifier,
+              name: userName,
+              online_at: new Date().toISOString(),
+            });
+          }
+        });
+
+      return () => {
+        channel.unsubscribe();
+      };
+    } catch {
+      // Gracefully ignore if offline or connection fails
+    }
+  }, [mounted, authenticatedUser?.email, qrPass?.email, userAlias]);
 
 
   // Countdown effect when warning is shown

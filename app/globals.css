@@ -3026,7 +3026,7 @@ a {
 /* ── Stats (Compact) ────────────────────────────────────────── */
 .admin-stats {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(8, 1fr);
   gap: 6px;
   padding: 10px 24px 0;
 }
@@ -3050,10 +3050,11 @@ a {
 
 /* Colored left-border accents per stat card position */
 .admin-stats .admin-stat-card:nth-child(1) { border-left: 3px solid rgba(59, 130, 246, 0.7); }
-.admin-stats .admin-stat-card:nth-child(2) { border-left: 3px solid rgba(16, 185, 129, 0.7); }
-.admin-stats .admin-stat-card:nth-child(3) { border-left: 3px solid rgba(245, 166, 35, 0.7); }
-.admin-stats .admin-stat-card:nth-child(4) { border-left: 3px solid rgba(139, 92, 246, 0.7); }
-.admin-stats .admin-stat-card:nth-child(5) { border-left: 3px solid rgba(52, 211, 153, 0.7); }
+.admin-stats .admin-stat-card:nth-child(2) { border-left: 3px solid rgba(16, 185, 129, 0.85); }
+.admin-stats .admin-stat-card:nth-child(3) { border-left: 3px solid rgba(52, 211, 153, 0.7); }
+.admin-stats .admin-stat-card:nth-child(4) { border-left: 3px solid rgba(245, 166, 35, 0.7); }
+.admin-stats .admin-stat-card:nth-child(5) { border-left: 3px solid rgba(139, 92, 246, 0.7); }
+.admin-stats .admin-stat-card:nth-child(6) { border-left: 3px solid rgba(56, 189, 248, 0.7); }
 
 .admin-stat-card__icon {
   font-size: 1.05rem;
