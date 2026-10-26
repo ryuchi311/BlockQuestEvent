@@ -1982,7 +1982,7 @@ export default function ZealyMobileApp() {
             </div>
           )}
 
-          <div className="app-content-scroll">
+          <div className={`app-content-scroll app-content-scroll--${activeTab}${wheelSpinning ? " is-spinning-locked" : ""}`}>
             {activeTab !== "profile" && activeTab !== "info" && activeTab !== "peryahan" && (authenticatedUser || qrPass) && (
               <div className="xp-card">
                 {authenticatedUser && (
@@ -2619,49 +2619,50 @@ export default function ZealyMobileApp() {
               </div>
             )}
             {activeTab === "peryahan" && (
-              <div className="zealy-tab-content">
-                <div className="section-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 8 }}>
+              <div className="zealy-tab-content zealy-tab-content--peryahan">
+                <div className="section-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 0 }}>
                   <div>
-                    <p className="section-head__eyebrow">Fiesta Carnival Game</p>
-                    <h2 style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <p className="section-head__eyebrow" style={{ marginBottom: 0 }}>Fiesta Carnival Game</p>
+                    <h2 style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "1.05rem" }}>
                       <span>🎪</span>
                       <span>Peryahan Wheel of Spin</span>
                     </h2>
                   </div>
                   <div style={{
-                    fontSize: "0.72rem",
+                    fontSize: "0.7rem",
                     fontWeight: 800,
-                    padding: "4px 10px",
-                    borderRadius: 10,
+                    padding: "3px 8px",
+                    borderRadius: 8,
                     background: wheelClaimedToday ? "rgba(255,255,255,0.08)" : "linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.2) 100%)",
                     border: wheelClaimedToday ? "1px solid rgba(255,255,255,0.15)" : "1px solid rgba(16, 185, 129, 0.5)",
                     color: wheelClaimedToday ? "rgba(255,255,255,0.6)" : "#34d399",
                     display: "flex",
                     alignItems: "center",
-                    gap: 6
+                    gap: 5
                   }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: wheelClaimedToday ? "#6b7280" : "#10b981", boxShadow: wheelClaimedToday ? "none" : "0 0 8px #10b981" }} />
+                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: wheelClaimedToday ? "#6b7280" : "#10b981", boxShadow: wheelClaimedToday ? "none" : "0 0 8px #10b981" }} />
                     <span>{wheelClaimedToday ? "Claimed Today" : "1 Free Spin Ready"}</span>
                   </div>
                 </div>
 
-                <div style={{
+                <div className="peryahan-main-card" style={{
                   background: "radial-gradient(ellipse at top, rgba(245, 166, 35, 0.15) 0%, rgba(12, 26, 59, 0.7) 60%, rgba(8, 8, 16, 0.95) 100%)",
                   border: "1.5px solid rgba(250, 204, 21, 0.35)",
-                  borderRadius: 20,
-                  padding: "16px 12px 20px",
-                  boxShadow: "0 12px 36px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.15)",
+                  borderRadius: 18,
+                  padding: "10px 10px 12px",
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.15)",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  gap: 14
+                  gap: 8,
+                  overflow: "hidden"
                 }}>
-                  <div style={{ textAlign: "center", maxWidth: 320 }}>
-                    <p style={{ margin: "0 0 4px", fontSize: "0.86rem", fontWeight: 800, color: "#fef08a", letterSpacing: "0.02em" }}>
+                  <div style={{ textAlign: "center", maxWidth: 300 }}>
+                    <p style={{ margin: "0 0 2px", fontSize: "0.82rem", fontWeight: 800, color: "#fef08a", letterSpacing: "0.02em" }}>
                       🎡 Spin the Festive Peryahan Roleta!
                     </p>
-                    <p style={{ margin: 0, fontSize: "0.75rem", color: "rgba(255,255,255,0.7)", lineHeight: 1.4 }}>
-                      Hit the jackpot slice to win up to <strong>100 XP</strong> for the global leaderboard! Watch out for the Calavera Bokya!
+                    <p style={{ margin: 0, fontSize: "0.7rem", color: "rgba(255,255,255,0.7)", lineHeight: 1.3 }}>
+                      Hit the jackpot slice to win up to <strong>100 XP</strong>! Watch out for the Calavera Bokya!
                     </p>
                   </div>
 
@@ -2669,7 +2670,7 @@ export default function ZealyMobileApp() {
                   <div style={{
                     position: "relative",
                     width: "100%",
-                    maxWidth: 360,
+                    maxWidth: 320,
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center"
@@ -2677,18 +2678,18 @@ export default function ZealyMobileApp() {
                     {/* Fiesta Golden Arch Frame with Navy Outline */}
                     <div style={{
                       position: "relative",
-                      width: 330,
-                      height: 330,
+                      width: 290,
+                      height: 290,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      filter: "drop-shadow(0 10px 25px rgba(0,0,0,0.6))"
+                      filter: "drop-shadow(0 8px 20px rgba(0,0,0,0.6))"
                     }}>
                       {/* Outer Deep Navy Arch Ring */}
                       <div style={{
                         position: "absolute",
-                        width: 326,
-                        height: 326,
+                        width: 286,
+                        height: 286,
                         borderRadius: "50%",
                         background: "#0c1a3b",
                         display: "flex",
@@ -2698,11 +2699,11 @@ export default function ZealyMobileApp() {
                         {/* Bold Golden Yellow Rim */}
                         <div style={{
                           position: "absolute",
-                          width: 308,
-                          height: 308,
+                          width: 270,
+                          height: 270,
                           borderRadius: "50%",
                           background: "linear-gradient(135deg, #facc15 0%, #eab308 100%)",
-                          border: "4px solid #0c1a3b",
+                          border: "3.5px solid #0c1a3b",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center"
@@ -2710,11 +2711,11 @@ export default function ZealyMobileApp() {
                           {/* Inner Red Accent Ring */}
                           <div style={{
                             position: "absolute",
-                            width: 284,
-                            height: 284,
+                            width: 248,
+                            height: 248,
                             borderRadius: "50%",
                             background: "#dc2626",
-                            border: "3px solid #0c1a3b",
+                            border: "2.5px solid #0c1a3b",
                             overflow: "hidden"
                           }} />
                         </div>
@@ -2723,32 +2724,32 @@ export default function ZealyMobileApp() {
                       {/* Top Fiery Diamond Pointer Pin (Pointing downward to top slice) */}
                       <div style={{
                         position: "absolute",
-                        top: -12,
+                        top: -10,
                         left: "50%",
                         transform: "translateX(-50%)",
                         zIndex: 40,
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",
-                        filter: "drop-shadow(0 5px 8px rgba(0,0,0,0.7))"
+                        filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.7))"
                       }}>
                         {/* Diamond Gem */}
                         <div style={{
-                          width: 30,
-                          height: 30,
+                          width: 26,
+                          height: 26,
                           background: "linear-gradient(135deg, #fde047 0%, #ea580c 60%, #b91c1c 100%)",
-                          border: "3px solid #0c1a3b",
-                          borderRadius: 6,
+                          border: "2.5px solid #0c1a3b",
+                          borderRadius: 5,
                           transform: "rotate(45deg)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center"
                         }}>
                           <div style={{
-                            width: 12,
-                            height: 12,
+                            width: 10,
+                            height: 10,
                             background: "#ffffff",
-                            borderRadius: 3,
+                            borderRadius: 2,
                             opacity: 0.9
                           }} />
                         </div>
@@ -2756,10 +2757,10 @@ export default function ZealyMobileApp() {
                         <div style={{
                           width: 0,
                           height: 0,
-                          borderLeft: "11px solid transparent",
-                          borderRight: "11px solid transparent",
-                          borderTop: "16px solid #b91c1c",
-                          marginTop: -7
+                          borderLeft: "10px solid transparent",
+                          borderRight: "10px solid transparent",
+                          borderTop: "14px solid #b91c1c",
+                          marginTop: -6
                         }} />
                       </div>
 
@@ -2794,8 +2795,8 @@ export default function ZealyMobileApp() {
                         className={`peryahan-wheel-disc ${!wheelSpinning && !wheelPrizeResult && !wheelClaimedToday ? "is-idle-spinning" : ""}`}
                         style={{
                           position: "relative",
-                          width: 278,
-                          height: 278,
+                          width: 242,
+                          height: 242,
                           borderRadius: "50%",
                           overflow: "hidden",
                           transform: wheelSpinning || wheelPrizeResult || wheelClaimedToday ? `rotate(${wheelRotation}deg)` : undefined,
@@ -2923,39 +2924,39 @@ export default function ZealyMobileApp() {
                       {/* Center Hexagonal Heart Badge */}
                       <div style={{
                         position: "absolute",
-                        width: 62,
-                        height: 62,
+                        width: 54,
+                        height: 54,
                         zIndex: 30,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.5))",
+                        filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.5))",
                         pointerEvents: "none"
                       }}>
                         <div style={{
                           position: "absolute",
-                          width: 62,
-                          height: 62,
+                          width: 54,
+                          height: 54,
                           borderRadius: "50%",
                           background: "#0284c7",
-                          border: "4px solid #0c1a3b",
+                          border: "3.5px solid #0c1a3b",
                           boxShadow: "0 0 10px rgba(2, 132, 199, 0.6)"
                         }} />
 
                         <div style={{
                           position: "relative",
-                          width: 44,
-                          height: 44,
+                          width: 38,
+                          height: 38,
                           background: "linear-gradient(135deg, #fef08a 0%, #eab308 100%)",
-                          border: "3px solid #0c1a3b",
-                          borderRadius: 12,
+                          border: "2.5px solid #0c1a3b",
+                          borderRadius: 10,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center"
                         }}>
                           <svg
-                            width="20"
-                            height="20"
+                            width="18"
+                            height="18"
                             viewBox="0 0 24 24"
                             fill="#dc2626"
                             style={{
@@ -2974,17 +2975,17 @@ export default function ZealyMobileApp() {
                     <div style={{
                       position: "relative",
                       width: "100%",
-                      marginTop: -38,
+                      marginTop: -32,
                       zIndex: 25,
                       background: "#0284c7",
-                      border: "4px solid #0c1a3b",
-                      borderRadius: 22,
-                      padding: "10px 14px",
-                      boxShadow: "0 10px 25px rgba(0,0,0,0.55)",
+                      border: "3.5px solid #0c1a3b",
+                      borderRadius: 18,
+                      padding: "8px 12px",
+                      boxShadow: "0 8px 20px rgba(0,0,0,0.55)",
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "center",
-                      gap: 8
+                      gap: 6
                     }}>
                       {/* Colorful Aztec Triangle Bunting Garland */}
                       <div style={{
@@ -2992,48 +2993,48 @@ export default function ZealyMobileApp() {
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        padding: "0 8px"
+                        padding: "0 6px"
                       }}>
                         <div style={{
-                          width: 24,
-                          height: 24,
+                          width: 20,
+                          height: 20,
                           borderRadius: "50%",
                           background: "#dc2626",
                           border: "2px solid #ffffff",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          fontSize: "0.75rem",
+                          fontSize: "0.68rem",
                           color: "#ffffff"
                         }}>
                           ✿
                         </div>
 
-                        <div style={{ display: "flex", gap: 6 }}>
+                        <div style={{ display: "flex", gap: 5 }}>
                           {["#facc15", "#16a34a", "#dc2626", "#facc15", "#16a34a", "#dc2626"].map((c, i) => (
                             <div
                               key={i}
                               style={{
                                 width: 0,
                                 height: 0,
-                                borderLeft: "6px solid transparent",
-                                borderRight: "6px solid transparent",
-                                borderTop: `10px solid ${c}`
+                                borderLeft: "5px solid transparent",
+                                borderRight: "5px solid transparent",
+                                borderTop: `9px solid ${c}`
                               }}
                             />
                           ))}
                         </div>
 
                         <div style={{
-                          width: 24,
-                          height: 24,
+                          width: 20,
+                          height: 20,
                           borderRadius: "50%",
                           background: "#dc2626",
                           border: "2px solid #ffffff",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          fontSize: "0.75rem",
+                          fontSize: "0.68rem",
                           color: "#ffffff"
                         }}>
                           ✿
@@ -3045,15 +3046,15 @@ export default function ZealyMobileApp() {
                         <div style={{ width: "100%", textAlign: "center" }}>
                           <div style={{
                             background: "rgba(0,0,0,0.35)",
-                            border: "2px solid rgba(250, 204, 21, 0.4)",
-                            borderRadius: 14,
-                            padding: "8px 12px",
-                            marginBottom: 6
+                            border: "1.5px solid rgba(250, 204, 21, 0.4)",
+                            borderRadius: 12,
+                            padding: "6px 10px",
+                            marginBottom: 4
                           }}>
-                            <div style={{ color: "#facc15", fontWeight: 800, fontSize: "0.85rem" }}>
+                            <div style={{ color: "#facc15", fontWeight: 800, fontSize: "0.78rem" }}>
                               ✓ Daily Spin Completed
                             </div>
-                            <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "0.72rem" }}>
+                            <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "0.68rem" }}>
                               Next free spin unlocks tomorrow at 00:00 UTC!
                             </div>
                           </div>
@@ -3061,12 +3062,12 @@ export default function ZealyMobileApp() {
                             disabled
                             style={{
                               width: "100%",
-                              padding: "10px",
-                              borderRadius: 20,
+                              padding: "8px",
+                              borderRadius: 18,
                               background: "rgba(255,255,255,0.1)",
                               color: "rgba(255,255,255,0.4)",
-                              border: "2px solid rgba(255,255,255,0.2)",
-                              fontSize: "0.85rem",
+                              border: "1.5px solid rgba(255,255,255,0.2)",
+                              fontSize: "0.8rem",
                               fontWeight: 800,
                               cursor: "not-allowed"
                             }}
@@ -3079,19 +3080,19 @@ export default function ZealyMobileApp() {
                           onClick={handleSpinDailyWheel}
                           disabled={wheelSpinning || claiming}
                           style={{
-                            width: "90%",
-                            padding: "12px 18px",
-                            borderRadius: 25,
+                            width: "92%",
+                            padding: "10px 16px",
+                            borderRadius: 22,
                             background: wheelSpinning
                               ? "#ca8a04"
                               : "linear-gradient(180deg, #fef08a 0%, #facc15 60%, #eab308 100%)",
                             color: "#0c1a3b",
-                            border: "3.5px solid #0c1a3b",
+                            border: "3px solid #0c1a3b",
                             fontWeight: 900,
-                            fontSize: "1.05rem",
-                            letterSpacing: "0.04em",
+                            fontSize: "0.96rem",
+                            letterSpacing: "0.03em",
                             cursor: wheelSpinning ? "not-allowed" : "pointer",
-                            boxShadow: "0 4px 14px rgba(0,0,0,0.45), inset 0 2px 0 rgba(255,255,255,0.8)",
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.45), inset 0 2px 0 rgba(255,255,255,0.8)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -3109,27 +3110,27 @@ export default function ZealyMobileApp() {
                   {wheelPrizeResult && (
                     <div style={{
                       width: "100%",
-                      maxWidth: 360,
-                      padding: "14px",
-                      borderRadius: 16,
+                      maxWidth: 320,
+                      padding: "10px",
+                      borderRadius: 14,
                       background: wheelPrizeResult.xp === 0
                         ? "linear-gradient(135deg, rgba(220, 38, 38, 0.25) 0%, rgba(12, 26, 59, 0.95) 100%)"
                         : "linear-gradient(135deg, rgba(234, 179, 8, 0.25) 0%, rgba(12, 26, 59, 0.95) 100%)",
                       border: wheelPrizeResult.xp === 0 ? "2px solid #dc2626" : "2px solid #facc15",
                       textAlign: "center",
-                      boxShadow: "0 6px 20px rgba(0,0,0,0.45)"
+                      boxShadow: "0 6px 18px rgba(0,0,0,0.45)"
                     }}>
-                      <div style={{ fontSize: "1.8rem", marginBottom: 2 }}>
+                      <div style={{ fontSize: "1.4rem", marginBottom: 2 }}>
                         {wheelPrizeResult.xp === 0 ? "💀 😢" : "🎉 🏆"}
                       </div>
                       <div style={{
                         color: wheelPrizeResult.xp === 0 ? "#f87171" : "#fde047",
                         fontWeight: 900,
-                        fontSize: "1.15rem"
+                        fontSize: "1.05rem"
                       }}>
                         {wheelPrizeResult.xp === 0 ? "BOKYA! (0 XP)" : `Panalo! +${wheelPrizeResult.xp} XP!`}
                       </div>
-                      <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "0.82rem", marginTop: 4 }}>
+                      <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "0.76rem", marginTop: 2 }}>
                         {wheelPrizeResult.xp === 0
                           ? "No XP awarded this round. Better luck tomorrow!"
                           : `+${wheelPrizeResult.xp} XP credited to your profile!`}

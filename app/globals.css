@@ -1916,6 +1916,24 @@ a {
   gap: 8px;
 }
 
+/* Hide scrollbar completely on Peryahan tab so spinning never flickers a scrollbar */
+.app-content-scroll--peryahan {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+.app-content-scroll--peryahan::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+  width: 0;
+  height: 0;
+}
+
+/* When spinning is active, lock any micro-overflow to guarantee zero flicker */
+.app-content-scroll.is-spinning-locked,
+.app-content-scroll--peryahan.is-spinning-locked {
+  overflow-y: hidden !important;
+  overscroll-behavior: none;
+}
+
 /* Premium Readable CTA Button for BlockQuest Arena */
 .arena-cta-btn {
   width: 100%;
@@ -2351,6 +2369,18 @@ a {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* Peryahan tab layout: compact, no overflow, perfectly fits inside phone simulator */
+.zealy-tab-content--peryahan {
+  gap: 6px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.peryahan-main-card {
+  position: relative;
+  overflow: hidden;
 }
 
 .zealy-tab-content .section-head {
