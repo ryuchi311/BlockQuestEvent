@@ -111,7 +111,7 @@ export interface SupportTicket {
   updated_at: string;
 }
 
-const ADMIN_TABS = ["scanner", "attendees", "quests", "milestones", "verifications", "messages", "tickets", "questlog", "socials", "booths", "staff", "promocodes"] as const;
+const ADMIN_TABS = ["scanner", "attendees", "leaderboard", "quests", "milestones", "verifications", "messages", "tickets", "questlog", "socials", "booths", "staff", "promocodes"] as const;
 type AdminTab = (typeof ADMIN_TABS)[number];
 
 const STATUS_OPTIONS: Quest["status"][] = ["Live", "Soon", "Done", "Draft"];
@@ -561,6 +561,32 @@ export default function AdminPage() {
   // ── Tabs & data ──
   const [tab, setTab] = useState<AdminTab>("attendees");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // Restore sidebar collapse preference from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("bq_admin_sidebar_collapsed");
+      if (saved !== null) {
+        setSidebarCollapsed(saved === "true");
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("bq_admin_sidebar_collapsed", String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
 
   // Label table cells with their column header (used by mobile card layout CSS)
   useEffect(() => {
@@ -702,14 +728,20 @@ export default function AdminPage() {
   // ── Attendee search & filter & pagination ──
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "checked" | "pending">("all");
+  const [attendeeSort, setAttendeeSort] = useState<"created_desc" | "score_desc" | "score_asc" | "name_asc">("created_desc");
   const [attendeePage, setAttendeePage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [checkingInId, setCheckingInId] = useState<number | null>(null);
 
+  // ── Leaderboard Rank Scores State ──
+  const [leaderboardUsers, setLeaderboardUsers] = useState<any[]>([]);
+  const [leaderboardSearch, setLeaderboardSearch] = useState("");
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+
   useEffect(() => {
     setAttendeePage(1);
-  }, [search, statusFilter, pageSize]);
+  }, [search, statusFilter, attendeeSort, pageSize]);
 
   // ── Quest search & filter ──
   const [questSearch, setQuestSearch] = useState("");
@@ -1283,11 +1315,28 @@ export default function AdminPage() {
     }
   }, [adminFetch]);
 
+  const fetchLeaderboard = useCallback(async (isBackground?: any) => {
+    const isBg = isBackground === true;
+    if (!isBg) setLeaderboardLoading(true);
+    try {
+      const res = await fetch("/api/leaderboard");
+      const json = await safeJson(res);
+      if (res.ok && Array.isArray(json.leaderboard)) {
+        setLeaderboardUsers(json.leaderboard);
+      }
+    } catch {
+      // silently fail if background
+    } finally {
+      if (!isBg) setLeaderboardLoading(false);
+    }
+  }, []);
+
   // Load active tab data, lightweight quests on auth, and badge queues in the background
   useEffect(() => {
     if (!authed) return;
-    // Always load quests so quest categories and titles resolve everywhere
+    // Always load quests and milestones so quest categories, titles and tier ranks resolve
     fetchQuests();
+    fetchMilestones(true);
 
     // Silently pre-fetch pending queues in the background so badge counts update immediately
     if (tab !== "verifications") fetchVerifications(true);
@@ -1296,6 +1345,10 @@ export default function AdminPage() {
 
     // Load whichever tab is active initially
     if (tab === "attendees") fetchAttendees();
+    else if (tab === "leaderboard") {
+      fetchLeaderboard();
+      fetchAttendees(true);
+    }
     else if (tab === "verifications") fetchVerifications();
     else if (tab === "messages") fetchMessageNotes();
     else if (tab === "tickets") fetchSupportTickets();
@@ -1308,7 +1361,7 @@ export default function AdminPage() {
     }
     else if (tab === "staff") fetchAdminUsers();
     else if (tab === "socials") fetchSocialMissions();
-  }, [authed, tab, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes, fetchSupportTickets, fetchPromoCodes, fetchMilestones, fetchAdminUsers, fetchSocialMissions]);
+  }, [authed, tab, fetchAttendees, fetchQuests, fetchVerifications, fetchMessageNotes, fetchSupportTickets, fetchPromoCodes, fetchMilestones, fetchAdminUsers, fetchSocialMissions, fetchLeaderboard]);
 
   // ── Auto Refresh (Background Silent Polling - No UI Flickering) ──
   useEffect(() => {
@@ -1320,6 +1373,10 @@ export default function AdminPage() {
       fetchSupportTickets(true);
 
       if (tab === "attendees") fetchAttendees(true);
+      else if (tab === "leaderboard") {
+        fetchLeaderboard(true);
+        fetchAttendees(true);
+      }
       else if (tab === "quests") fetchQuests(true);
       else if (tab === "milestones") fetchMilestones(true);
       else if (tab === "promocodes") fetchPromoCodes(true);
@@ -1330,7 +1387,7 @@ export default function AdminPage() {
       else if (tab === "socials") fetchSocialMissions(true);
     }, 10000);
     return () => clearInterval(interval);
-  }, [authed, autoRefresh, tab, fetchAttendees, fetchQuests, fetchMilestones, fetchVerifications, fetchMessageNotes, fetchSupportTickets, fetchPromoCodes, fetchAdminUsers, fetchSocialMissions]);
+  }, [authed, autoRefresh, tab, fetchAttendees, fetchQuests, fetchMilestones, fetchVerifications, fetchMessageNotes, fetchSupportTickets, fetchPromoCodes, fetchAdminUsers, fetchSocialMissions, fetchLeaderboard]);
 
   // ── Real-time Online Attendees Presence Listener ──
   useEffect(() => {
@@ -1519,6 +1576,17 @@ export default function AdminPage() {
     if (statusFilter === "checked") return !!a.checked_in;
     if (statusFilter === "pending") return !a.checked_in;
     return true;
+  }).sort((a, b) => {
+    if (attendeeSort === "score_desc") {
+      return (b.total_xp ?? 0) - (a.total_xp ?? 0) || new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    }
+    if (attendeeSort === "score_asc") {
+      return (a.total_xp ?? 0) - (b.total_xp ?? 0) || new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    }
+    if (attendeeSort === "name_asc") {
+      return (a.full_name || "").localeCompare(b.full_name || "");
+    }
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
   const totalAttendeePages = Math.ceil(filteredAttendees.length / pageSize) || 1;
@@ -1775,6 +1843,8 @@ export default function AdminPage() {
       { header: "Phone Number", width: 140 },
       { header: "Organization / Company", width: 180 },
       { header: "Ticket Code", width: 120 },
+      { header: "Score (XP)", width: 110 },
+      { header: "Referrals", width: 90 },
       { header: "Checked In?", width: 90 },
       { header: "Checked In At", width: 160 },
       { header: "Registered Date", width: 160 },
@@ -1787,6 +1857,8 @@ export default function AdminPage() {
       a.phone || "",
       a.organization || "",
       a.ticket_code || "",
+      a.total_xp ?? 0,
+      a.referral_count ?? 0,
       a.checked_in ? "Yes" : "No",
       a.checked_in_at ? new Date(a.checked_in_at).toLocaleString() : "",
       new Date(a.created_at).toLocaleString(),
@@ -2708,16 +2780,28 @@ export default function AdminPage() {
             <h1 className="admin-header__title">Admin Dashboard</h1>
           </div>
         </div>
-        <button
-          type="button"
-          id="admin-mobile-menu-toggle"
-          className={`admin-menu-toggle${mobileMenuOpen ? " admin-menu-toggle--open" : ""}`}
-          aria-label="Toggle admin menu"
-          aria-expanded={mobileMenuOpen}
-          onClick={() => setMobileMenuOpen((v) => !v)}
-        >
-          <span /><span /><span />
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button
+            type="button"
+            className="admin-mobile-sidebar-toggle"
+            aria-label="Toggle navigation sidebar"
+            onClick={() => setMobileSidebarOpen((v) => !v)}
+            title="Open navigation sidebar"
+          >
+            <span>☰</span>
+            <span className="admin-mobile-sidebar-toggle__label">Menu</span>
+          </button>
+          <button
+            type="button"
+            id="admin-mobile-menu-toggle"
+            className={`admin-menu-toggle${mobileMenuOpen ? " admin-menu-toggle--open" : ""}`}
+            aria-label="Toggle admin user menu"
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((v) => !v)}
+          >
+            <span /><span /><span />
+          </button>
+        </div>
         <div
           className={`admin-header__actions${mobileMenuOpen ? " admin-header__actions--open" : ""}`}
           onClick={(e) => {
@@ -2808,6 +2892,8 @@ export default function AdminPage() {
                 ? "📷 QR Gate Scanner"
                 : tab === "attendees"
                   ? "🎫 Attendees Directory"
+                  : tab === "leaderboard"
+                    ? "🏅 Leaderboard & Rank Scores"
                   : tab === "quests"
                     ? "⚡ Event Quests Engine"
                     : tab === "milestones"
@@ -2897,6 +2983,10 @@ export default function AdminPage() {
             className="admin-sub-btn"
             onClick={() => {
               if (tab === "attendees") fetchAttendees();
+              else if (tab === "leaderboard") {
+                fetchLeaderboard();
+                fetchAttendees();
+              }
               else if (tab === "quests") fetchQuests();
               else if (tab === "milestones") fetchMilestones();
               else if (tab === "verifications") fetchVerifications();
@@ -3143,78 +3233,181 @@ export default function AdminPage() {
         </div>
       </section>
 
-      {/* Tabs */}
-      <div className="admin-tabs">
-        {ADMIN_TABS.filter((t) => {
-          const role = adminUser?.role;
-          if (role === "superadmin") return true;
-          if (role === "verifier") return t === "verifications" || t === "messages" || t === "tickets" || t === "questlog";
-          if (role === "manage_attendees" || role === "manage_quester") return t === "scanner" || t === "attendees" || t === "tickets" || t === "questlog";
-          if (role === "admin" || role === "manager") return t === "scanner" || t === "attendees" || t === "quests" || t === "milestones" || t === "verifications" || t === "messages" || t === "tickets" || t === "questlog" || t === "booths" || t === "promocodes";
-          if (role === "viewer") return t === "scanner" || t === "attendees" || t === "quests" || t === "milestones" || t === "verifications" || t === "messages" || t === "tickets" || t === "questlog";
-          return false;
-        }).map((t) => (
-          <button
-            key={t}
-            className={`admin-tab-btn${tab === t ? " admin-tab-btn--active" : ""}`}
-            onClick={() => setTab(t)}
-          >
-            <span className="admin-tab-icon">
-              {t === "scanner"
-                ? "📷"
-                : t === "attendees"
-                  ? "🎫"
-                  : t === "quests"
-                    ? "⚡"
-                    : t === "milestones"
-                      ? "🏆"
-                      : t === "messages"
-                        ? "💬"
-                        : t === "tickets"
-                          ? "🆘"
-                          : t === "questlog"
-                            ? "📊"
-                            : t === "booths"
-                              ? "🏪"
-                              : t === "staff"
-                                ? "🛡️"
-                                : t === "socials"
-                                  ? "📣"
-                                  : t === "promocodes"
-                                    ? "🎁"
-                                    : "🔍"}
-            </span>
-            <span className="admin-tab-text">
-              {t === "scanner"
-                ? " QR Scanner"
-                : t === "attendees"
-                  ? " Attendees"
-                  : t === "quests"
-                    ? " Event Quests"
-                    : t === "milestones"
-                      ? " Milestones & Tiers"
-                      : t === "messages"
-                        ? ` Message Notes (${messageNotes.filter((v) => v.status === "Pending").length})`
-                        : t === "tickets"
-                          ? ` Help & Support Tickets (${supportTickets.filter((st) => st.status === "Open" || st.status === "In Progress").length})`
-                          : t === "questlog"
-                            ? " Quest Log"
-                            : t === "booths"
-                              ? " Booth Stations"
-                              : t === "staff"
-                                ? " Staff / Admins"
-                                : t === "socials"
-                                  ? " Social Missions"
-                                  : t === "promocodes"
-                                    ? " Promo Codes"
-                                    : ` Quest Verifications (${verifications.filter((v) => !v.user_message && v.status === "Pending").length})`}
-            </span>
-          </button>
-        ))}
-      </div>
+      {/* ─── Flexible Admin Body (Collapsible Modern Sidebar + Viewport) ─── */}
+      <div className={`admin-body-layout${sidebarCollapsed ? " admin-body-layout--collapsed" : ""}`}>
+        {/* Mobile Backdrop Overlay */}
+        {mobileSidebarOpen && (
+          <div
+            className="admin-sidebar-backdrop"
+            onClick={() => setMobileSidebarOpen(false)}
+            aria-label="Close navigation sidebar"
+          />
+        )}
 
-      {/* Content */}
-      <section className="admin-content">
+        {/* Sidebar */}
+        <aside
+          className={`admin-sidebar${sidebarCollapsed ? " admin-sidebar--collapsed" : ""}${mobileSidebarOpen ? " admin-sidebar--mobile-open" : ""}`}
+          aria-label="Admin Navigation"
+        >
+          {/* Sidebar Header & Toggle */}
+          <div className="admin-sidebar-header">
+            {!sidebarCollapsed ? (
+              <div className="admin-sidebar-header__info">
+                <span className="admin-sidebar-header__tag">WORKSPACE</span>
+                <span className="admin-sidebar-header__title">Navigation Hub</span>
+              </div>
+            ) : (
+              <div className="admin-sidebar-header__info admin-sidebar-header__info--mini">
+                <span className="admin-sidebar-header__tag">BQ</span>
+              </div>
+            )}
+            <button
+              type="button"
+              className="admin-sidebar-collapse-btn"
+              onClick={toggleSidebar}
+              title={sidebarCollapsed ? "Expand Sidebar (Wider View)" : "Collapse Sidebar (Compact Icon Mode)"}
+              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {sidebarCollapsed ? "❯" : "❮"}
+            </button>
+          </div>
+
+          {/* Sidebar Navigation Items */}
+          <div className="admin-sidebar-nav">
+            {(() => {
+              const role = adminUser?.role;
+              const isTabAllowed = (t: AdminTab) => {
+                if (role === "superadmin") return true;
+                if (role === "verifier") return t === "verifications" || t === "messages" || t === "tickets" || t === "questlog";
+                if (role === "manage_attendees" || role === "manage_quester") return t === "scanner" || t === "attendees" || t === "leaderboard" || t === "tickets" || t === "questlog";
+                if (role === "admin" || role === "manager") return t === "scanner" || t === "attendees" || t === "leaderboard" || t === "quests" || t === "milestones" || t === "verifications" || t === "messages" || t === "tickets" || t === "questlog" || t === "booths" || t === "promocodes";
+                if (role === "viewer") return t === "scanner" || t === "attendees" || t === "leaderboard" || t === "quests" || t === "milestones" || t === "verifications" || t === "messages" || t === "tickets" || t === "questlog";
+                return false;
+              };
+
+              const tabConfig: Record<AdminTab, { icon: string; label: string; badge?: { count: number; color: string; bg: string; border: string } }> = {
+                scanner: { icon: "📷", label: "QR Scanner" },
+                attendees: { icon: "🎫", label: "Attendees" },
+                leaderboard: { icon: "🏅", label: "Leaderboard & Ranks" },
+                quests: { icon: "⚡", label: "Event Quests" },
+                milestones: { icon: "🏆", label: "Milestones & Tiers" },
+                verifications: {
+                  icon: "🔍",
+                  label: "Verifications",
+                  badge: (() => {
+                    const cnt = verifications.filter((v) => !v.user_message && v.status === "Pending").length;
+                    return cnt > 0 ? { count: cnt, color: "#f59e0b", bg: "rgba(245, 158, 11, 0.22)", border: "rgba(245, 158, 11, 0.45)" } : undefined;
+                  })()
+                },
+                messages: {
+                  icon: "💬",
+                  label: "Messages",
+                  badge: (() => {
+                    const cnt = messageNotes.filter((v) => v.status === "Pending").length;
+                    return cnt > 0 ? { count: cnt, color: "#38bdf8", bg: "rgba(56, 189, 248, 0.22)", border: "rgba(56, 189, 248, 0.45)" } : undefined;
+                  })()
+                },
+                tickets: {
+                  icon: "🆘",
+                  label: "Support Tickets",
+                  badge: (() => {
+                    const cnt = supportTickets.filter((st) => st.status === "Open" || st.status === "In Progress").length;
+                    return cnt > 0 ? { count: cnt, color: "#f87171", bg: "rgba(239, 68, 68, 0.25)", border: "rgba(239, 68, 68, 0.5)" } : undefined;
+                  })()
+                },
+                questlog: { icon: "📊", label: "Quest Log" },
+                booths: { icon: "🏪", label: "Booth Stations" },
+                promocodes: { icon: "🎁", label: "Promo Codes" },
+                socials: { icon: "📣", label: "Social Missions" },
+                staff: { icon: "🛡️", label: "Staff & Admins" },
+              };
+
+              const groups: { name: string; icon: string; tabs: AdminTab[] }[] = [
+                { name: "Core Operations", icon: "⚡", tabs: ["scanner", "attendees", "leaderboard"] },
+                { name: "Quests & Rewards", icon: "🎮", tabs: ["quests", "milestones", "verifications", "messages"] },
+                { name: "Helpdesk & Audit", icon: "🛡️", tabs: ["tickets", "questlog"] },
+                { name: "Promotions & Sponsors", icon: "🚀", tabs: ["booths", "promocodes", "socials"] },
+                { name: "System Admin", icon: "⚙️", tabs: ["staff"] },
+              ];
+
+              const renderedGroups = groups
+                .map((grp) => ({
+                  ...grp,
+                  tabs: grp.tabs.filter(isTabAllowed),
+                }))
+                .filter((grp) => grp.tabs.length > 0);
+
+              return renderedGroups.map((grp) => (
+                <div key={grp.name} className="admin-sidebar-group">
+                  {!sidebarCollapsed ? (
+                    <div className="admin-sidebar-group__label">
+                      <span className="admin-sidebar-group__icon">{grp.icon}</span>
+                      <span>{grp.name}</span>
+                    </div>
+                  ) : (
+                    <div className="admin-sidebar-group__divider" title={grp.name} />
+                  )}
+
+                  <div className="admin-sidebar-group__items">
+                    {grp.tabs.map((t) => {
+                      const cfg = tabConfig[t];
+                      const isActive = tab === t;
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          className={`admin-sidebar-item${isActive ? " admin-sidebar-item--active" : ""}`}
+                          onClick={() => {
+                            setTab(t);
+                            setMobileSidebarOpen(false);
+                          }}
+                          title={cfg.label}
+                          data-tooltip={cfg.label}
+                        >
+                          <span className="admin-sidebar-item__icon">{cfg.icon}</span>
+                          {!sidebarCollapsed && (
+                            <span className="admin-sidebar-item__label">{cfg.label}</span>
+                          )}
+                          {cfg.badge && (
+                            <span
+                              className={`admin-sidebar-badge${sidebarCollapsed ? " admin-sidebar-badge--dot" : ""}`}
+                              style={{
+                                background: cfg.badge.bg,
+                                color: cfg.badge.color,
+                                border: `1px solid ${cfg.badge.border}`,
+                              }}
+                            >
+                              {sidebarCollapsed ? "" : cfg.badge.count}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ));
+            })()}
+          </div>
+
+          {/* Quick Footer inside Sidebar */}
+          <div className="admin-sidebar-footer">
+            {!sidebarCollapsed ? (
+              <div className="admin-sidebar-footer__status">
+                <span className="admin-subheader__pulse" />
+                <span className="admin-sidebar-footer__text">
+                  {onlineAttendeesCount} {onlineAttendeesCount === 1 ? "user" : "users"} live
+                </span>
+              </div>
+            ) : (
+              <span className="admin-subheader__pulse" title={`${onlineAttendeesCount} users live online`} />
+            )}
+          </div>
+        </aside>
+
+        {/* Main Viewport Content Area */}
+        <div className="admin-main-viewport">
+          {/* Content */}
+          <section className="admin-content">
         {loading && tab !== "scanner" && <p className="admin-loading">Loading…</p>}
         {error && tab !== "scanner" && <p className="admin-error-msg" style={{ marginBottom: 16 }}>{error}</p>}
 
@@ -3243,6 +3436,19 @@ export default function AdminPage() {
                 <option value="all">All Statuses ({attendees.length})</option>
                 <option value="checked">Checked In ({attendees.filter((a) => a.checked_in).length})</option>
                 <option value="pending">Pending ({attendees.filter((a) => !a.checked_in).length})</option>
+              </select>
+
+              <select
+                value={attendeeSort}
+                onChange={(e) => setAttendeeSort(e.target.value as any)}
+                className="admin-search-input"
+                style={{ width: "auto", padding: "8px 12px", cursor: "pointer" }}
+                title="Sort Attendees List"
+              >
+                <option value="created_desc">🕒 Newest Registered</option>
+                <option value="score_desc">🏅 Highest Score (XP)</option>
+                <option value="score_asc">📉 Lowest Score (XP)</option>
+                <option value="name_asc">🔤 Name (A - Z)</option>
               </select>
 
               <span className="admin-toolbar__count" style={{ marginLeft: "auto" }}>
@@ -3368,6 +3574,7 @@ export default function AdminPage() {
                     </th>
                     <th>Organization</th>
                     <th>Ticket Code</th>
+                    <th>Score (XP)</th>
                     <th>Referrals</th>
                     <th>Check-in Status</th>
                     <th>Registered</th>
@@ -3377,7 +3584,7 @@ export default function AdminPage() {
                 <tbody>
                   {filteredAttendees.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="admin-table__empty">
+                      <td colSpan={12} className="admin-table__empty">
                         {search || statusFilter !== "all"
                           ? "No matching attendees found."
                           : "No registrations yet."}
@@ -3501,6 +3708,24 @@ export default function AdminPage() {
                           ) : (
                             <span className="admin-table__muted">—</span>
                           )}
+                        </td>
+                        <td>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                              fontWeight: 800,
+                              fontSize: "0.82rem",
+                              color: (a.total_xp ?? 0) > 0 ? "var(--gold-light)" : "var(--text-muted)",
+                              background: (a.total_xp ?? 0) > 0 ? "rgba(245, 166, 35, 0.12)" : "rgba(255, 255, 255, 0.04)",
+                              border: (a.total_xp ?? 0) > 0 ? "1px solid rgba(245, 166, 35, 0.3)" : "1px solid rgba(255, 255, 255, 0.08)",
+                              padding: "2px 8px",
+                              borderRadius: 12,
+                            }}
+                          >
+                            ⚡ {(a.total_xp ?? 0).toLocaleString()} XP
+                          </span>
                         </td>
                         <td>
                           {a.referral_count && a.referral_count > 0 ? (
@@ -7191,6 +7416,8 @@ export default function AdminPage() {
           </div>
         )}
       </section>
+        </div>{/* .admin-main-viewport */}
+      </div>{/* .admin-body-layout */}
 
       {/* ─── QUEST MODAL (Redesigned with Live Preview) ─── */}
       {showQuestModal && (
@@ -10871,6 +11098,363 @@ export default function AdminPage() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ─── LEADERBOARD & RANK SCORES TAB ─── */}
+      {tab === "leaderboard" && !loading && (
+        <div className="admin-fade-in" style={{ padding: "0 4px" }}>
+          {/* Header & Controls */}
+          <div className="admin-header-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, marginBottom: 20 }}>
+            <div>
+              <h2 style={{ display: "flex", alignItems: "center", gap: 10, margin: 0, fontSize: "1.4rem", fontWeight: 800 }}>
+                <span style={{ fontSize: "1.6rem" }}>🏅</span> Event Leaderboard & Quester Rank Scores
+              </h2>
+              <p style={{ margin: "4px 0 0", color: "var(--text-muted)", fontSize: "0.9rem" }}>
+                Real-time player standings, total accumulated quest XP scores, milestone badge tiers, and quester identity verification.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <input
+                type="search"
+                placeholder="Search quester name, alias, email, ticket..."
+                value={leaderboardSearch}
+                onChange={(e) => setLeaderboardSearch(e.target.value)}
+                className="admin-search-input"
+                style={{ width: 280, padding: "9px 14px", borderRadius: 10 }}
+              />
+
+              <button
+                type="button"
+                className="admin-sub-btn"
+                onClick={() => {
+                  fetchLeaderboard();
+                  fetchAttendees();
+                }}
+                title="Refresh Leaderboard Data"
+                style={{ padding: "9px 16px", borderRadius: 10, display: "inline-flex", alignItems: "center", gap: 6 }}
+              >
+                ↻ Refresh Standings
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Stats Highlights */}
+          {(() => {
+            const rankedList = (leaderboardUsers.length > 0
+              ? leaderboardUsers
+              : attendees
+                  .map((a) => ({
+                    rank: 0,
+                    name: a.alias_name ? `@${a.alias_name}` : a.full_name,
+                    alias: a.alias_name || null,
+                    email: a.email,
+                    ticketCode: a.ticket_code,
+                    points: a.total_xp || 0,
+                  }))
+                  .sort((a, b) => (b.points || 0) - (a.points || 0))
+                  .map((item, idx) => ({ ...item, rank: idx + 1 }))
+            );
+
+            const topQuester = rankedList[0];
+            const avgPoints = rankedList.length > 0 ? Math.round(rankedList.reduce((sum, r) => sum + (r.points || 0), 0) / rankedList.length) : 0;
+            const questersWithPoints = rankedList.filter((r) => (r.points || 0) > 0).length;
+
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, marginBottom: 24 }}>
+                <div style={{ background: "linear-gradient(135deg, rgba(245, 166, 35, 0.12) 0%, rgba(20, 20, 32, 0.95) 100%)", border: "1px solid rgba(245, 166, 35, 0.35)", borderRadius: 14, padding: "16px 20px" }}>
+                  <span style={{ fontSize: "0.75rem", color: "var(--gold-light)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>👑 #1 Top Scorer</span>
+                  <div style={{ marginTop: 6, display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <span style={{ fontSize: "1.3rem", fontWeight: 900, color: "#fff" }}>
+                      {topQuester ? topQuester.name : "None yet"}
+                    </span>
+                    {topQuester && (
+                      <span style={{ fontSize: "1rem", fontWeight: 800, color: "var(--gold-light)" }}>
+                        {(topQuester.points || 0).toLocaleString()} XP
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ background: "rgba(10, 10, 20, 0.6)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 14, padding: "16px 20px" }}>
+                  <span style={{ fontSize: "0.75rem", color: "#38bdf8", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>🎯 Active Scorers</span>
+                  <div style={{ marginTop: 6, fontSize: "1.3rem", fontWeight: 900, color: "#fff" }}>
+                    {questersWithPoints} <span style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--text-muted)" }}>of {rankedList.length} questers scored</span>
+                  </div>
+                </div>
+
+                <div style={{ background: "rgba(10, 10, 20, 0.6)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 14, padding: "16px 20px" }}>
+                  <span style={{ fontSize: "0.75rem", color: "#34d399", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>📊 Average XP Score</span>
+                  <div style={{ marginTop: 6, fontSize: "1.3rem", fontWeight: 900, color: "#34d399" }}>
+                    {avgPoints.toLocaleString()} <span style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--text-muted)" }}>XP per player</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Top 3 Podium Showcase */}
+          {(() => {
+            const rawList = leaderboardUsers.length > 0
+              ? leaderboardUsers
+              : attendees
+                  .map((a) => ({
+                    rank: 0,
+                    name: a.alias_name ? `@${a.alias_name}` : a.full_name,
+                    alias: a.alias_name || null,
+                    email: a.email,
+                    ticketCode: a.ticket_code,
+                    points: a.total_xp || 0,
+                  }))
+                  .sort((a, b) => (b.points || 0) - (a.points || 0))
+                  .map((item, idx) => ({ ...item, rank: idx + 1 }));
+
+            const top3 = rawList.slice(0, 3);
+            if (top3.length === 0) return null;
+
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16, marginBottom: 28 }}>
+                {top3.map((p) => {
+                  const is1st = p.rank === 1;
+                  const is2nd = p.rank === 2;
+                  const is3rd = p.rank === 3;
+                  const medal = is1st ? "🥇 1st Place" : is2nd ? "🥈 2nd Place" : "🥉 3rd Place";
+                  const accentColor = is1st ? "#ffd700" : is2nd ? "#cbd5e1" : "#d97706";
+
+                  // Find milestone badge tier
+                  const highestBadge = milestones
+                    .filter((m) => (p.points || 0) >= m.xp)
+                    .sort((a, b) => b.xp - a.xp)[0];
+
+                  return (
+                    <div
+                      key={p.rank}
+                      style={{
+                        background: `linear-gradient(135deg, ${accentColor}15 0%, rgba(10, 15, 30, 0.9) 100%)`,
+                        border: `1.5px solid ${accentColor}55`,
+                        borderRadius: 16,
+                        padding: "20px 22px",
+                        position: "relative",
+                        overflow: "hidden",
+                        boxShadow: `0 8px 24px ${accentColor}18`,
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                        <span style={{ fontSize: "0.85rem", fontWeight: 800, color: accentColor, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                          {medal}
+                        </span>
+                        {highestBadge && (
+                          <span style={{ fontSize: "0.74rem", background: `${highestBadge.color || "#ffd700"}22`, color: highestBadge.color || "#ffd700", border: `1px solid ${highestBadge.color || "#ffd700"}44`, padding: "2px 8px", borderRadius: 10, fontWeight: 700 }}>
+                            {highestBadge.icon || "🏆"} {highestBadge.name}
+                          </span>
+                        )}
+                      </div>
+
+                      <div style={{ fontSize: "1.25rem", fontWeight: 900, color: "#fff", marginBottom: 4 }}>
+                        {p.name}
+                      </div>
+
+                      <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginBottom: 14 }}>
+                        {p.email ? p.email : p.ticketCode ? `Ticket: ${p.ticketCode}` : "Attendee Quester"}
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                        <span style={{ fontSize: "1.75rem", fontWeight: 950, color: accentColor }}>
+                          {(p.points || 0).toLocaleString()}
+                        </span>
+                        <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-muted)" }}>XP Score</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
+          {/* Full Leaderboard Table */}
+          <div className="admin-table-container" style={{ background: "rgba(10, 10, 20, 0.6)", borderRadius: 16, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 80 }}>Rank</th>
+                  <th>Quester</th>
+                  <th>Alias Handle</th>
+                  <th>Contact / Email</th>
+                  <th>Ticket Code</th>
+                  <th>Current Badge Tier</th>
+                  <th style={{ textAlign: "right" }}>Rank Score (Total XP)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  const attendeesMap = new Map<string, Attendee>();
+                  attendees.forEach((a) => {
+                    if (a.email) attendeesMap.set(a.email.toLowerCase().trim(), a);
+                    if (a.ticket_code) attendeesMap.set(a.ticket_code.toLowerCase().trim(), a);
+                  });
+
+                  // Build ranked array
+                  let combinedList: any[] = [];
+                  if (leaderboardUsers.length > 0) {
+                    combinedList = leaderboardUsers.map((item, idx) => {
+                      const matched = item.email ? attendeesMap.get(item.email.toLowerCase().trim()) : null;
+                      return {
+                        rank: item.rank || idx + 1,
+                        name: item.name || matched?.full_name || `Quester #${idx + 1}`,
+                        alias: item.alias || matched?.alias_name || null,
+                        email: item.email || matched?.email || "",
+                        phone: matched?.phone || "",
+                        ticket_code: item.ticketCode || matched?.ticket_code || "",
+                        points: item.points ?? matched?.total_xp ?? 0,
+                        checked_in: matched?.checked_in,
+                      };
+                    });
+                  } else {
+                    combinedList = attendees
+                      .slice()
+                      .sort((a, b) => (b.total_xp ?? 0) - (a.total_xp ?? 0) || new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                      .map((a, idx) => ({
+                        rank: idx + 1,
+                        name: a.full_name,
+                        alias: a.alias_name || null,
+                        email: a.email,
+                        phone: a.phone,
+                        ticket_code: a.ticket_code,
+                        points: a.total_xp ?? 0,
+                        checked_in: a.checked_in,
+                      }));
+                  }
+
+                  const filtered = combinedList.filter((item) => {
+                    if (!leaderboardSearch) return true;
+                    const q = leaderboardSearch.toLowerCase();
+                    return (
+                      item.name?.toLowerCase().includes(q) ||
+                      item.alias?.toLowerCase().includes(q) ||
+                      item.email?.toLowerCase().includes(q) ||
+                      item.ticket_code?.toLowerCase().includes(q)
+                    );
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <tr>
+                        <td colSpan={7} className="admin-table__empty" style={{ textAlign: "center", padding: 40 }}>
+                          {leaderboardLoading ? "Loading leaderboard rank scores..." : "No quester records found matching search query."}
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  return filtered.map((item) => {
+                    const isTop1 = item.rank === 1;
+                    const isTop2 = item.rank === 2;
+                    const isTop3 = item.rank === 3;
+                    const rankBadgeColor = isTop1 ? "#ffd700" : isTop2 ? "#cbd5e1" : isTop3 ? "#d97706" : "rgba(255, 255, 255, 0.08)";
+                    const rankTextColor = isTop1 ? "#120b02" : isTop2 ? "#0f172a" : isTop3 ? "#fff" : "#94a3b8";
+
+                    // Determine tier badge
+                    const tier = milestones
+                      .filter((m) => (item.points || 0) >= m.xp)
+                      .sort((a, b) => b.xp - a.xp)[0];
+
+                    return (
+                      <tr key={item.rank + "-" + (item.email || item.ticket_code || item.name)}>
+                        <td>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              width: 32,
+                              height: 32,
+                              borderRadius: "50%",
+                              fontWeight: 900,
+                              fontSize: "0.85rem",
+                              background: rankBadgeColor,
+                              color: rankTextColor,
+                              border: isTop1 || isTop2 || isTop3 ? `1px solid ${rankBadgeColor}` : "1px solid rgba(255,255,255,0.12)",
+                              boxShadow: isTop1 ? "0 0 12px rgba(255, 215, 0, 0.4)" : "none",
+                            }}
+                          >
+                            {isTop1 ? "🥇" : isTop2 ? "🥈" : isTop3 ? "🥉" : `#${item.rank}`}
+                          </span>
+                        </td>
+
+                        <td className="admin-table__name">
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <strong style={{ color: "#fff", fontSize: "0.92rem" }}>{item.name}</strong>
+                            {item.checked_in && (
+                              <span style={{ fontSize: "0.68rem", background: "rgba(16, 185, 129, 0.15)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.3)", padding: "1px 6px", borderRadius: 10 }}>
+                                ✓ Checked-in
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        <td>
+                          {item.alias ? (
+                            <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 12, background: "rgba(245, 166, 35, 0.15)", border: "1px solid rgba(245, 166, 35, 0.4)", color: "var(--gold-light)", fontSize: "0.78rem", fontWeight: 700 }}>
+                              @{item.alias}
+                            </span>
+                          ) : (
+                            <span className="admin-table__muted">—</span>
+                          )}
+                        </td>
+
+                        <td className="admin-table__email">
+                          <span style={{ fontSize: "0.84rem", color: "#cbd5e1" }}>
+                            {item.email || "—"}
+                          </span>
+                        </td>
+
+                        <td>
+                          {item.ticket_code ? (
+                            <code style={{ fontSize: "0.8rem", color: "var(--gold-light)", background: "rgba(245, 166, 35, 0.08)", padding: "2px 6px", borderRadius: 6 }}>
+                              {item.ticket_code}
+                            </code>
+                          ) : (
+                            <span className="admin-table__muted">—</span>
+                          )}
+                        </td>
+
+                        <td>
+                          {tier ? (
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.78rem", color: tier.color || "#ffd700", background: `${tier.color || "#ffd700"}18`, border: `1px solid ${tier.color || "#ffd700"}44`, padding: "2px 8px", borderRadius: 12, fontWeight: 700 }}>
+                              <span>{tier.icon || "🏆"}</span>
+                              <span>{tier.name}</span>
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Quester Novice</span>
+                          )}
+                        </td>
+
+                        <td style={{ textAlign: "right" }}>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 5,
+                              fontSize: "0.92rem",
+                              fontWeight: 900,
+                              color: (item.points || 0) > 0 ? "var(--gold-light)" : "var(--text-muted)",
+                              background: (item.points || 0) > 0 ? "rgba(245, 166, 35, 0.12)" : "rgba(255, 255, 255, 0.04)",
+                              border: (item.points || 0) > 0 ? "1px solid rgba(245, 166, 35, 0.3)" : "1px solid rgba(255, 255, 255, 0.08)",
+                              padding: "4px 10px",
+                              borderRadius: 14,
+                            }}
+                          >
+                            ⚡ {(item.points || 0).toLocaleString()} XP
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  });
+                })()}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
