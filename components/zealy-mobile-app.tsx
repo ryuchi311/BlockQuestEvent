@@ -928,7 +928,8 @@ export default function ZealyMobileApp() {
           }
           if (q.id === "daily-claim") {
             const todayStr = new Date().toISOString().slice(0, 10);
-            const isDoneToday = compMap.has(`daily-claim-${todayStr}`) || compMap.has("daily-claim");
+            const legacyCompDate = (compMap.get("daily-claim") || "").slice(0, 10);
+            const isDoneToday = compMap.has(`daily-claim-${todayStr}`) || (compMap.has("daily-claim") && legacyCompDate === todayStr);
             // If already claimed today:
             if (isDoneToday) {
               const compTime = compMap.get(`daily-claim-${todayStr}`) || compMap.get("daily-claim") || new Date().toISOString();
