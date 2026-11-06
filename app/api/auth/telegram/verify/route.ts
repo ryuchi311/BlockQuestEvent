@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { syncUserTotalXpInDatabase } from "../../../../../utils/xp";
 
 export const runtime = "nodejs";
 
@@ -105,29 +106,8 @@ export async function POST(request: Request) {
       reviewed_at: new Date().toISOString(),
     });
 
-    // Recalculate User Total XP
-    const { data: compList } = await supabase
-      .from("quest_completions")
-      .select("quest_id, xp_awarded")
-      .eq("registration_id", user.id);
-
-    const { data: verifList } = await supabase
-      .from("quest_verifications")
-      .select("quest_id, xp")
-      .eq("user_email", user_email.trim().toLowerCase())
-      .eq("status", "Approved");
-
-    const compQuestIds = new Set((compList || []).map((c: any) => c.quest_id));
-    const compXp = (compList || []).reduce((sum, c) => sum + (c.xp_awarded || 0), 0);
-    const verifXp = (verifList || [])
-      .filter((v: any) => !compQuestIds.has(v.quest_id))
-      .reduce((sum, v) => sum + (v.xp || 0), 0);
-    const calculatedTotalXp = compXp + verifXp;
-
-    await supabase
-      .from("registrations")
-      .update({ total_xp: calculatedTotalXp })
-      .eq("id", user.id);
+    // Recalculate User Total XP consistently using unified helper
+    const calculatedTotalXp = await syncUserTotalXpInDatabase(supabase, user.id, user_email, true);
 
     return NextResponse.json(
       { success: true, xp_awarded: xpAmount, total_xp: calculatedTotalXp },

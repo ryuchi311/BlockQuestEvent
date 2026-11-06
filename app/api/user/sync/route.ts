@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { computeUserTotalXp } from "../../../../utils/xp";
 
 export const runtime = "nodejs";
 
@@ -42,6 +43,7 @@ export async function GET(request: Request) {
     let completedDetails: any[] = [];
     let verifications: any[] = [];
     let compXp = 0;
+    let list: any[] = [];
     let verifXp = 0;
 
     let isCheckedIn = false;
@@ -54,7 +56,7 @@ export async function GET(request: Request) {
         .select("*")
         .eq("registration_id", user.id);
 
-      let list = compData || [];
+      list = compData || [];
       const hasRegister = list.some((c: any) => c.quest_id === "register");
 
       // Auto-grant the 250 XP registration quest if missing for registered users
@@ -211,14 +213,13 @@ export async function GET(request: Request) {
       }
     });
 
-    const verificationsList = Array.from(latestByQuestMap.values());
-    const compQuestIds = new Set(completions);
-    verifications = verificationsList;
-    verifXp = verificationsList
-      .filter((v: any) => v.status === "Approved" && !compQuestIds.has(v.quest_id))
-      .reduce((sum: number, v: any) => sum + (v.xp || 0), 0);
+    verifications = Array.from(latestByQuestMap.values());
 
-    const exactTotalXp = compXp + verifXp;
+    const { totalXp: exactTotalXp } = computeUserTotalXp({
+      completions: list,
+      verifications: verifRes.data || [],
+      messageNotes: msgRes.data || [],
+    });
 
     // Sync registrations table if total_xp is out of sync
     if (user && user.total_xp !== exactTotalXp) {

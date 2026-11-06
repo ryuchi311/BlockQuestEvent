@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { verifyPassword } from "../../../utils/registration-password";
 import { getClientIp, checkRateLimit } from "../../../utils/rate-limit";
+import { computeUserTotalXp } from "../../../utils/xp";
 
 export const runtime = "nodejs";
 
@@ -127,15 +128,22 @@ export async function POST(request: Request) {
     }
   }
 
-  const { data: verifications } = await supabase
-    .from("quest_verifications")
-    .select("xp")
-    .eq("user_email", email)
-    .eq("status", "Approved");
+  const [verifRes, msgRes] = await Promise.all([
+    supabase
+      .from("quest_verifications")
+      .select("id, quest_id, xp, status, user_message, proof_url, created_at")
+      .ilike("user_email", email),
+    supabase
+      .from("quest_message_notes")
+      .select("id, quest_id, xp, status, user_message, created_at")
+      .ilike("user_email", email)
+  ]);
 
-  const compXp = (completions || []).reduce((sum, c: any) => sum + (c.xp_awarded || 0), 0);
-  const verifXp = (verifications || []).reduce((sum, v: any) => sum + (v.xp || 0), 0);
-  const exactTotalXp = compXp + verifXp;
+  const { totalXp: exactTotalXp } = computeUserTotalXp({
+    completions,
+    verifications: verifRes.data || [],
+    messageNotes: msgRes.data || [],
+  });
 
   // Sync registrations table total_xp
   if (data.total_xp !== exactTotalXp) {
