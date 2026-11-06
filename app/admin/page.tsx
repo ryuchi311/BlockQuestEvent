@@ -7415,6 +7415,1399 @@ export default function AdminPage() {
             )}
           </div>
         )}
+      {/* ─── PROMO CODES TAB ─── */}
+      {tab === "promocodes" && (adminUser?.role === "superadmin" || adminUser?.role === "admin") && !loading && (
+        <div className="admin-fade-in" style={{ padding: "0 4px" }}>
+          {/* Header & Actions Bar */}
+          <div className="admin-header-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, marginBottom: 20 }}>
+            <div>
+              <h2 style={{ display: "flex", alignItems: "center", gap: 10, margin: 0, fontSize: "1.4rem", fontWeight: 800 }}>
+                <span style={{ fontSize: "1.6rem" }}>🎁</span> Promo Codes & Referral Campaigns
+              </h2>
+              <p style={{ margin: "4px 0 0", color: "var(--text-muted)", fontSize: "0.9rem" }}>
+                Generate promotional links, configure custom XP sign-up bonuses, and track redemption metrics.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <input
+                type="text"
+                className="admin-search-input"
+                placeholder="Search promo codes..."
+                value={promoSearch}
+                onChange={(e) => setPromoSearch(e.target.value)}
+                style={{ width: 220, padding: "9px 14px", borderRadius: 10 }}
+              />
+              <button
+                onClick={() => {
+                  setPromoCodeForm({ id: "", code: "", xp_bonus: 150, max_uses: "", is_active: true });
+                  setPromoCodeError("");
+                  setShowPromoCodeModal(true);
+                }}
+                className="admin-refresh-btn"
+                style={{
+                  background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                  color: "#120b02",
+                  fontWeight: 800,
+                  boxShadow: "0 4px 14px rgba(245, 166, 35, 0.35)",
+                  padding: "9px 18px",
+                  borderRadius: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6
+                }}
+              >
+                <span>+</span> Create Promo Code
+              </button>
+            </div>
+          </div>
+
+          {/* Sub-tabs switcher */}
+          <div style={{ display: "flex", gap: 10, marginBottom: 20, borderBottom: "1px solid rgba(255, 255, 255, 0.08)", paddingBottom: 12 }}>
+            <button
+              type="button"
+              onClick={() => setPromoSubTab("campaigns")}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 10,
+                border: "none",
+                background: promoSubTab === "campaigns" ? "linear-gradient(135deg, #f5a623 0%, #d97706 100%)" : "rgba(255, 255, 255, 0.05)",
+                color: promoSubTab === "campaigns" ? "#120b02" : "var(--text-secondary)",
+                fontWeight: 800,
+                fontSize: "0.85rem",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                transition: "all 0.2s ease"
+              }}
+            >
+              <span>🏷️ Promo Code Campaigns</span>
+              <span style={{
+                background: promoSubTab === "campaigns" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)",
+                padding: "2px 6px",
+                borderRadius: 6,
+                fontSize: "0.74rem"
+              }}>
+                {promoCodes.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setPromoSubTab("user_referrals");
+                fetchReferrals();
+              }}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 10,
+                border: "none",
+                background: promoSubTab === "user_referrals" ? "linear-gradient(135deg, #38bdf8 0%, #0284c7 100%)" : "rgba(255, 255, 255, 0.05)",
+                color: promoSubTab === "user_referrals" ? "#041826" : "var(--text-secondary)",
+                fontWeight: 800,
+                fontSize: "0.85rem",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                transition: "all 0.2s ease"
+              }}
+            >
+              <span>👥 User Referral Network</span>
+              <span style={{
+                background: promoSubTab === "user_referrals" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)",
+                padding: "2px 6px",
+                borderRadius: 6,
+                fontSize: "0.74rem"
+              }}>
+                {referralsData.metrics.totalReferrals || 0}
+              </span>
+            </button>
+          </div>
+
+          {/* ───────────── SUB-TAB 1: CAMPAIGNS ───────────── */}
+          {promoSubTab === "campaigns" && (
+            <>
+              {/* Quick Metrics Bar */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: 12,
+                marginBottom: 20
+              }}>
+                <div style={{
+                  background: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: 14,
+                  padding: "14px 18px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12
+                }}>
+                  <span style={{ fontSize: "1.8rem" }}>🏷️</span>
+                  <div>
+                    <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Total Codes</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fff" }}>{promoCodes.length}</div>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: 14,
+                  padding: "14px 18px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12
+                }}>
+                  <span style={{ fontSize: "1.8rem" }}>⚡</span>
+                  <div>
+                    <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Active Campaigns</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#10b981" }}>
+                      {promoCodes.filter(p => p.is_active).length}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: 14,
+                  padding: "14px 18px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12
+                }}>
+                  <span style={{ fontSize: "1.8rem" }}>👥</span>
+                  <div>
+                    <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Total Redemptions</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--gold-light)" }}>
+                      {promoCodes.reduce((acc, p) => acc + (p.usage_count || 0), 0)}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: 14,
+                  padding: "14px 18px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12
+                }}>
+                  <span style={{ fontSize: "1.8rem" }}>✨</span>
+                  <div>
+                    <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Bonus XP Awarded</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#38bdf8" }}>
+                      {promoCodes.reduce((acc, p) => acc + ((p.usage_count || 0) * (p.xp_bonus || 0)), 0).toLocaleString()} XP
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Table */}
+              {promoCodes.length === 0 ? (
+                <div style={{
+                  textAlign: "center",
+                  padding: "60px 20px",
+                  background: "rgba(255, 255, 255, 0.02)",
+                  borderRadius: 16,
+                  border: "1px dashed rgba(255, 255, 255, 0.1)"
+                }}>
+                  <span style={{ fontSize: "3rem", display: "block", marginBottom: 12 }}>🎁</span>
+                  <h3 style={{ margin: "0 0 6px", color: "#fff", fontSize: "1.1rem" }}>No promo codes created yet</h3>
+                  <p style={{ margin: "0 0 16px", color: "var(--text-muted)", fontSize: "0.9rem" }}>
+                    Create your first promo code to start distributing referral registration links.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setPromoCodeForm({ id: "", code: "", xp_bonus: 150, max_uses: "", is_active: true });
+                      setPromoCodeError("");
+                      setShowPromoCodeModal(true);
+                    }}
+                    className="admin-refresh-btn"
+                    style={{
+                      background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                      color: "#120b02",
+                      fontWeight: 800,
+                      padding: "9px 18px",
+                      borderRadius: 10
+                    }}
+                  >
+                    + Create Promo Code
+                  </button>
+                </div>
+              ) : (
+                <div className="admin-table-container" style={{ background: "rgba(10, 10, 20, 0.6)", borderRadius: 16, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Promo Code & Link</th>
+                        <th>Bonus XP</th>
+                        <th>Redemptions</th>
+                        <th>Usage Limit</th>
+                        <th>Status</th>
+                        <th style={{ textAlign: "right" }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {promoCodes
+                        .filter(pc => !promoSearch || pc.code.toLowerCase().includes(promoSearch.toLowerCase()))
+                        .map((pc) => {
+                          const shareUrl = typeof window !== "undefined"
+                            ? `${window.location.origin}/register?promoCode=${pc.code}`
+                            : `https://event.block-quest.com/register?promoCode=${pc.code}`;
+                          const isCopied = copiedCode === pc.code;
+
+                          return (
+                            <tr key={pc.id}>
+                              <td>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <span style={{
+                                      fontWeight: 800,
+                                      fontFamily: "monospace",
+                                      fontSize: "1rem",
+                                      color: "var(--gold-light)",
+                                      background: "rgba(245, 166, 35, 0.1)",
+                                      padding: "3px 8px",
+                                      borderRadius: 6,
+                                      border: "1px solid rgba(245, 166, 35, 0.25)",
+                                      letterSpacing: "0.05em"
+                                    }}>
+                                      {pc.code}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(shareUrl);
+                                        setCopiedCode(pc.code);
+                                        setTimeout(() => setCopiedCode(null), 2000);
+                                      }}
+                                      style={{
+                                        background: isCopied ? "rgba(16, 185, 129, 0.2)" : "rgba(255, 255, 255, 0.06)",
+                                        border: isCopied ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(255, 255, 255, 0.12)",
+                                        color: isCopied ? "#10b981" : "var(--text-secondary)",
+                                        borderRadius: 6,
+                                        padding: "3px 8px",
+                                        fontSize: "0.75rem",
+                                        fontWeight: 700,
+                                        cursor: "pointer",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 4,
+                                        transition: "all 0.2s ease"
+                                      }}
+                                      title="Copy invite URL"
+                                    >
+                                      {isCopied ? "Copied! ✔" : "Copy Link 📋"}
+                                    </button>
+                                  </div>
+                                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {shareUrl}
+                                  </span>
+                                </div>
+                              </td>
+
+                              <td>
+                                <span style={{
+                                  fontWeight: 800,
+                                  color: "#f5a623",
+                                  background: "rgba(245, 166, 35, 0.1)",
+                                  padding: "4px 10px",
+                                  borderRadius: 20,
+                                  fontSize: "0.85rem",
+                                  border: "1px solid rgba(245, 166, 35, 0.2)"
+                                }}>
+                                  +{pc.xp_bonus} XP
+                                </span>
+                              </td>
+
+                              <td>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                  <span style={{ fontWeight: 800, fontSize: "1rem", color: "#fff" }}>
+                                    {pc.usage_count || 0}
+                                  </span>
+                                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                                    registered
+                                  </span>
+                                </div>
+                              </td>
+
+                              <td>
+                                {pc.max_uses ? (
+                                  <span style={{
+                                    fontSize: "0.85rem",
+                                    fontWeight: 700,
+                                    color: (pc.usage_count || 0) >= pc.max_uses ? "#ef4444" : "var(--text-secondary)"
+                                  }}>
+                                    {pc.usage_count || 0} / {pc.max_uses} max
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontStyle: "italic" }}>
+                                    Unlimited
+                                  </span>
+                                )}
+                              </td>
+
+                              <td>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    try {
+                                      const res = await adminFetch("/api/admin/promo-codes", {
+                                        method: "PATCH",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ id: pc.id, is_active: !pc.is_active }),
+                                      });
+                                      if (res.ok) fetchPromoCodes();
+                                    } catch {}
+                                  }}
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    padding: "4px 12px",
+                                    borderRadius: 20,
+                                    fontSize: "0.8rem",
+                                    fontWeight: 700,
+                                    background: pc.is_active ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
+                                    color: pc.is_active ? "#10b981" : "#ef4444",
+                                    border: pc.is_active ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(239, 68, 68, 0.3)",
+                                    cursor: "pointer"
+                                  }}
+                                  title="Click to toggle status"
+                                >
+                                  <span style={{
+                                    width: 7,
+                                    height: 7,
+                                    borderRadius: "50%",
+                                    backgroundColor: pc.is_active ? "#10b981" : "#ef4444"
+                                  }} />
+                                  {pc.is_active ? "Active" : "Inactive"}
+                                </button>
+                              </td>
+
+                              <td style={{ textAlign: "right" }}>
+                                <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                                  <button
+                                    className="admin-edit-btn"
+                                    onClick={() => {
+                                      setPromoCodeForm({
+                                        id: pc.id,
+                                        code: pc.code,
+                                        xp_bonus: pc.xp_bonus,
+                                        max_uses: pc.max_uses ?? "",
+                                        is_active: pc.is_active,
+                                      });
+                                      setPromoCodeError("");
+                                      setShowPromoCodeModal(true);
+                                    }}
+                                    style={{ padding: "6px 12px", fontSize: "0.8rem" }}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    className="admin-delete-btn"
+                                    onClick={async () => {
+                                      if (!confirm(`Are you sure you want to delete promo code "${pc.code}"?`)) return;
+                                      try {
+                                        const res = await adminFetch("/api/admin/promo-codes", {
+                                          method: "DELETE",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ id: pc.id }),
+                                        });
+                                        if (!res.ok) throw new Error("Failed to delete promo code");
+                                        fetchPromoCodes();
+                                      } catch (e: any) {
+                                        alert(e.message);
+                                      }
+                                    }}
+                                    style={{ padding: "6px 12px", fontSize: "0.8rem" }}
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ───────────── SUB-TAB 2: USER REFERRAL NETWORK ───────────── */}
+          {promoSubTab === "user_referrals" && (
+            <div className="admin-fade-in">
+              {/* Referrals Summary Metrics */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+                gap: 12,
+                marginBottom: 20
+              }}>
+                <div style={{
+                  background: "rgba(56, 189, 248, 0.08)",
+                  border: "1px solid rgba(56, 189, 248, 0.25)",
+                  borderRadius: 14,
+                  padding: "14px 18px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12
+                }}>
+                  <span style={{ fontSize: "1.8rem" }}>👥</span>
+                  <div>
+                    <div style={{ fontSize: "0.74rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Total Peer Invites</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#38bdf8" }}>{referralsData.metrics.totalReferrals}</div>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: "rgba(245, 166, 35, 0.08)",
+                  border: "1px solid rgba(245, 166, 35, 0.25)",
+                  borderRadius: 14,
+                  padding: "14px 18px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12
+                }}>
+                  <span style={{ fontSize: "1.8rem" }}>🎖️</span>
+                  <div>
+                    <div style={{ fontSize: "0.74rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Active Referrers</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--gold-light)" }}>{referralsData.metrics.totalReferrers}</div>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: "rgba(16, 185, 129, 0.08)",
+                  border: "1px solid rgba(16, 185, 129, 0.25)",
+                  borderRadius: 14,
+                  padding: "14px 18px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12
+                }}>
+                  <span style={{ fontSize: "1.8rem" }}>👑</span>
+                  <div>
+                    <div style={{ fontSize: "0.74rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Max Capped (5/5)</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#34d399" }}>{referralsData.metrics.maxCappedReferrers} questers</div>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: "rgba(192, 132, 252, 0.08)",
+                  border: "1px solid rgba(192, 132, 252, 0.25)",
+                  borderRadius: 14,
+                  padding: "14px 18px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12
+                }}>
+                  <span style={{ fontSize: "1.8rem" }}>⚡</span>
+                  <div>
+                    <div style={{ fontSize: "0.74rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Referral XP Distributed</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#c084fc" }}>+{referralsData.metrics.totalReferralXpAwarded.toLocaleString()} XP</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Referrer Search & Anti-Abuse Info */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
+                <input
+                  type="text"
+                  className="admin-search-input"
+                  placeholder="Filter referrers by name, email, or code..."
+                  value={referralSearch}
+                  onChange={(e) => setReferralSearch(e.target.value)}
+                  style={{ width: 280, padding: "8px 12px", borderRadius: 10 }}
+                />
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                  <span style={{ background: "rgba(16, 185, 129, 0.15)", color: "#34d399", padding: "3px 8px", borderRadius: 6, fontWeight: 700 }}>
+                    🛡️ Anti-Spam Active: Max 5 Ref / +500 XP Cap • Max 2 Reg/IP
+                  </span>
+                  <button
+                    className="admin-refresh-btn"
+                    onClick={fetchReferrals}
+                    title="Reload Referrals"
+                    style={{ padding: "6px 12px", fontSize: "0.78rem" }}
+                  >
+                    ↻ Refresh
+                  </button>
+                </div>
+              </div>
+
+              {/* Top Referrers Leaderboard Table */}
+              <div style={{ marginBottom: 28 }}>
+                <h3 style={{ margin: "0 0 10px 0", fontSize: "1.05rem", fontWeight: 800, color: "#fff", display: "flex", alignItems: "center", gap: 8 }}>
+                  <span>🏆 Top User Referrers</span>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 400 }}>
+                    ({referralsData.referrers.length} registered questers who invited friends)
+                  </span>
+                </h3>
+
+                {referralsData.referrers.length === 0 ? (
+                  <div style={{ padding: "30px 20px", textAlign: "center", background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)" }}>
+                    <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.88rem" }}>
+                      No user referrals recorded yet. Once attendees share their referral links, top referrers will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="admin-table-container" style={{ background: "rgba(10, 10, 20, 0.6)", borderRadius: 14, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
+                    <table className="admin-table">
+                      <thead>
+                        <tr>
+                          <th>Rank</th>
+                          <th>Referrer Name</th>
+                          <th>Email & Phone</th>
+                          <th>Referral Code</th>
+                          <th>Friends Invited</th>
+                          <th>Referral Bonus</th>
+                          <th>Total Quester XP</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {referralsData.referrers
+                          .filter((r) => {
+                            if (!referralSearch) return true;
+                            const q = referralSearch.toLowerCase();
+                            return (
+                              r.full_name?.toLowerCase().includes(q) ||
+                              r.alias_name?.toLowerCase().includes(q) ||
+                              r.email?.toLowerCase().includes(q) ||
+                              r.ticket_code?.toLowerCase().includes(q)
+                            );
+                          })
+                          .map((r, idx) => {
+                            const isCapped = (r.referral_count || 0) >= 5;
+                            return (
+                              <tr key={r.id}>
+                                <td>
+                                  <span style={{
+                                    fontWeight: 800,
+                                    fontSize: "0.85rem",
+                                    color: idx === 0 ? "#ffd700" : idx === 1 ? "#cbd5e1" : idx === 2 ? "#cd7f32" : "var(--text-secondary)"
+                                  }}>
+                                    #{idx + 1} {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : ""}
+                                  </span>
+                                </td>
+                                <td>
+                                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                    <strong style={{ color: "#fff", fontSize: "0.88rem" }}>{r.full_name}</strong>
+                                    {r.alias_name && (
+                                      <span style={{ color: "var(--gold-light)", fontSize: "0.75rem", fontWeight: 700 }}>
+                                        @{r.alias_name}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>
+                                  <div>{r.email}</div>
+                                  <div style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>{r.phone}</div>
+                                </td>
+                                <td>
+                                  <span style={{
+                                    fontFamily: "monospace",
+                                    fontSize: "0.82rem",
+                                    background: "rgba(255, 255, 255, 0.06)",
+                                    padding: "3px 8px",
+                                    borderRadius: 6,
+                                    border: "1px solid rgba(255, 255, 255, 0.12)",
+                                    color: "#fff"
+                                  }}>
+                                    {r.ticket_code || "—"}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    padding: "3px 10px",
+                                    borderRadius: 14,
+                                    fontSize: "0.8rem",
+                                    fontWeight: 800,
+                                    background: isCapped ? "rgba(56, 189, 248, 0.15)" : "rgba(245, 166, 35, 0.12)",
+                                    color: isCapped ? "#38bdf8" : "var(--gold-light)",
+                                    border: isCapped ? "1px solid rgba(56, 189, 248, 0.35)" : "1px solid rgba(245, 166, 35, 0.3)"
+                                  }}>
+                                    👥 {r.referral_count} / 5 {isCapped ? "(MAX)" : ""}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span style={{ fontWeight: 800, color: "#10b981", fontSize: "0.85rem" }}>
+                                    +{Math.min(r.referral_count || 0, 5) * 100} XP
+                                  </span>
+                                </td>
+                                <td>
+                                  <span style={{ fontWeight: 700, color: "#fff", fontSize: "0.85rem" }}>
+                                    {r.total_xp?.toLocaleString() || 0} XP
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Invited Friends Audit Log */}
+              <div>
+                <h3 style={{ margin: "0 0 10px 0", fontSize: "1.05rem", fontWeight: 800, color: "#fff", display: "flex", alignItems: "center", gap: 8 }}>
+                  <span>📋 Recent Referral Sign-ups</span>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 400 }}>
+                    ({referralsData.invitees.length} attendees registered via friend link)
+                  </span>
+                </h3>
+
+                {referralsData.invitees.length === 0 ? (
+                  <div style={{ padding: "26px 20px", textAlign: "center", background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)" }}>
+                    <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                      No invitee sign-up events found.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="admin-table-container" style={{ background: "rgba(10, 10, 20, 0.6)", borderRadius: 14, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
+                    <table className="admin-table">
+                      <thead>
+                        <tr>
+                          <th>Invitee Name</th>
+                          <th>Invitee Email</th>
+                          <th>Ticket Code</th>
+                          <th>Referred By Code</th>
+                          <th>Registration Date</th>
+                          <th>Gate Check-in</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {referralsData.invitees.slice(0, 50).map((inv) => (
+                          <tr key={inv.id}>
+                            <td>
+                              <strong style={{ color: "#fff", fontSize: "0.85rem" }}>{inv.full_name}</strong>
+                              {inv.alias_name && (
+                                <span style={{ display: "block", color: "var(--gold-light)", fontSize: "0.74rem" }}>
+                                  @{inv.alias_name}
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>{inv.email}</td>
+                            <td>
+                              <span style={{ fontFamily: "monospace", fontSize: "0.8rem", color: "#e2e8f0" }}>
+                                {inv.ticket_code || "—"}
+                              </span>
+                            </td>
+                            <td>
+                              <span style={{
+                                padding: "2px 8px",
+                                borderRadius: 6,
+                                background: "rgba(56, 189, 248, 0.12)",
+                                border: "1px solid rgba(56, 189, 248, 0.3)",
+                                color: "#38bdf8",
+                                fontSize: "0.78rem",
+                                fontWeight: 700,
+                                fontFamily: "monospace"
+                              }}>
+                                🔗 {inv.referred_by_code}
+                              </span>
+                            </td>
+                            <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                              {inv.created_at ? new Date(inv.created_at).toLocaleString() : "—"}
+                            </td>
+                            <td>
+                              {inv.checked_in ? (
+                                <span style={{ fontSize: "0.74rem", color: "#10b981", fontWeight: 700 }}>
+                                  ✓ Checked In
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>
+                                  ⏳ Pending Gate
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── MILESTONES & TIERS TAB ─── */}
+      {tab === "milestones" && (adminUser?.role === "superadmin" || adminUser?.role === "admin" || adminUser?.role === "manager" || adminUser?.role === "viewer") && !loading && (
+        <div className="admin-fade-in" style={{ padding: "0 4px" }}>
+          {/* Header & Actions Bar */}
+          <div className="admin-header-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, marginBottom: 20 }}>
+            <div>
+              <h2 style={{ display: "flex", alignItems: "center", gap: 10, margin: 0, fontSize: "1.4rem", fontWeight: 800 }}>
+                <span style={{ fontSize: "1.6rem" }}>🏆</span> Milestone Badges & Level Tiers
+              </h2>
+              <p style={{ margin: "4px 0 0", color: "var(--text-muted)", fontSize: "0.9rem" }}>
+                Configure milestone achievements, unlock thresholds (XP), badge icons, and card accent colors for attendees.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <input
+                type="text"
+                className="admin-search-input"
+                placeholder="Search milestone tiers..."
+                value={milestoneSearch}
+                onChange={(e) => setMilestoneSearch(e.target.value)}
+                style={{ width: 220, padding: "9px 14px", borderRadius: 10 }}
+              />
+              {(adminUser?.role === "superadmin" || adminUser?.role === "admin" || adminUser?.role === "manager") && (
+                <button
+                  onClick={() => {
+                    const nextOrder = milestones.length > 0 ? Math.max(...milestones.map(m => m.sort_order || 0)) + 1 : 1;
+                    setMilestoneForm({ id: "", name: "", xp: 1000, icon: "🎖️", color: "#ffd700", sort_order: nextOrder });
+                    setMilestoneError("");
+                    setShowMilestoneModal(true);
+                  }}
+                  className="admin-refresh-btn"
+                  style={{
+                    background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                    color: "#120b02",
+                    fontWeight: 800,
+                    boxShadow: "0 4px 14px rgba(245, 166, 35, 0.35)",
+                    padding: "9px 18px",
+                    borderRadius: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6
+                  }}
+                >
+                  <span>+</span> Add Milestone Tier
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Metrics Bar */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: 12,
+            marginBottom: 20
+          }}>
+            <div style={{
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: 14,
+              padding: "14px 18px",
+              display: "flex",
+              alignItems: "center",
+              gap: 12
+            }}>
+              <span style={{ fontSize: "1.8rem" }}>🏆</span>
+              <div>
+                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Total Milestone Tiers</div>
+                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fff" }}>{milestones.length}</div>
+              </div>
+            </div>
+
+            <div style={{
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: 14,
+              padding: "14px 18px",
+              display: "flex",
+              alignItems: "center",
+              gap: 12
+            }}>
+              <span style={{ fontSize: "1.8rem" }}>⚡</span>
+              <div>
+                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Entry Tier XP</div>
+                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#10b981" }}>
+                  {milestones.length > 0 ? `${Math.min(...milestones.map(m => m.xp))} XP` : "0 XP"}
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: 14,
+              padding: "14px 18px",
+              display: "flex",
+              alignItems: "center",
+              gap: 12
+            }}>
+              <span style={{ fontSize: "1.8rem" }}>👑</span>
+              <div>
+                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Apex Pinnacle Tier</div>
+                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--gold-light)" }}>
+                  {milestones.length > 0 ? `${Math.max(...milestones.map(m => m.xp)).toLocaleString()} XP` : "0 XP"}
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: 14,
+              padding: "14px 18px",
+              display: "flex",
+              alignItems: "center",
+              gap: 12
+            }}>
+              <span style={{ fontSize: "1.8rem" }}>📱</span>
+              <div>
+                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Live Sync Status</div>
+                <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#38bdf8" }}>
+                  Active on Mobile App
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Table */}
+          {milestones.length === 0 ? (
+            <div style={{
+              textAlign: "center",
+              padding: "60px 20px",
+              background: "rgba(255, 255, 255, 0.02)",
+              borderRadius: 16,
+              border: "1px dashed rgba(255, 255, 255, 0.1)"
+            }}>
+              <span style={{ fontSize: "3rem", display: "block", marginBottom: 12 }}>🏆</span>
+              <h3 style={{ margin: "0 0 6px", color: "#fff", fontSize: "1.1rem" }}>No milestone tiers found</h3>
+              <p style={{ margin: "0 0 16px", color: "var(--text-muted)", fontSize: "0.9rem" }}>
+                Add your first milestone tier to reward attendees when they accumulate XP.
+              </p>
+              {(adminUser?.role === "superadmin" || adminUser?.role === "admin" || adminUser?.role === "manager") && (
+                <button
+                  onClick={() => {
+                    setMilestoneForm({ id: "", name: "", xp: 500, icon: "🥉", color: "#ffd700", sort_order: 1 });
+                    setMilestoneError("");
+                    setShowMilestoneModal(true);
+                  }}
+                  className="admin-refresh-btn"
+                  style={{
+                    background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
+                    color: "#120b02",
+                    fontWeight: 800,
+                    padding: "9px 18px",
+                    borderRadius: 10
+                  }}
+                >
+                  + Add Milestone Tier
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="admin-table-container" style={{ background: "rgba(10, 10, 20, 0.6)", borderRadius: 16, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 60 }}>Order</th>
+                    <th>Badge & Tier Name</th>
+                    <th>XP Required</th>
+                    <th>Card Preview</th>
+                    <th>Color Accent</th>
+                    <th style={{ textAlign: "right" }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {milestones
+                    .filter(m => !milestoneSearch || m.name.toLowerCase().includes(milestoneSearch.toLowerCase()))
+                    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.xp - b.xp)
+                    .map((m) => {
+                      return (
+                        <tr key={m.id || m.name}>
+                          <td>
+                            <span style={{ fontWeight: 800, color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                              #{m.sort_order ?? "-"}
+                            </span>
+                          </td>
+
+                          <td>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <span style={{
+                                fontSize: "1.4rem",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                width: 36,
+                                height: 36,
+                                borderRadius: 8,
+                                background: `${m.color || "#ffd700"}20`,
+                                border: `1px solid ${m.color || "#ffd700"}50`
+                              }}>
+                                {m.icon || "🏆"}
+                              </span>
+                              <div>
+                                <strong style={{ color: "#fff", fontSize: "0.95rem" }}>{m.name}</strong>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td>
+                            <span style={{
+                              fontWeight: 800,
+                              color: "#f5a623",
+                              background: "rgba(245, 166, 35, 0.12)",
+                              padding: "4px 12px",
+                              borderRadius: 20,
+                              fontSize: "0.85rem",
+                              border: "1px solid rgba(245, 166, 35, 0.25)"
+                            }}>
+                              {m.xp.toLocaleString()} XP
+                            </span>
+                          </td>
+
+                          <td>
+                            <div style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                              padding: "5px 10px",
+                              borderRadius: 8,
+                              background: "rgba(255, 255, 255, 0.05)",
+                              border: `1px solid ${m.color || "#ffd700"}`,
+                              boxShadow: `0 0 10px ${m.color || "#ffd700"}22`
+                            }}>
+                              <span style={{ fontSize: "1rem" }}>{m.icon || "🏆"}</span>
+                              <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#fff" }}>{m.name}</span>
+                              <span style={{ fontSize: "0.68rem", color: m.color || "#ffd700", fontWeight: 700 }}>✓</span>
+                            </div>
+                          </td>
+
+                          <td>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{
+                                width: 16,
+                                height: 16,
+                                borderRadius: 4,
+                                backgroundColor: m.color || "#ffd700",
+                                display: "inline-block",
+                                border: "1px solid rgba(255,255,255,0.3)"
+                              }} />
+                              <code style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>{m.color || "#ffd700"}</code>
+                            </div>
+                          </td>
+
+                          <td style={{ textAlign: "right" }}>
+                            {(adminUser?.role === "superadmin" || adminUser?.role === "admin" || adminUser?.role === "manager") ? (
+                              <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                                <button
+                                  className="admin-edit-btn"
+                                  onClick={() => {
+                                    setMilestoneForm({
+                                      id: m.id,
+                                      name: m.name,
+                                      xp: m.xp,
+                                      icon: m.icon || "🏆",
+                                      color: m.color || "#ffd700",
+                                      sort_order: m.sort_order ?? 1,
+                                    });
+                                    setMilestoneError("");
+                                    setShowMilestoneModal(true);
+                                  }}
+                                  style={{ padding: "6px 12px", fontSize: "0.8rem" }}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  className="admin-delete-btn"
+                                  onClick={async () => {
+                                    if (!confirm(`Are you sure you want to delete milestone tier "${m.name}" (${m.xp} XP)?`)) return;
+                                    try {
+                                      const res = await adminFetch("/api/admin/milestones", {
+                                        method: "DELETE",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ id: m.id }),
+                                      });
+                                      if (!res.ok) throw new Error("Failed to delete milestone tier");
+                                      fetchMilestones();
+                                    } catch (e: any) {
+                                      alert(e.message);
+                                    }
+                                  }}
+                                  style={{ padding: "6px 12px", fontSize: "0.8rem" }}
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>View Only</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── LEADERBOARD & RANK SCORES TAB ─── */}
+      {tab === "leaderboard" && !loading && (
+        <div className="admin-fade-in" style={{ padding: "0 4px" }}>
+          {/* Header & Controls */}
+          <div className="admin-header-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, marginBottom: 20 }}>
+            <div>
+              <h2 style={{ display: "flex", alignItems: "center", gap: 10, margin: 0, fontSize: "1.4rem", fontWeight: 800 }}>
+                <span style={{ fontSize: "1.6rem" }}>🏅</span> Event Leaderboard & Quester Rank Scores
+              </h2>
+              <p style={{ margin: "4px 0 0", color: "var(--text-muted)", fontSize: "0.9rem" }}>
+                Real-time player standings, total accumulated quest XP scores, milestone badge tiers, and quester identity verification.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <input
+                type="search"
+                placeholder="Search quester name, alias, email, ticket..."
+                value={leaderboardSearch}
+                onChange={(e) => setLeaderboardSearch(e.target.value)}
+                className="admin-search-input"
+                style={{ width: 280, padding: "9px 14px", borderRadius: 10 }}
+              />
+
+              <button
+                type="button"
+                className="admin-sub-btn"
+                onClick={() => {
+                  fetchLeaderboard();
+                  fetchAttendees();
+                }}
+                title="Refresh Leaderboard Data"
+                style={{ padding: "9px 16px", borderRadius: 10, display: "inline-flex", alignItems: "center", gap: 6 }}
+              >
+                ↻ Refresh Standings
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Stats Highlights */}
+          {(() => {
+            const rankedList = (leaderboardUsers.length > 0
+              ? leaderboardUsers
+              : attendees
+                  .map((a) => ({
+                    rank: 0,
+                    name: a.alias_name ? `@${a.alias_name}` : a.full_name,
+                    alias: a.alias_name || null,
+                    email: a.email,
+                    ticketCode: a.ticket_code,
+                    points: a.total_xp || 0,
+                  }))
+                  .sort((a, b) => (b.points || 0) - (a.points || 0))
+                  .map((item, idx) => ({ ...item, rank: idx + 1 }))
+            );
+
+            const topQuester = rankedList[0];
+            const avgPoints = rankedList.length > 0 ? Math.round(rankedList.reduce((sum, r) => sum + (r.points || 0), 0) / rankedList.length) : 0;
+            const questersWithPoints = rankedList.filter((r) => (r.points || 0) > 0).length;
+
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, marginBottom: 24 }}>
+                <div style={{ background: "linear-gradient(135deg, rgba(245, 166, 35, 0.12) 0%, rgba(20, 20, 32, 0.95) 100%)", border: "1px solid rgba(245, 166, 35, 0.35)", borderRadius: 14, padding: "16px 20px" }}>
+                  <span style={{ fontSize: "0.75rem", color: "var(--gold-light)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>👑 #1 Top Scorer</span>
+                  <div style={{ marginTop: 6, display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <span style={{ fontSize: "1.3rem", fontWeight: 900, color: "#fff" }}>
+                      {topQuester ? topQuester.name : "None yet"}
+                    </span>
+                    {topQuester && (
+                      <span style={{ fontSize: "1rem", fontWeight: 800, color: "var(--gold-light)" }}>
+                        {(topQuester.points || 0).toLocaleString()} XP
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ background: "rgba(10, 10, 20, 0.6)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 14, padding: "16px 20px" }}>
+                  <span style={{ fontSize: "0.75rem", color: "#38bdf8", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>🎯 Active Scorers</span>
+                  <div style={{ marginTop: 6, fontSize: "1.3rem", fontWeight: 900, color: "#fff" }}>
+                    {questersWithPoints} <span style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--text-muted)" }}>of {rankedList.length} questers scored</span>
+                  </div>
+                </div>
+
+                <div style={{ background: "rgba(10, 10, 20, 0.6)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 14, padding: "16px 20px" }}>
+                  <span style={{ fontSize: "0.75rem", color: "#34d399", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>📊 Average XP Score</span>
+                  <div style={{ marginTop: 6, fontSize: "1.3rem", fontWeight: 900, color: "#34d399" }}>
+                    {avgPoints.toLocaleString()} <span style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--text-muted)" }}>XP per player</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Top 3 Podium Showcase */}
+          {(() => {
+            const rawList = leaderboardUsers.length > 0
+              ? leaderboardUsers
+              : attendees
+                  .map((a) => ({
+                    rank: 0,
+                    name: a.alias_name ? `@${a.alias_name}` : a.full_name,
+                    alias: a.alias_name || null,
+                    email: a.email,
+                    ticketCode: a.ticket_code,
+                    points: a.total_xp || 0,
+                  }))
+                  .sort((a, b) => (b.points || 0) - (a.points || 0))
+                  .map((item, idx) => ({ ...item, rank: idx + 1 }));
+
+            const top3 = rawList.slice(0, 3);
+            if (top3.length === 0) return null;
+
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16, marginBottom: 28 }}>
+                {top3.map((p) => {
+                  const is1st = p.rank === 1;
+                  const is2nd = p.rank === 2;
+                  const is3rd = p.rank === 3;
+                  const medal = is1st ? "🥇 1st Place" : is2nd ? "🥈 2nd Place" : "🥉 3rd Place";
+                  const accentColor = is1st ? "#ffd700" : is2nd ? "#cbd5e1" : "#d97706";
+
+                  // Find milestone badge tier
+                  const highestBadge = milestones
+                    .filter((m) => (p.points || 0) >= m.xp)
+                    .sort((a, b) => b.xp - a.xp)[0];
+
+                  return (
+                    <div
+                      key={p.rank}
+                      style={{
+                        background: `linear-gradient(135deg, ${accentColor}15 0%, rgba(10, 15, 30, 0.9) 100%)`,
+                        border: `1.5px solid ${accentColor}55`,
+                        borderRadius: 16,
+                        padding: "20px 22px",
+                        position: "relative",
+                        overflow: "hidden",
+                        boxShadow: `0 8px 24px ${accentColor}18`,
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                        <span style={{ fontSize: "0.85rem", fontWeight: 800, color: accentColor, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                          {medal}
+                        </span>
+                        {highestBadge && (
+                          <span style={{ fontSize: "0.74rem", background: `${highestBadge.color || "#ffd700"}22`, color: highestBadge.color || "#ffd700", border: `1px solid ${highestBadge.color || "#ffd700"}44`, padding: "2px 8px", borderRadius: 10, fontWeight: 700 }}>
+                            {highestBadge.icon || "🏆"} {highestBadge.name}
+                          </span>
+                        )}
+                      </div>
+
+                      <div style={{ fontSize: "1.25rem", fontWeight: 900, color: "#fff", marginBottom: 4 }}>
+                        {p.name}
+                      </div>
+
+                      <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginBottom: 14 }}>
+                        {p.email ? p.email : p.ticketCode ? `Ticket: ${p.ticketCode}` : "Attendee Quester"}
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                        <span style={{ fontSize: "1.75rem", fontWeight: 950, color: accentColor }}>
+                          {(p.points || 0).toLocaleString()}
+                        </span>
+                        <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-muted)" }}>XP Score</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
+          {/* Full Leaderboard Table */}
+          <div className="admin-table-container" style={{ background: "rgba(10, 10, 20, 0.6)", borderRadius: 16, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 80 }}>Rank</th>
+                  <th>Quester</th>
+                  <th>Alias Handle</th>
+                  <th>Contact / Email</th>
+                  <th>Ticket Code</th>
+                  <th>Current Badge Tier</th>
+                  <th style={{ textAlign: "right" }}>Rank Score (Total XP)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  const attendeesMap = new Map<string, Attendee>();
+                  attendees.forEach((a) => {
+                    if (a.email) attendeesMap.set(a.email.toLowerCase().trim(), a);
+                    if (a.ticket_code) attendeesMap.set(a.ticket_code.toLowerCase().trim(), a);
+                  });
+
+                  // Build ranked array
+                  let combinedList: any[] = [];
+                  if (leaderboardUsers.length > 0) {
+                    combinedList = leaderboardUsers.map((item, idx) => {
+                      const matched = item.email ? attendeesMap.get(item.email.toLowerCase().trim()) : null;
+                      return {
+                        rank: item.rank || idx + 1,
+                        name: item.name || matched?.full_name || `Quester #${idx + 1}`,
+                        alias: item.alias || matched?.alias_name || null,
+                        email: item.email || matched?.email || "",
+                        phone: matched?.phone || "",
+                        ticket_code: item.ticketCode || matched?.ticket_code || "",
+                        points: item.points ?? matched?.total_xp ?? 0,
+                        checked_in: matched?.checked_in,
+                      };
+                    });
+                  } else {
+                    combinedList = attendees
+                      .slice()
+                      .sort((a, b) => (b.total_xp ?? 0) - (a.total_xp ?? 0) || new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                      .map((a, idx) => ({
+                        rank: idx + 1,
+                        name: a.full_name,
+                        alias: a.alias_name || null,
+                        email: a.email,
+                        phone: a.phone,
+                        ticket_code: a.ticket_code,
+                        points: a.total_xp ?? 0,
+                        checked_in: a.checked_in,
+                      }));
+                  }
+
+                  const filtered = combinedList.filter((item) => {
+                    if (!leaderboardSearch) return true;
+                    const q = leaderboardSearch.toLowerCase();
+                    return (
+                      item.name?.toLowerCase().includes(q) ||
+                      item.alias?.toLowerCase().includes(q) ||
+                      item.email?.toLowerCase().includes(q) ||
+                      item.ticket_code?.toLowerCase().includes(q)
+                    );
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <tr>
+                        <td colSpan={7} className="admin-table__empty" style={{ textAlign: "center", padding: 40 }}>
+                          {leaderboardLoading ? "Loading leaderboard rank scores..." : "No quester records found matching search query."}
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  return filtered.map((item) => {
+                    const isTop1 = item.rank === 1;
+                    const isTop2 = item.rank === 2;
+                    const isTop3 = item.rank === 3;
+                    const rankBadgeColor = isTop1 ? "#ffd700" : isTop2 ? "#cbd5e1" : isTop3 ? "#d97706" : "rgba(255, 255, 255, 0.08)";
+                    const rankTextColor = isTop1 ? "#120b02" : isTop2 ? "#0f172a" : isTop3 ? "#fff" : "#94a3b8";
+
+                    // Determine tier badge
+                    const tier = milestones
+                      .filter((m) => (item.points || 0) >= m.xp)
+                      .sort((a, b) => b.xp - a.xp)[0];
+
+                    return (
+                      <tr key={item.rank + "-" + (item.email || item.ticket_code || item.name)}>
+                        <td>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              width: 32,
+                              height: 32,
+                              borderRadius: "50%",
+                              fontWeight: 900,
+                              fontSize: "0.85rem",
+                              background: rankBadgeColor,
+                              color: rankTextColor,
+                              border: isTop1 || isTop2 || isTop3 ? `1px solid ${rankBadgeColor}` : "1px solid rgba(255,255,255,0.12)",
+                              boxShadow: isTop1 ? "0 0 12px rgba(255, 215, 0, 0.4)" : "none",
+                            }}
+                          >
+                            {isTop1 ? "🥇" : isTop2 ? "🥈" : isTop3 ? "🥉" : `#${item.rank}`}
+                          </span>
+                        </td>
+
+                        <td className="admin-table__name">
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <strong style={{ color: "#fff", fontSize: "0.92rem" }}>{item.name}</strong>
+                            {item.checked_in && (
+                              <span style={{ fontSize: "0.68rem", background: "rgba(16, 185, 129, 0.15)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.3)", padding: "1px 6px", borderRadius: 10 }}>
+                                ✓ Checked-in
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        <td>
+                          {item.alias ? (
+                            <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 12, background: "rgba(245, 166, 35, 0.15)", border: "1px solid rgba(245, 166, 35, 0.4)", color: "var(--gold-light)", fontSize: "0.78rem", fontWeight: 700 }}>
+                              @{item.alias}
+                            </span>
+                          ) : (
+                            <span className="admin-table__muted">—</span>
+                          )}
+                        </td>
+
+                        <td className="admin-table__email">
+                          <span style={{ fontSize: "0.84rem", color: "#cbd5e1" }}>
+                            {item.email || "—"}
+                          </span>
+                        </td>
+
+                        <td>
+                          {item.ticket_code ? (
+                            <code style={{ fontSize: "0.8rem", color: "var(--gold-light)", background: "rgba(245, 166, 35, 0.08)", padding: "2px 6px", borderRadius: 6 }}>
+                              {item.ticket_code}
+                            </code>
+                          ) : (
+                            <span className="admin-table__muted">—</span>
+                          )}
+                        </td>
+
+                        <td>
+                          {tier ? (
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.78rem", color: tier.color || "#ffd700", background: `${tier.color || "#ffd700"}18`, border: `1px solid ${tier.color || "#ffd700"}44`, padding: "2px 8px", borderRadius: 12, fontWeight: 700 }}>
+                              <span>{tier.icon || "🏆"}</span>
+                              <span>{tier.name}</span>
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Quester Novice</span>
+                          )}
+                        </td>
+
+                        <td style={{ textAlign: "right" }}>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 5,
+                              fontSize: "0.92rem",
+                              fontWeight: 900,
+                              color: (item.points || 0) > 0 ? "var(--gold-light)" : "var(--text-muted)",
+                              background: (item.points || 0) > 0 ? "rgba(245, 166, 35, 0.12)" : "rgba(255, 255, 255, 0.04)",
+                              border: (item.points || 0) > 0 ? "1px solid rgba(245, 166, 35, 0.3)" : "1px solid rgba(255, 255, 255, 0.08)",
+                              padding: "4px 10px",
+                              borderRadius: 14,
+                            }}
+                          >
+                            ⚡ {(item.points || 0).toLocaleString()} XP
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  });
+                })()}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
       </section>
         </div>{/* .admin-main-viewport */}
       </div>{/* .admin-body-layout */}
@@ -10064,1399 +11457,6 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* ─── PROMO CODES TAB ─── */}
-      {tab === "promocodes" && (adminUser?.role === "superadmin" || adminUser?.role === "admin") && !loading && (
-        <div className="admin-fade-in" style={{ padding: "0 4px" }}>
-          {/* Header & Actions Bar */}
-          <div className="admin-header-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, marginBottom: 20 }}>
-            <div>
-              <h2 style={{ display: "flex", alignItems: "center", gap: 10, margin: 0, fontSize: "1.4rem", fontWeight: 800 }}>
-                <span style={{ fontSize: "1.6rem" }}>🎁</span> Promo Codes & Referral Campaigns
-              </h2>
-              <p style={{ margin: "4px 0 0", color: "var(--text-muted)", fontSize: "0.9rem" }}>
-                Generate promotional links, configure custom XP sign-up bonuses, and track redemption metrics.
-              </p>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <input
-                type="text"
-                className="admin-search-input"
-                placeholder="Search promo codes..."
-                value={promoSearch}
-                onChange={(e) => setPromoSearch(e.target.value)}
-                style={{ width: 220, padding: "9px 14px", borderRadius: 10 }}
-              />
-              <button
-                onClick={() => {
-                  setPromoCodeForm({ id: "", code: "", xp_bonus: 150, max_uses: "", is_active: true });
-                  setPromoCodeError("");
-                  setShowPromoCodeModal(true);
-                }}
-                className="admin-refresh-btn"
-                style={{
-                  background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
-                  color: "#120b02",
-                  fontWeight: 800,
-                  boxShadow: "0 4px 14px rgba(245, 166, 35, 0.35)",
-                  padding: "9px 18px",
-                  borderRadius: 10,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6
-                }}
-              >
-                <span>+</span> Create Promo Code
-              </button>
-            </div>
-          </div>
-
-          {/* Sub-tabs switcher */}
-          <div style={{ display: "flex", gap: 10, marginBottom: 20, borderBottom: "1px solid rgba(255, 255, 255, 0.08)", paddingBottom: 12 }}>
-            <button
-              type="button"
-              onClick={() => setPromoSubTab("campaigns")}
-              style={{
-                padding: "8px 16px",
-                borderRadius: 10,
-                border: "none",
-                background: promoSubTab === "campaigns" ? "linear-gradient(135deg, #f5a623 0%, #d97706 100%)" : "rgba(255, 255, 255, 0.05)",
-                color: promoSubTab === "campaigns" ? "#120b02" : "var(--text-secondary)",
-                fontWeight: 800,
-                fontSize: "0.85rem",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                transition: "all 0.2s ease"
-              }}
-            >
-              <span>🏷️ Promo Code Campaigns</span>
-              <span style={{
-                background: promoSubTab === "campaigns" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)",
-                padding: "2px 6px",
-                borderRadius: 6,
-                fontSize: "0.74rem"
-              }}>
-                {promoCodes.length}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setPromoSubTab("user_referrals");
-                fetchReferrals();
-              }}
-              style={{
-                padding: "8px 16px",
-                borderRadius: 10,
-                border: "none",
-                background: promoSubTab === "user_referrals" ? "linear-gradient(135deg, #38bdf8 0%, #0284c7 100%)" : "rgba(255, 255, 255, 0.05)",
-                color: promoSubTab === "user_referrals" ? "#041826" : "var(--text-secondary)",
-                fontWeight: 800,
-                fontSize: "0.85rem",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                transition: "all 0.2s ease"
-              }}
-            >
-              <span>👥 User Referral Network</span>
-              <span style={{
-                background: promoSubTab === "user_referrals" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)",
-                padding: "2px 6px",
-                borderRadius: 6,
-                fontSize: "0.74rem"
-              }}>
-                {referralsData.metrics.totalReferrals || 0}
-              </span>
-            </button>
-          </div>
-
-          {/* ───────────── SUB-TAB 1: CAMPAIGNS ───────────── */}
-          {promoSubTab === "campaigns" && (
-            <>
-              {/* Quick Metrics Bar */}
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                gap: 12,
-                marginBottom: 20
-              }}>
-                <div style={{
-                  background: "rgba(255, 255, 255, 0.03)",
-                  border: "1px solid rgba(255, 255, 255, 0.08)",
-                  borderRadius: 14,
-                  padding: "14px 18px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12
-                }}>
-                  <span style={{ fontSize: "1.8rem" }}>🏷️</span>
-                  <div>
-                    <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Total Codes</div>
-                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fff" }}>{promoCodes.length}</div>
-                  </div>
-                </div>
-
-                <div style={{
-                  background: "rgba(255, 255, 255, 0.03)",
-                  border: "1px solid rgba(255, 255, 255, 0.08)",
-                  borderRadius: 14,
-                  padding: "14px 18px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12
-                }}>
-                  <span style={{ fontSize: "1.8rem" }}>⚡</span>
-                  <div>
-                    <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Active Campaigns</div>
-                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#10b981" }}>
-                      {promoCodes.filter(p => p.is_active).length}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{
-                  background: "rgba(255, 255, 255, 0.03)",
-                  border: "1px solid rgba(255, 255, 255, 0.08)",
-                  borderRadius: 14,
-                  padding: "14px 18px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12
-                }}>
-                  <span style={{ fontSize: "1.8rem" }}>👥</span>
-                  <div>
-                    <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Total Redemptions</div>
-                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--gold-light)" }}>
-                      {promoCodes.reduce((acc, p) => acc + (p.usage_count || 0), 0)}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{
-                  background: "rgba(255, 255, 255, 0.03)",
-                  border: "1px solid rgba(255, 255, 255, 0.08)",
-                  borderRadius: 14,
-                  padding: "14px 18px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12
-                }}>
-                  <span style={{ fontSize: "1.8rem" }}>✨</span>
-                  <div>
-                    <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Bonus XP Awarded</div>
-                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#38bdf8" }}>
-                      {promoCodes.reduce((acc, p) => acc + ((p.usage_count || 0) * (p.xp_bonus || 0)), 0).toLocaleString()} XP
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Table */}
-              {promoCodes.length === 0 ? (
-                <div style={{
-                  textAlign: "center",
-                  padding: "60px 20px",
-                  background: "rgba(255, 255, 255, 0.02)",
-                  borderRadius: 16,
-                  border: "1px dashed rgba(255, 255, 255, 0.1)"
-                }}>
-                  <span style={{ fontSize: "3rem", display: "block", marginBottom: 12 }}>🎁</span>
-                  <h3 style={{ margin: "0 0 6px", color: "#fff", fontSize: "1.1rem" }}>No promo codes created yet</h3>
-                  <p style={{ margin: "0 0 16px", color: "var(--text-muted)", fontSize: "0.9rem" }}>
-                    Create your first promo code to start distributing referral registration links.
-                  </p>
-                  <button
-                    onClick={() => {
-                      setPromoCodeForm({ id: "", code: "", xp_bonus: 150, max_uses: "", is_active: true });
-                      setPromoCodeError("");
-                      setShowPromoCodeModal(true);
-                    }}
-                    className="admin-refresh-btn"
-                    style={{
-                      background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
-                      color: "#120b02",
-                      fontWeight: 800,
-                      padding: "9px 18px",
-                      borderRadius: 10
-                    }}
-                  >
-                    + Create Promo Code
-                  </button>
-                </div>
-              ) : (
-                <div className="admin-table-container" style={{ background: "rgba(10, 10, 20, 0.6)", borderRadius: 16, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Promo Code & Link</th>
-                        <th>Bonus XP</th>
-                        <th>Redemptions</th>
-                        <th>Usage Limit</th>
-                        <th>Status</th>
-                        <th style={{ textAlign: "right" }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {promoCodes
-                        .filter(pc => !promoSearch || pc.code.toLowerCase().includes(promoSearch.toLowerCase()))
-                        .map((pc) => {
-                          const shareUrl = typeof window !== "undefined"
-                            ? `${window.location.origin}/register?promoCode=${pc.code}`
-                            : `https://event.block-quest.com/register?promoCode=${pc.code}`;
-                          const isCopied = copiedCode === pc.code;
-
-                          return (
-                            <tr key={pc.id}>
-                              <td>
-                                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                    <span style={{
-                                      fontWeight: 800,
-                                      fontFamily: "monospace",
-                                      fontSize: "1rem",
-                                      color: "var(--gold-light)",
-                                      background: "rgba(245, 166, 35, 0.1)",
-                                      padding: "3px 8px",
-                                      borderRadius: 6,
-                                      border: "1px solid rgba(245, 166, 35, 0.25)",
-                                      letterSpacing: "0.05em"
-                                    }}>
-                                      {pc.code}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        navigator.clipboard.writeText(shareUrl);
-                                        setCopiedCode(pc.code);
-                                        setTimeout(() => setCopiedCode(null), 2000);
-                                      }}
-                                      style={{
-                                        background: isCopied ? "rgba(16, 185, 129, 0.2)" : "rgba(255, 255, 255, 0.06)",
-                                        border: isCopied ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(255, 255, 255, 0.12)",
-                                        color: isCopied ? "#10b981" : "var(--text-secondary)",
-                                        borderRadius: 6,
-                                        padding: "3px 8px",
-                                        fontSize: "0.75rem",
-                                        fontWeight: 700,
-                                        cursor: "pointer",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 4,
-                                        transition: "all 0.2s ease"
-                                      }}
-                                      title="Copy invite URL"
-                                    >
-                                      {isCopied ? "Copied! ✔" : "Copy Link 📋"}
-                                    </button>
-                                  </div>
-                                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                    {shareUrl}
-                                  </span>
-                                </div>
-                              </td>
-
-                              <td>
-                                <span style={{
-                                  fontWeight: 800,
-                                  color: "#f5a623",
-                                  background: "rgba(245, 166, 35, 0.1)",
-                                  padding: "4px 10px",
-                                  borderRadius: 20,
-                                  fontSize: "0.85rem",
-                                  border: "1px solid rgba(245, 166, 35, 0.2)"
-                                }}>
-                                  +{pc.xp_bonus} XP
-                                </span>
-                              </td>
-
-                              <td>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                  <span style={{ fontWeight: 800, fontSize: "1rem", color: "#fff" }}>
-                                    {pc.usage_count || 0}
-                                  </span>
-                                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                                    registered
-                                  </span>
-                                </div>
-                              </td>
-
-                              <td>
-                                {pc.max_uses ? (
-                                  <span style={{
-                                    fontSize: "0.85rem",
-                                    fontWeight: 700,
-                                    color: (pc.usage_count || 0) >= pc.max_uses ? "#ef4444" : "var(--text-secondary)"
-                                  }}>
-                                    {pc.usage_count || 0} / {pc.max_uses} max
-                                  </span>
-                                ) : (
-                                  <span style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontStyle: "italic" }}>
-                                    Unlimited
-                                  </span>
-                                )}
-                              </td>
-
-                              <td>
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    try {
-                                      const res = await adminFetch("/api/admin/promo-codes", {
-                                        method: "PATCH",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ id: pc.id, is_active: !pc.is_active }),
-                                      });
-                                      if (res.ok) fetchPromoCodes();
-                                    } catch {}
-                                  }}
-                                  style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: 6,
-                                    padding: "4px 12px",
-                                    borderRadius: 20,
-                                    fontSize: "0.8rem",
-                                    fontWeight: 700,
-                                    background: pc.is_active ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                                    color: pc.is_active ? "#10b981" : "#ef4444",
-                                    border: pc.is_active ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(239, 68, 68, 0.3)",
-                                    cursor: "pointer"
-                                  }}
-                                  title="Click to toggle status"
-                                >
-                                  <span style={{
-                                    width: 7,
-                                    height: 7,
-                                    borderRadius: "50%",
-                                    backgroundColor: pc.is_active ? "#10b981" : "#ef4444"
-                                  }} />
-                                  {pc.is_active ? "Active" : "Inactive"}
-                                </button>
-                              </td>
-
-                              <td style={{ textAlign: "right" }}>
-                                <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                                  <button
-                                    className="admin-edit-btn"
-                                    onClick={() => {
-                                      setPromoCodeForm({
-                                        id: pc.id,
-                                        code: pc.code,
-                                        xp_bonus: pc.xp_bonus,
-                                        max_uses: pc.max_uses ?? "",
-                                        is_active: pc.is_active,
-                                      });
-                                      setPromoCodeError("");
-                                      setShowPromoCodeModal(true);
-                                    }}
-                                    style={{ padding: "6px 12px", fontSize: "0.8rem" }}
-                                  >
-                                    Edit
-                                  </button>
-                                  <button
-                                    className="admin-delete-btn"
-                                    onClick={async () => {
-                                      if (!confirm(`Are you sure you want to delete promo code "${pc.code}"?`)) return;
-                                      try {
-                                        const res = await adminFetch("/api/admin/promo-codes", {
-                                          method: "DELETE",
-                                          headers: { "Content-Type": "application/json" },
-                                          body: JSON.stringify({ id: pc.id }),
-                                        });
-                                        if (!res.ok) throw new Error("Failed to delete promo code");
-                                        fetchPromoCodes();
-                                      } catch (e: any) {
-                                        alert(e.message);
-                                      }
-                                    }}
-                                    style={{ padding: "6px 12px", fontSize: "0.8rem" }}
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* ───────────── SUB-TAB 2: USER REFERRAL NETWORK ───────────── */}
-          {promoSubTab === "user_referrals" && (
-            <div className="admin-fade-in">
-              {/* Referrals Summary Metrics */}
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
-                gap: 12,
-                marginBottom: 20
-              }}>
-                <div style={{
-                  background: "rgba(56, 189, 248, 0.08)",
-                  border: "1px solid rgba(56, 189, 248, 0.25)",
-                  borderRadius: 14,
-                  padding: "14px 18px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12
-                }}>
-                  <span style={{ fontSize: "1.8rem" }}>👥</span>
-                  <div>
-                    <div style={{ fontSize: "0.74rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Total Peer Invites</div>
-                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#38bdf8" }}>{referralsData.metrics.totalReferrals}</div>
-                  </div>
-                </div>
-
-                <div style={{
-                  background: "rgba(245, 166, 35, 0.08)",
-                  border: "1px solid rgba(245, 166, 35, 0.25)",
-                  borderRadius: 14,
-                  padding: "14px 18px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12
-                }}>
-                  <span style={{ fontSize: "1.8rem" }}>🎖️</span>
-                  <div>
-                    <div style={{ fontSize: "0.74rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Active Referrers</div>
-                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--gold-light)" }}>{referralsData.metrics.totalReferrers}</div>
-                  </div>
-                </div>
-
-                <div style={{
-                  background: "rgba(16, 185, 129, 0.08)",
-                  border: "1px solid rgba(16, 185, 129, 0.25)",
-                  borderRadius: 14,
-                  padding: "14px 18px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12
-                }}>
-                  <span style={{ fontSize: "1.8rem" }}>👑</span>
-                  <div>
-                    <div style={{ fontSize: "0.74rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Max Capped (5/5)</div>
-                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#34d399" }}>{referralsData.metrics.maxCappedReferrers} questers</div>
-                  </div>
-                </div>
-
-                <div style={{
-                  background: "rgba(192, 132, 252, 0.08)",
-                  border: "1px solid rgba(192, 132, 252, 0.25)",
-                  borderRadius: 14,
-                  padding: "14px 18px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12
-                }}>
-                  <span style={{ fontSize: "1.8rem" }}>⚡</span>
-                  <div>
-                    <div style={{ fontSize: "0.74rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Referral XP Distributed</div>
-                    <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#c084fc" }}>+{referralsData.metrics.totalReferralXpAwarded.toLocaleString()} XP</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Referrer Search & Anti-Abuse Info */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
-                <input
-                  type="text"
-                  className="admin-search-input"
-                  placeholder="Filter referrers by name, email, or code..."
-                  value={referralSearch}
-                  onChange={(e) => setReferralSearch(e.target.value)}
-                  style={{ width: 280, padding: "8px 12px", borderRadius: 10 }}
-                />
-                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.78rem", color: "var(--text-muted)" }}>
-                  <span style={{ background: "rgba(16, 185, 129, 0.15)", color: "#34d399", padding: "3px 8px", borderRadius: 6, fontWeight: 700 }}>
-                    🛡️ Anti-Spam Active: Max 5 Ref / +500 XP Cap • Max 2 Reg/IP
-                  </span>
-                  <button
-                    className="admin-refresh-btn"
-                    onClick={fetchReferrals}
-                    title="Reload Referrals"
-                    style={{ padding: "6px 12px", fontSize: "0.78rem" }}
-                  >
-                    ↻ Refresh
-                  </button>
-                </div>
-              </div>
-
-              {/* Top Referrers Leaderboard Table */}
-              <div style={{ marginBottom: 28 }}>
-                <h3 style={{ margin: "0 0 10px 0", fontSize: "1.05rem", fontWeight: 800, color: "#fff", display: "flex", alignItems: "center", gap: 8 }}>
-                  <span>🏆 Top User Referrers</span>
-                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 400 }}>
-                    ({referralsData.referrers.length} registered questers who invited friends)
-                  </span>
-                </h3>
-
-                {referralsData.referrers.length === 0 ? (
-                  <div style={{ padding: "30px 20px", textAlign: "center", background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)" }}>
-                    <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.88rem" }}>
-                      No user referrals recorded yet. Once attendees share their referral links, top referrers will appear here.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="admin-table-container" style={{ background: "rgba(10, 10, 20, 0.6)", borderRadius: 14, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
-                    <table className="admin-table">
-                      <thead>
-                        <tr>
-                          <th>Rank</th>
-                          <th>Referrer Name</th>
-                          <th>Email & Phone</th>
-                          <th>Referral Code</th>
-                          <th>Friends Invited</th>
-                          <th>Referral Bonus</th>
-                          <th>Total Quester XP</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {referralsData.referrers
-                          .filter((r) => {
-                            if (!referralSearch) return true;
-                            const q = referralSearch.toLowerCase();
-                            return (
-                              r.full_name?.toLowerCase().includes(q) ||
-                              r.alias_name?.toLowerCase().includes(q) ||
-                              r.email?.toLowerCase().includes(q) ||
-                              r.ticket_code?.toLowerCase().includes(q)
-                            );
-                          })
-                          .map((r, idx) => {
-                            const isCapped = (r.referral_count || 0) >= 5;
-                            return (
-                              <tr key={r.id}>
-                                <td>
-                                  <span style={{
-                                    fontWeight: 800,
-                                    fontSize: "0.85rem",
-                                    color: idx === 0 ? "#ffd700" : idx === 1 ? "#cbd5e1" : idx === 2 ? "#cd7f32" : "var(--text-secondary)"
-                                  }}>
-                                    #{idx + 1} {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : ""}
-                                  </span>
-                                </td>
-                                <td>
-                                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                                    <strong style={{ color: "#fff", fontSize: "0.88rem" }}>{r.full_name}</strong>
-                                    {r.alias_name && (
-                                      <span style={{ color: "var(--gold-light)", fontSize: "0.75rem", fontWeight: 700 }}>
-                                        @{r.alias_name}
-                                      </span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>
-                                  <div>{r.email}</div>
-                                  <div style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>{r.phone}</div>
-                                </td>
-                                <td>
-                                  <span style={{
-                                    fontFamily: "monospace",
-                                    fontSize: "0.82rem",
-                                    background: "rgba(255, 255, 255, 0.06)",
-                                    padding: "3px 8px",
-                                    borderRadius: 6,
-                                    border: "1px solid rgba(255, 255, 255, 0.12)",
-                                    color: "#fff"
-                                  }}>
-                                    {r.ticket_code || "—"}
-                                  </span>
-                                </td>
-                                <td>
-                                  <span style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: 6,
-                                    padding: "3px 10px",
-                                    borderRadius: 14,
-                                    fontSize: "0.8rem",
-                                    fontWeight: 800,
-                                    background: isCapped ? "rgba(56, 189, 248, 0.15)" : "rgba(245, 166, 35, 0.12)",
-                                    color: isCapped ? "#38bdf8" : "var(--gold-light)",
-                                    border: isCapped ? "1px solid rgba(56, 189, 248, 0.35)" : "1px solid rgba(245, 166, 35, 0.3)"
-                                  }}>
-                                    👥 {r.referral_count} / 5 {isCapped ? "(MAX)" : ""}
-                                  </span>
-                                </td>
-                                <td>
-                                  <span style={{ fontWeight: 800, color: "#10b981", fontSize: "0.85rem" }}>
-                                    +{Math.min(r.referral_count || 0, 5) * 100} XP
-                                  </span>
-                                </td>
-                                <td>
-                                  <span style={{ fontWeight: 700, color: "#fff", fontSize: "0.85rem" }}>
-                                    {r.total_xp?.toLocaleString() || 0} XP
-                                  </span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-
-              {/* Invited Friends Audit Log */}
-              <div>
-                <h3 style={{ margin: "0 0 10px 0", fontSize: "1.05rem", fontWeight: 800, color: "#fff", display: "flex", alignItems: "center", gap: 8 }}>
-                  <span>📋 Recent Referral Sign-ups</span>
-                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 400 }}>
-                    ({referralsData.invitees.length} attendees registered via friend link)
-                  </span>
-                </h3>
-
-                {referralsData.invitees.length === 0 ? (
-                  <div style={{ padding: "26px 20px", textAlign: "center", background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)" }}>
-                    <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.85rem" }}>
-                      No invitee sign-up events found.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="admin-table-container" style={{ background: "rgba(10, 10, 20, 0.6)", borderRadius: 14, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
-                    <table className="admin-table">
-                      <thead>
-                        <tr>
-                          <th>Invitee Name</th>
-                          <th>Invitee Email</th>
-                          <th>Ticket Code</th>
-                          <th>Referred By Code</th>
-                          <th>Registration Date</th>
-                          <th>Gate Check-in</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {referralsData.invitees.slice(0, 50).map((inv) => (
-                          <tr key={inv.id}>
-                            <td>
-                              <strong style={{ color: "#fff", fontSize: "0.85rem" }}>{inv.full_name}</strong>
-                              {inv.alias_name && (
-                                <span style={{ display: "block", color: "var(--gold-light)", fontSize: "0.74rem" }}>
-                                  @{inv.alias_name}
-                                </span>
-                              )}
-                            </td>
-                            <td style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>{inv.email}</td>
-                            <td>
-                              <span style={{ fontFamily: "monospace", fontSize: "0.8rem", color: "#e2e8f0" }}>
-                                {inv.ticket_code || "—"}
-                              </span>
-                            </td>
-                            <td>
-                              <span style={{
-                                padding: "2px 8px",
-                                borderRadius: 6,
-                                background: "rgba(56, 189, 248, 0.12)",
-                                border: "1px solid rgba(56, 189, 248, 0.3)",
-                                color: "#38bdf8",
-                                fontSize: "0.78rem",
-                                fontWeight: 700,
-                                fontFamily: "monospace"
-                              }}>
-                                🔗 {inv.referred_by_code}
-                              </span>
-                            </td>
-                            <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                              {inv.created_at ? new Date(inv.created_at).toLocaleString() : "—"}
-                            </td>
-                            <td>
-                              {inv.checked_in ? (
-                                <span style={{ fontSize: "0.74rem", color: "#10b981", fontWeight: 700 }}>
-                                  ✓ Checked In
-                                </span>
-                              ) : (
-                                <span style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>
-                                  ⏳ Pending Gate
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ─── MILESTONES & TIERS TAB ─── */}
-      {tab === "milestones" && (adminUser?.role === "superadmin" || adminUser?.role === "admin" || adminUser?.role === "manager" || adminUser?.role === "viewer") && !loading && (
-        <div className="admin-fade-in" style={{ padding: "0 4px" }}>
-          {/* Header & Actions Bar */}
-          <div className="admin-header-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, marginBottom: 20 }}>
-            <div>
-              <h2 style={{ display: "flex", alignItems: "center", gap: 10, margin: 0, fontSize: "1.4rem", fontWeight: 800 }}>
-                <span style={{ fontSize: "1.6rem" }}>🏆</span> Milestone Badges & Level Tiers
-              </h2>
-              <p style={{ margin: "4px 0 0", color: "var(--text-muted)", fontSize: "0.9rem" }}>
-                Configure milestone achievements, unlock thresholds (XP), badge icons, and card accent colors for attendees.
-              </p>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <input
-                type="text"
-                className="admin-search-input"
-                placeholder="Search milestone tiers..."
-                value={milestoneSearch}
-                onChange={(e) => setMilestoneSearch(e.target.value)}
-                style={{ width: 220, padding: "9px 14px", borderRadius: 10 }}
-              />
-              {(adminUser?.role === "superadmin" || adminUser?.role === "admin" || adminUser?.role === "manager") && (
-                <button
-                  onClick={() => {
-                    const nextOrder = milestones.length > 0 ? Math.max(...milestones.map(m => m.sort_order || 0)) + 1 : 1;
-                    setMilestoneForm({ id: "", name: "", xp: 1000, icon: "🎖️", color: "#ffd700", sort_order: nextOrder });
-                    setMilestoneError("");
-                    setShowMilestoneModal(true);
-                  }}
-                  className="admin-refresh-btn"
-                  style={{
-                    background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
-                    color: "#120b02",
-                    fontWeight: 800,
-                    boxShadow: "0 4px 14px rgba(245, 166, 35, 0.35)",
-                    padding: "9px 18px",
-                    borderRadius: 10,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6
-                  }}
-                >
-                  <span>+</span> Add Milestone Tier
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Quick Metrics Bar */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            gap: 12,
-            marginBottom: 20
-          }}>
-            <div style={{
-              background: "rgba(255, 255, 255, 0.03)",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
-              borderRadius: 14,
-              padding: "14px 18px",
-              display: "flex",
-              alignItems: "center",
-              gap: 12
-            }}>
-              <span style={{ fontSize: "1.8rem" }}>🏆</span>
-              <div>
-                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Total Milestone Tiers</div>
-                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fff" }}>{milestones.length}</div>
-              </div>
-            </div>
-
-            <div style={{
-              background: "rgba(255, 255, 255, 0.03)",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
-              borderRadius: 14,
-              padding: "14px 18px",
-              display: "flex",
-              alignItems: "center",
-              gap: 12
-            }}>
-              <span style={{ fontSize: "1.8rem" }}>⚡</span>
-              <div>
-                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Entry Tier XP</div>
-                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#10b981" }}>
-                  {milestones.length > 0 ? `${Math.min(...milestones.map(m => m.xp))} XP` : "0 XP"}
-                </div>
-              </div>
-            </div>
-
-            <div style={{
-              background: "rgba(255, 255, 255, 0.03)",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
-              borderRadius: 14,
-              padding: "14px 18px",
-              display: "flex",
-              alignItems: "center",
-              gap: 12
-            }}>
-              <span style={{ fontSize: "1.8rem" }}>👑</span>
-              <div>
-                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Apex Pinnacle Tier</div>
-                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--gold-light)" }}>
-                  {milestones.length > 0 ? `${Math.max(...milestones.map(m => m.xp)).toLocaleString()} XP` : "0 XP"}
-                </div>
-              </div>
-            </div>
-
-            <div style={{
-              background: "rgba(255, 255, 255, 0.03)",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
-              borderRadius: 14,
-              padding: "14px 18px",
-              display: "flex",
-              alignItems: "center",
-              gap: 12
-            }}>
-              <span style={{ fontSize: "1.8rem" }}>📱</span>
-              <div>
-                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 }}>Live Sync Status</div>
-                <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#38bdf8" }}>
-                  Active on Mobile App
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Table */}
-          {milestones.length === 0 ? (
-            <div style={{
-              textAlign: "center",
-              padding: "60px 20px",
-              background: "rgba(255, 255, 255, 0.02)",
-              borderRadius: 16,
-              border: "1px dashed rgba(255, 255, 255, 0.1)"
-            }}>
-              <span style={{ fontSize: "3rem", display: "block", marginBottom: 12 }}>🏆</span>
-              <h3 style={{ margin: "0 0 6px", color: "#fff", fontSize: "1.1rem" }}>No milestone tiers found</h3>
-              <p style={{ margin: "0 0 16px", color: "var(--text-muted)", fontSize: "0.9rem" }}>
-                Add your first milestone tier to reward attendees when they accumulate XP.
-              </p>
-              {(adminUser?.role === "superadmin" || adminUser?.role === "admin" || adminUser?.role === "manager") && (
-                <button
-                  onClick={() => {
-                    setMilestoneForm({ id: "", name: "", xp: 500, icon: "🥉", color: "#ffd700", sort_order: 1 });
-                    setMilestoneError("");
-                    setShowMilestoneModal(true);
-                  }}
-                  className="admin-refresh-btn"
-                  style={{
-                    background: "linear-gradient(135deg, #f5a623 0%, #d97706 100%)",
-                    color: "#120b02",
-                    fontWeight: 800,
-                    padding: "9px 18px",
-                    borderRadius: 10
-                  }}
-                >
-                  + Add Milestone Tier
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="admin-table-container" style={{ background: "rgba(10, 10, 20, 0.6)", borderRadius: 16, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: 60 }}>Order</th>
-                    <th>Badge & Tier Name</th>
-                    <th>XP Required</th>
-                    <th>Card Preview</th>
-                    <th>Color Accent</th>
-                    <th style={{ textAlign: "right" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {milestones
-                    .filter(m => !milestoneSearch || m.name.toLowerCase().includes(milestoneSearch.toLowerCase()))
-                    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.xp - b.xp)
-                    .map((m) => {
-                      return (
-                        <tr key={m.id || m.name}>
-                          <td>
-                            <span style={{ fontWeight: 800, color: "var(--text-muted)", fontSize: "0.85rem" }}>
-                              #{m.sort_order ?? "-"}
-                            </span>
-                          </td>
-
-                          <td>
-                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              <span style={{
-                                fontSize: "1.4rem",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                width: 36,
-                                height: 36,
-                                borderRadius: 8,
-                                background: `${m.color || "#ffd700"}20`,
-                                border: `1px solid ${m.color || "#ffd700"}50`
-                              }}>
-                                {m.icon || "🏆"}
-                              </span>
-                              <div>
-                                <strong style={{ color: "#fff", fontSize: "0.95rem" }}>{m.name}</strong>
-                              </div>
-                            </div>
-                          </td>
-
-                          <td>
-                            <span style={{
-                              fontWeight: 800,
-                              color: "#f5a623",
-                              background: "rgba(245, 166, 35, 0.12)",
-                              padding: "4px 12px",
-                              borderRadius: 20,
-                              fontSize: "0.85rem",
-                              border: "1px solid rgba(245, 166, 35, 0.25)"
-                            }}>
-                              {m.xp.toLocaleString()} XP
-                            </span>
-                          </td>
-
-                          <td>
-                            <div style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 6,
-                              padding: "5px 10px",
-                              borderRadius: 8,
-                              background: "rgba(255, 255, 255, 0.05)",
-                              border: `1px solid ${m.color || "#ffd700"}`,
-                              boxShadow: `0 0 10px ${m.color || "#ffd700"}22`
-                            }}>
-                              <span style={{ fontSize: "1rem" }}>{m.icon || "🏆"}</span>
-                              <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#fff" }}>{m.name}</span>
-                              <span style={{ fontSize: "0.68rem", color: m.color || "#ffd700", fontWeight: 700 }}>✓</span>
-                            </div>
-                          </td>
-
-                          <td>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <span style={{
-                                width: 16,
-                                height: 16,
-                                borderRadius: 4,
-                                backgroundColor: m.color || "#ffd700",
-                                display: "inline-block",
-                                border: "1px solid rgba(255,255,255,0.3)"
-                              }} />
-                              <code style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>{m.color || "#ffd700"}</code>
-                            </div>
-                          </td>
-
-                          <td style={{ textAlign: "right" }}>
-                            {(adminUser?.role === "superadmin" || adminUser?.role === "admin" || adminUser?.role === "manager") ? (
-                              <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                                <button
-                                  className="admin-edit-btn"
-                                  onClick={() => {
-                                    setMilestoneForm({
-                                      id: m.id,
-                                      name: m.name,
-                                      xp: m.xp,
-                                      icon: m.icon || "🏆",
-                                      color: m.color || "#ffd700",
-                                      sort_order: m.sort_order ?? 1,
-                                    });
-                                    setMilestoneError("");
-                                    setShowMilestoneModal(true);
-                                  }}
-                                  style={{ padding: "6px 12px", fontSize: "0.8rem" }}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  className="admin-delete-btn"
-                                  onClick={async () => {
-                                    if (!confirm(`Are you sure you want to delete milestone tier "${m.name}" (${m.xp} XP)?`)) return;
-                                    try {
-                                      const res = await adminFetch("/api/admin/milestones", {
-                                        method: "DELETE",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ id: m.id }),
-                                      });
-                                      if (!res.ok) throw new Error("Failed to delete milestone tier");
-                                      fetchMilestones();
-                                    } catch (e: any) {
-                                      alert(e.message);
-                                    }
-                                  }}
-                                  style={{ padding: "6px 12px", fontSize: "0.8rem" }}
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            ) : (
-                              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>View Only</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ─── LEADERBOARD & RANK SCORES TAB ─── */}
-      {tab === "leaderboard" && !loading && (
-        <div className="admin-fade-in" style={{ padding: "0 4px" }}>
-          {/* Header & Controls */}
-          <div className="admin-header-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, marginBottom: 20 }}>
-            <div>
-              <h2 style={{ display: "flex", alignItems: "center", gap: 10, margin: 0, fontSize: "1.4rem", fontWeight: 800 }}>
-                <span style={{ fontSize: "1.6rem" }}>🏅</span> Event Leaderboard & Quester Rank Scores
-              </h2>
-              <p style={{ margin: "4px 0 0", color: "var(--text-muted)", fontSize: "0.9rem" }}>
-                Real-time player standings, total accumulated quest XP scores, milestone badge tiers, and quester identity verification.
-              </p>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <input
-                type="search"
-                placeholder="Search quester name, alias, email, ticket..."
-                value={leaderboardSearch}
-                onChange={(e) => setLeaderboardSearch(e.target.value)}
-                className="admin-search-input"
-                style={{ width: 280, padding: "9px 14px", borderRadius: 10 }}
-              />
-
-              <button
-                type="button"
-                className="admin-sub-btn"
-                onClick={() => {
-                  fetchLeaderboard();
-                  fetchAttendees();
-                }}
-                title="Refresh Leaderboard Data"
-                style={{ padding: "9px 16px", borderRadius: 10, display: "inline-flex", alignItems: "center", gap: 6 }}
-              >
-                ↻ Refresh Standings
-              </button>
-            </div>
-          </div>
-
-          {/* Quick Stats Highlights */}
-          {(() => {
-            const rankedList = (leaderboardUsers.length > 0
-              ? leaderboardUsers
-              : attendees
-                  .map((a) => ({
-                    rank: 0,
-                    name: a.alias_name ? `@${a.alias_name}` : a.full_name,
-                    alias: a.alias_name || null,
-                    email: a.email,
-                    ticketCode: a.ticket_code,
-                    points: a.total_xp || 0,
-                  }))
-                  .sort((a, b) => (b.points || 0) - (a.points || 0))
-                  .map((item, idx) => ({ ...item, rank: idx + 1 }))
-            );
-
-            const topQuester = rankedList[0];
-            const avgPoints = rankedList.length > 0 ? Math.round(rankedList.reduce((sum, r) => sum + (r.points || 0), 0) / rankedList.length) : 0;
-            const questersWithPoints = rankedList.filter((r) => (r.points || 0) > 0).length;
-
-            return (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, marginBottom: 24 }}>
-                <div style={{ background: "linear-gradient(135deg, rgba(245, 166, 35, 0.12) 0%, rgba(20, 20, 32, 0.95) 100%)", border: "1px solid rgba(245, 166, 35, 0.35)", borderRadius: 14, padding: "16px 20px" }}>
-                  <span style={{ fontSize: "0.75rem", color: "var(--gold-light)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>👑 #1 Top Scorer</span>
-                  <div style={{ marginTop: 6, display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <span style={{ fontSize: "1.3rem", fontWeight: 900, color: "#fff" }}>
-                      {topQuester ? topQuester.name : "None yet"}
-                    </span>
-                    {topQuester && (
-                      <span style={{ fontSize: "1rem", fontWeight: 800, color: "var(--gold-light)" }}>
-                        {(topQuester.points || 0).toLocaleString()} XP
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div style={{ background: "rgba(10, 10, 20, 0.6)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 14, padding: "16px 20px" }}>
-                  <span style={{ fontSize: "0.75rem", color: "#38bdf8", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>🎯 Active Scorers</span>
-                  <div style={{ marginTop: 6, fontSize: "1.3rem", fontWeight: 900, color: "#fff" }}>
-                    {questersWithPoints} <span style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--text-muted)" }}>of {rankedList.length} questers scored</span>
-                  </div>
-                </div>
-
-                <div style={{ background: "rgba(10, 10, 20, 0.6)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 14, padding: "16px 20px" }}>
-                  <span style={{ fontSize: "0.75rem", color: "#34d399", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>📊 Average XP Score</span>
-                  <div style={{ marginTop: 6, fontSize: "1.3rem", fontWeight: 900, color: "#34d399" }}>
-                    {avgPoints.toLocaleString()} <span style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--text-muted)" }}>XP per player</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Top 3 Podium Showcase */}
-          {(() => {
-            const rawList = leaderboardUsers.length > 0
-              ? leaderboardUsers
-              : attendees
-                  .map((a) => ({
-                    rank: 0,
-                    name: a.alias_name ? `@${a.alias_name}` : a.full_name,
-                    alias: a.alias_name || null,
-                    email: a.email,
-                    ticketCode: a.ticket_code,
-                    points: a.total_xp || 0,
-                  }))
-                  .sort((a, b) => (b.points || 0) - (a.points || 0))
-                  .map((item, idx) => ({ ...item, rank: idx + 1 }));
-
-            const top3 = rawList.slice(0, 3);
-            if (top3.length === 0) return null;
-
-            return (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16, marginBottom: 28 }}>
-                {top3.map((p) => {
-                  const is1st = p.rank === 1;
-                  const is2nd = p.rank === 2;
-                  const is3rd = p.rank === 3;
-                  const medal = is1st ? "🥇 1st Place" : is2nd ? "🥈 2nd Place" : "🥉 3rd Place";
-                  const accentColor = is1st ? "#ffd700" : is2nd ? "#cbd5e1" : "#d97706";
-
-                  // Find milestone badge tier
-                  const highestBadge = milestones
-                    .filter((m) => (p.points || 0) >= m.xp)
-                    .sort((a, b) => b.xp - a.xp)[0];
-
-                  return (
-                    <div
-                      key={p.rank}
-                      style={{
-                        background: `linear-gradient(135deg, ${accentColor}15 0%, rgba(10, 15, 30, 0.9) 100%)`,
-                        border: `1.5px solid ${accentColor}55`,
-                        borderRadius: 16,
-                        padding: "20px 22px",
-                        position: "relative",
-                        overflow: "hidden",
-                        boxShadow: `0 8px 24px ${accentColor}18`,
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                        <span style={{ fontSize: "0.85rem", fontWeight: 800, color: accentColor, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                          {medal}
-                        </span>
-                        {highestBadge && (
-                          <span style={{ fontSize: "0.74rem", background: `${highestBadge.color || "#ffd700"}22`, color: highestBadge.color || "#ffd700", border: `1px solid ${highestBadge.color || "#ffd700"}44`, padding: "2px 8px", borderRadius: 10, fontWeight: 700 }}>
-                            {highestBadge.icon || "🏆"} {highestBadge.name}
-                          </span>
-                        )}
-                      </div>
-
-                      <div style={{ fontSize: "1.25rem", fontWeight: 900, color: "#fff", marginBottom: 4 }}>
-                        {p.name}
-                      </div>
-
-                      <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginBottom: 14 }}>
-                        {p.email ? p.email : p.ticketCode ? `Ticket: ${p.ticketCode}` : "Attendee Quester"}
-                      </div>
-
-                      <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                        <span style={{ fontSize: "1.75rem", fontWeight: 950, color: accentColor }}>
-                          {(p.points || 0).toLocaleString()}
-                        </span>
-                        <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-muted)" }}>XP Score</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
-
-          {/* Full Leaderboard Table */}
-          <div className="admin-table-container" style={{ background: "rgba(10, 10, 20, 0.6)", borderRadius: 16, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th style={{ width: 80 }}>Rank</th>
-                  <th>Quester</th>
-                  <th>Alias Handle</th>
-                  <th>Contact / Email</th>
-                  <th>Ticket Code</th>
-                  <th>Current Badge Tier</th>
-                  <th style={{ textAlign: "right" }}>Rank Score (Total XP)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(() => {
-                  const attendeesMap = new Map<string, Attendee>();
-                  attendees.forEach((a) => {
-                    if (a.email) attendeesMap.set(a.email.toLowerCase().trim(), a);
-                    if (a.ticket_code) attendeesMap.set(a.ticket_code.toLowerCase().trim(), a);
-                  });
-
-                  // Build ranked array
-                  let combinedList: any[] = [];
-                  if (leaderboardUsers.length > 0) {
-                    combinedList = leaderboardUsers.map((item, idx) => {
-                      const matched = item.email ? attendeesMap.get(item.email.toLowerCase().trim()) : null;
-                      return {
-                        rank: item.rank || idx + 1,
-                        name: item.name || matched?.full_name || `Quester #${idx + 1}`,
-                        alias: item.alias || matched?.alias_name || null,
-                        email: item.email || matched?.email || "",
-                        phone: matched?.phone || "",
-                        ticket_code: item.ticketCode || matched?.ticket_code || "",
-                        points: item.points ?? matched?.total_xp ?? 0,
-                        checked_in: matched?.checked_in,
-                      };
-                    });
-                  } else {
-                    combinedList = attendees
-                      .slice()
-                      .sort((a, b) => (b.total_xp ?? 0) - (a.total_xp ?? 0) || new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-                      .map((a, idx) => ({
-                        rank: idx + 1,
-                        name: a.full_name,
-                        alias: a.alias_name || null,
-                        email: a.email,
-                        phone: a.phone,
-                        ticket_code: a.ticket_code,
-                        points: a.total_xp ?? 0,
-                        checked_in: a.checked_in,
-                      }));
-                  }
-
-                  const filtered = combinedList.filter((item) => {
-                    if (!leaderboardSearch) return true;
-                    const q = leaderboardSearch.toLowerCase();
-                    return (
-                      item.name?.toLowerCase().includes(q) ||
-                      item.alias?.toLowerCase().includes(q) ||
-                      item.email?.toLowerCase().includes(q) ||
-                      item.ticket_code?.toLowerCase().includes(q)
-                    );
-                  });
-
-                  if (filtered.length === 0) {
-                    return (
-                      <tr>
-                        <td colSpan={7} className="admin-table__empty" style={{ textAlign: "center", padding: 40 }}>
-                          {leaderboardLoading ? "Loading leaderboard rank scores..." : "No quester records found matching search query."}
-                        </td>
-                      </tr>
-                    );
-                  }
-
-                  return filtered.map((item) => {
-                    const isTop1 = item.rank === 1;
-                    const isTop2 = item.rank === 2;
-                    const isTop3 = item.rank === 3;
-                    const rankBadgeColor = isTop1 ? "#ffd700" : isTop2 ? "#cbd5e1" : isTop3 ? "#d97706" : "rgba(255, 255, 255, 0.08)";
-                    const rankTextColor = isTop1 ? "#120b02" : isTop2 ? "#0f172a" : isTop3 ? "#fff" : "#94a3b8";
-
-                    // Determine tier badge
-                    const tier = milestones
-                      .filter((m) => (item.points || 0) >= m.xp)
-                      .sort((a, b) => b.xp - a.xp)[0];
-
-                    return (
-                      <tr key={item.rank + "-" + (item.email || item.ticket_code || item.name)}>
-                        <td>
-                          <span
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              width: 32,
-                              height: 32,
-                              borderRadius: "50%",
-                              fontWeight: 900,
-                              fontSize: "0.85rem",
-                              background: rankBadgeColor,
-                              color: rankTextColor,
-                              border: isTop1 || isTop2 || isTop3 ? `1px solid ${rankBadgeColor}` : "1px solid rgba(255,255,255,0.12)",
-                              boxShadow: isTop1 ? "0 0 12px rgba(255, 215, 0, 0.4)" : "none",
-                            }}
-                          >
-                            {isTop1 ? "🥇" : isTop2 ? "🥈" : isTop3 ? "🥉" : `#${item.rank}`}
-                          </span>
-                        </td>
-
-                        <td className="admin-table__name">
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <strong style={{ color: "#fff", fontSize: "0.92rem" }}>{item.name}</strong>
-                            {item.checked_in && (
-                              <span style={{ fontSize: "0.68rem", background: "rgba(16, 185, 129, 0.15)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.3)", padding: "1px 6px", borderRadius: 10 }}>
-                                ✓ Checked-in
-                              </span>
-                            )}
-                          </div>
-                        </td>
-
-                        <td>
-                          {item.alias ? (
-                            <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 12, background: "rgba(245, 166, 35, 0.15)", border: "1px solid rgba(245, 166, 35, 0.4)", color: "var(--gold-light)", fontSize: "0.78rem", fontWeight: 700 }}>
-                              @{item.alias}
-                            </span>
-                          ) : (
-                            <span className="admin-table__muted">—</span>
-                          )}
-                        </td>
-
-                        <td className="admin-table__email">
-                          <span style={{ fontSize: "0.84rem", color: "#cbd5e1" }}>
-                            {item.email || "—"}
-                          </span>
-                        </td>
-
-                        <td>
-                          {item.ticket_code ? (
-                            <code style={{ fontSize: "0.8rem", color: "var(--gold-light)", background: "rgba(245, 166, 35, 0.08)", padding: "2px 6px", borderRadius: 6 }}>
-                              {item.ticket_code}
-                            </code>
-                          ) : (
-                            <span className="admin-table__muted">—</span>
-                          )}
-                        </td>
-
-                        <td>
-                          {tier ? (
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.78rem", color: tier.color || "#ffd700", background: `${tier.color || "#ffd700"}18`, border: `1px solid ${tier.color || "#ffd700"}44`, padding: "2px 8px", borderRadius: 12, fontWeight: 700 }}>
-                              <span>{tier.icon || "🏆"}</span>
-                              <span>{tier.name}</span>
-                            </span>
-                          ) : (
-                            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Quester Novice</span>
-                          )}
-                        </td>
-
-                        <td style={{ textAlign: "right" }}>
-                          <span
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 5,
-                              fontSize: "0.92rem",
-                              fontWeight: 900,
-                              color: (item.points || 0) > 0 ? "var(--gold-light)" : "var(--text-muted)",
-                              background: (item.points || 0) > 0 ? "rgba(245, 166, 35, 0.12)" : "rgba(255, 255, 255, 0.04)",
-                              border: (item.points || 0) > 0 ? "1px solid rgba(245, 166, 35, 0.3)" : "1px solid rgba(255, 255, 255, 0.08)",
-                              padding: "4px 10px",
-                              borderRadius: 14,
-                            }}
-                          >
-                            ⚡ {(item.points || 0).toLocaleString()} XP
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  });
-                })()}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
 
       {/* ─── Promo Code Form Modal ─── */}
       {showPromoCodeModal && (
