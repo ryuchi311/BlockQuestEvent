@@ -128,6 +128,41 @@ export async function POST(request: Request) {
     }
   }
 
+  // Auto-grant promo code bonus if user registered with a promo code and haven't received it yet
+  const hasPromo = Boolean(data.promo_code && data.promo_code.trim());
+  const hasPromoComp = completions.some((c: any) => c.quest_id === "promo-bonus" || c.quest_id === "media-partner-promo-code-bonus");
+  if (hasPromo && !hasPromoComp) {
+    try {
+      const { data: promoInfo } = await supabase
+        .from("promo_codes")
+        .select("xp_bonus")
+        .eq("code", data.promo_code.trim().toUpperCase())
+        .maybeSingle();
+
+      const promoXp = Number(promoInfo?.xp_bonus) || 250;
+      const newPromoComp: Record<string, any> = {
+        quest_id: "promo-bonus",
+        xp_awarded: promoXp,
+        user_email: email,
+        registration_id: data.id,
+      };
+
+      const { data: insertedPromo } = await supabase
+        .from("quest_completions")
+        .insert(newPromoComp)
+        .select()
+        .single();
+
+      if (insertedPromo) {
+        completions = [...completions, insertedPromo];
+      } else {
+        completions = [...completions, { ...newPromoComp, created_at: new Date().toISOString() }];
+      }
+    } catch (promoErr) {
+      console.warn("Could not auto-insert promo completion on login:", promoErr);
+    }
+  }
+
   const [verifRes, msgRes] = await Promise.all([
     supabase
       .from("quest_verifications")

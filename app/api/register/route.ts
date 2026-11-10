@@ -150,6 +150,7 @@ export async function POST(request: Request) {
   }
 
   let initialXp = 250;
+  let promoBonusXp = 0;
   let successMessage = "Registration saved successfully. +250 XP awarded!";
   let finalPromoCode = null;
 
@@ -163,7 +164,9 @@ export async function POST(request: Request) {
     if (promoData && promoData.is_active) {
       if (promoData.max_uses === null || promoData.usage_count < promoData.max_uses) {
         finalPromoCode = promoData.code;
-        successMessage = `Registration saved successfully. Promo code ${promoData.code} applied! Claim your +250 XP Promo Bonus quest in your quest line.`;
+        promoBonusXp = Number(promoData.xp_bonus) || 250;
+        initialXp += promoBonusXp;
+        successMessage = `Registration saved successfully. Promo code ${promoData.code} applied! +${promoBonusXp} XP bonus automatically claimed (+${initialXp} XP total)!`;
         
         // Increment usage count in the background
         supabase.rpc('increment_promo_usage', { p_code: promoData.code }).then((res) => {
@@ -291,13 +294,23 @@ export async function POST(request: Request) {
 
   // 6. Record registration completion in quest_completions
   try {
-    const completionPayload: Record<string, any> = {
-      quest_id: "register",
-      xp_awarded: initialXp,
-    };
-    if (newReg?.id) completionPayload.registration_id = newReg.id;
+    const completionsToInsert = [
+      {
+        quest_id: "register",
+        xp_awarded: 250,
+        registration_id: newReg?.id,
+      }
+    ];
 
-    await supabase.from("quest_completions").insert(completionPayload);
+    if (finalPromoCode && promoBonusXp > 0 && newReg?.id) {
+      completionsToInsert.push({
+        quest_id: "promo-bonus",
+        xp_awarded: promoBonusXp,
+        registration_id: newReg.id,
+      });
+    }
+
+    await supabase.from("quest_completions").insert(completionsToInsert);
   } catch (compErr) {
     console.warn("Could not record quest completion for registration:", compErr);
   }

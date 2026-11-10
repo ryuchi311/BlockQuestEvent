@@ -70,14 +70,6 @@ const initialQuests: Quest[] = [
     category: "onboarding"
   },
   {
-    id: "promo-bonus",
-    title: "Promo Code Bonus",
-    description: "Claim your bonus XP for registering with an official promo code or referral link.",
-    xp: 250,
-    status: "Live",
-    category: "onboarding"
-  },
-  {
     id: "add-alias",
     title: "Add an Alias Name",
     description: "Personalize your identity by creating an alias name for your profile. Once you add an alias, you become eligible to claim 50 XP.",
@@ -913,19 +905,7 @@ export default function ZealyMobileApp() {
       });
 
       setQuests((prevQuests) =>
-        prevQuests.map((q) => {
-          if (q.id === "promo-bonus") {
-            const isDone = compMap.has(q.id);
-            return {
-              ...q,
-              title: promoCode ? `Promo Code Bonus (${promoCode})` : "Promo Code Bonus",
-              description: promoCode
-                ? `Claim your bonus 250 XP for registering with promo code: ${promoCode}`
-                : "Claim your bonus XP for registering with an official promo code or referral link.",
-              status: isDone ? "Done" : (promoCode ? "Live" : "Locked"),
-              completedAt: isDone ? (compMap.get(q.id) || (q as any).completedAt) : undefined,
-            };
-          }
+        prevQuests.filter((q) => q.id !== "promo-bonus" && q.id !== "media-partner-promo-code-bonus").map((q) => {
           if (q.id === "daily-claim") {
             const todayStr = new Date().toISOString().slice(0, 10);
             const legacyCompDate = (compMap.get("daily-claim") || "").slice(0, 10);
@@ -1505,19 +1485,7 @@ export default function ZealyMobileApp() {
 
       // Restore existing completions and XP from database, ensuring uncompleted quests are clean
       setQuests((prevQuests) =>
-        prevQuests.map((q) => {
-          if (q.id === "promo-bonus") {
-            const isDone = completedIds.includes(q.id);
-            return {
-              ...q,
-              title: promoCode ? `Promo Code Bonus (${promoCode})` : "Promo Code Bonus",
-              description: promoCode
-                ? `Claim your bonus 250 XP for registering with promo code: ${promoCode}`
-                : "Claim your bonus XP for registering with an official promo code or referral link.",
-              status: isDone ? "Done" : (promoCode ? "Live" : "Locked"),
-              completedAt: isDone ? (q as any).completedAt : undefined,
-            };
-          }
+        prevQuests.filter((q) => q.id !== "promo-bonus" && q.id !== "media-partner-promo-code-bonus").map((q) => {
           if (completedIds.includes(q.id)) {
             return { ...q, status: "Done" };
           }
@@ -3981,7 +3949,7 @@ export default function ZealyMobileApp() {
                       {(() => {
                         const isDiscordQuest = selectedQuest.id === "discord-member" || !!(selectedQuest as any).discord_guild_id || (selectedQuest.title || "").toLowerCase().includes("discord");
                         const isTelegramQuest = selectedQuest.id === "join-tg" || !!(selectedQuest as any).telegram_chat_id || (selectedQuest.title || "").toLowerCase().includes("telegram");
-                        const isSpecialCustomQuest = selectedQuest.id === "referral-quest" || selectedQuest.id === "add-alias" || selectedQuest.id === "promo-bonus";
+                        const isSpecialCustomQuest = selectedQuest.id === "referral-quest" || selectedQuest.id === "add-alias";
                         const hasAction = !!selectedQuest.actionUrl && !isSpecialCustomQuest;
                         const isActionCompleted = !hasAction || !!visitedActions[selectedQuest.id];
                         return (
@@ -4917,83 +4885,6 @@ export default function ZealyMobileApp() {
                                         : `+${wheelPrizeResult.xp} XP credited to your profile!`}
                                     </div>
                                   </div>
-                                )}
-                              </div>
-                            ) : selectedQuest.id === "promo-bonus" ? (
-                              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
-                                {userPromoCode ? (
-                                  <>
-                                    <div style={{
-                                      background: "rgba(16, 185, 129, 0.15)",
-                                      border: "1px solid rgba(16, 185, 129, 0.4)",
-                                      padding: "16px",
-                                      borderRadius: 14,
-                                      textAlign: "center"
-                                    }}>
-                                      <div style={{ fontSize: "1.8rem", marginBottom: 4 }}>🎁 ✅</div>
-                                      <div style={{ color: "#34d399", fontWeight: 800, fontSize: "1rem" }}>
-                                        Promo Code Applied: {userPromoCode}
-                                      </div>
-                                      <div style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: "0.82rem", marginTop: 6, lineHeight: 1.4 }}>
-                                        Your account was registered with official promo code <strong>{userPromoCode}</strong>. Click below to claim your bonus 250 XP reward!
-                                      </div>
-                                    </div>
-                                    <button
-                                      onClick={handleClaimXp}
-                                      disabled={claiming}
-                                      className="modal-claim-btn"
-                                      style={{
-                                        width: "100%",
-                                        padding: "15px",
-                                        borderRadius: 12,
-                                        fontWeight: 800,
-                                        fontSize: "1rem",
-                                        background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                                        color: "#fff",
-                                        border: "none",
-                                        cursor: "pointer",
-                                        boxShadow: "0 0 25px rgba(16, 185, 129, 0.4)",
-                                      }}
-                                    >
-                                      {claiming ? "Claiming +250 XP..." : "🎉 Claim +250 Promo Bonus XP →"}
-                                    </button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <div style={{
-                                      background: "rgba(239, 68, 68, 0.15)",
-                                      border: "1px solid rgba(239, 68, 68, 0.35)",
-                                      padding: "16px",
-                                      borderRadius: 14,
-                                      textAlign: "center"
-                                    }}>
-                                      <div style={{ fontSize: "1.8rem", marginBottom: 4 }}>🔒 ❌</div>
-                                      <div style={{ color: "#f87171", fontWeight: 800, fontSize: "1rem" }}>
-                                        Promo Code Required
-                                      </div>
-                                      <div style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: "0.82rem", marginTop: 6, lineHeight: 1.4 }}>
-                                        This bonus XP is strictly available for attendees who registered using an official promo code or referral link. No promo code was applied to your account during registration.
-                                      </div>
-                                    </div>
-                                    <button
-                                      disabled
-                                      className="modal-claim-btn"
-                                      style={{
-                                        width: "100%",
-                                        padding: "15px",
-                                        borderRadius: 12,
-                                        fontWeight: 800,
-                                        fontSize: "0.95rem",
-                                        background: "rgba(255, 255, 255, 0.08)",
-                                        color: "rgba(255, 255, 255, 0.4)",
-                                        border: "none",
-                                        cursor: "not-allowed",
-                                        opacity: 0.6
-                                      }}
-                                    >
-                                      🔒 Promo Code Required to Claim XP
-                                    </button>
-                                  </>
                                 )}
                               </div>
                             ) : selectedQuest.id === "add-alias" ? (
