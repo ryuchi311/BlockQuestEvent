@@ -3379,16 +3379,94 @@ export default function ZealyMobileApp() {
 
                 {/* User Activity & Submission History */}
                 <div className="info-card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                     <h3 style={{ fontSize: "0.95rem", fontWeight: 800, color: "#fff", margin: 0 }}>
                       📜 Quest Activity & Proof Log
                     </h3>
-                    <button
-                      onClick={fetchUserVerifications}
-                      style={{ background: "none", border: "none", color: "var(--gold-light)", fontSize: "0.75rem", cursor: "pointer" }}
-                    >
-                      ↻ Refresh
-                    </button>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const instantLogs = (completedQuestRecords || []).map((c: any) => {
+                            const matchingQuest = quests.find((q) => q.id === c.quest_id);
+                            const isDailySpin = c.quest_id === "daily-claim" || String(c.quest_id).startsWith("daily-claim-");
+                            const title =
+                              c.quest_id === "register"
+                                ? "Register for BlockQuest Fiesta PH"
+                                : c.quest_id === "checkin"
+                                  ? "Gate Entrance Check-in"
+                                  : isDailySpin
+                                    ? "Daily Wheel of Luck"
+                                    : matchingQuest?.title || `Quest: ${c.quest_id}`;
+                            const xp = c.xp_awarded ?? matchingQuest?.xp ?? (c.quest_id === "register" ? 250 : 100);
+                            return {
+                              quest_id: c.quest_id,
+                              quest_title: title,
+                              xp,
+                              status: "Claimed",
+                              created_at: c.completed_at || new Date().toISOString(),
+                              type: "Instant / System",
+                              details: "",
+                            };
+                          });
+                          const filteredVerifs = (userVerifications || [])
+                            .filter((v: any) => !instantLogs.some((l) => l.quest_id === v.quest_id && l.status === "Claimed"))
+                            .map((v: any) => ({
+                              quest_id: v.quest_id || "",
+                              quest_title: v.quest_title || v.quest_id || "",
+                              xp: v.xp ?? 0,
+                              status: v.status || "Pending",
+                              created_at: v.created_at || "",
+                              type: v.is_instant ? "Instant / System" : "Proof / Submission",
+                              details: v.rejection_reason || v.user_message || "",
+                            }));
+                          const allRows = [...instantLogs, ...filteredVerifs].sort(
+                            (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+                          );
+                          if (allRows.length === 0) {
+                            showNotice("No quest activities to export yet.", "info", "Export Activity", "📥");
+                            return;
+                          }
+                          const escapeCsv = (val: any) => `"${String(val ?? "").replace(/"/g, '""')}"`;
+                          const headers = ["Date", "Quest ID", "Quest Title", "Status", "XP", "Type", "Details"];
+                          const csvLines = [
+                            headers.join(","),
+                            ...allRows.map((r) =>
+                              [
+                                escapeCsv(r.created_at ? new Date(r.created_at).toLocaleString("en-US") : ""),
+                                escapeCsv(r.quest_id),
+                                escapeCsv(r.quest_title),
+                                escapeCsv(r.status),
+                                escapeCsv(r.xp),
+                                escapeCsv(r.type),
+                                escapeCsv(r.details),
+                              ].join(",")
+                            ),
+                          ];
+                          const blob = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+                          const url = URL.createObjectURL(blob);
+                          const link = document.createElement("a");
+                          const dateStr = new Date().toISOString().slice(0, 10);
+                          link.href = url;
+                          link.setAttribute("download", `blockquest-activity-${dateStr}.csv`);
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          URL.revokeObjectURL(url);
+                        }}
+                        style={{ background: "rgba(245, 166, 35, 0.12)", border: "1px solid rgba(245, 166, 35, 0.35)", borderRadius: 6, padding: "3px 8px", color: "var(--gold-light)", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer" }}
+                        title="Export your score & quest activities to CSV"
+                      >
+                        📥 Export
+                      </button>
+                      <button
+                        type="button"
+                        onClick={fetchUserVerifications}
+                        style={{ background: "none", border: "none", color: "var(--gold-light)", fontSize: "0.75rem", cursor: "pointer" }}
+                      >
+                        ↻ Refresh
+                      </button>
+                    </div>
                   </div>
 
                   {(() => {
